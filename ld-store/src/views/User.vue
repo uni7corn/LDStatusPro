@@ -159,6 +159,7 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useDialog } from '@/composables/useDialog'
 import { useToast } from '@/composables/useToast'
+import { buildFallbackAvatar } from '@/utils/avatar'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -168,7 +169,8 @@ const toast = useToast()
 // 计算属性
 const user = computed(() => userStore.user)
 const username = computed(() => user.value?.name || user.value?.username || '用户')
-const avatar = computed(() => userStore.avatar || 'https://linux.do/favicon.ico')
+const avatarSeed = computed(() => user.value?.name || user.value?.username || user.value?.id || 'user')
+const avatar = computed(() => userStore.avatar || buildFallbackAvatar(avatarSeed.value, 128))
 const ldcInfo = computed(() => userStore.ldcInfo)
 
 // 加载 LDC 信息
@@ -178,7 +180,8 @@ onMounted(async () => {
 
 // 头像加载失败
 function handleAvatarError(e) {
-  e.target.src = 'https://linux.do/favicon.ico'
+  e.target.onerror = null
+  e.target.src = buildFallbackAvatar(avatarSeed.value, 128)
 }
 
 // 退出登录

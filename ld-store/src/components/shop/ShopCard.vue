@@ -41,6 +41,7 @@
           :src="ownerAvatarUrl" 
           :alt="shop.owner_username"
           class="owner-avatar"
+          :data-avatar-seed="ownerAvatarSeed"
           referrerpolicy="no-referrer"
           @error="handleAvatarError"
         />
@@ -64,6 +65,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { resolveAvatarUrl, buildFallbackAvatar } from '@/utils/avatar'
 
 const props = defineProps({
   shop: {
@@ -71,9 +73,6 @@ const props = defineProps({
     required: true
   }
 })
-
-// 默认头像 SVG (data URI)
-const defaultAvatar = `data:image/svg+xml,${encodeURIComponent('<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path d="M326.169 533.554v9.903c0 101.362 82.138 184.083 183.5 184.083s183.501-82.72 183.501-184.083v-9.903h-367.001zm277.872-70.487c22.137 0 40.196-18.06 40.196-40.196s-18.06-40.195-40.196-40.195-40.195 18.059-40.195 40.195 18.059 40.196 40.195 40.196zm-186.996 0c22.137 0 40.196-18.06 40.196-40.196s-18.06-40.195-40.196-40.195-40.195 18.059-40.195 40.195 18.059 40.196 40.195 40.196z" fill="#a686ba"/><path d="M1011.239 512c0-276.708-224.279-501.569-501.569-501.569S8.684 235.292 8.684 512c0 154.956 70.487 293.601 180.588 385.643V543.457c0-177.675 143.305-321.563 320.398-321.563s320.398 143.888 320.398 321.563v354.186C941.334 805.601 1011.239 666.956 1011.239 512z" fill="#a686ba"/><path d="M510.252 221.894c-177.093 0-320.398 143.888-320.398 321.563v354.186c86.799 72.235 198.647 115.926 320.398 115.926s233.6-43.691 320.398-115.926V543.457c0-177.675-143.305-321.563-320.398-321.563zm93.207 160.782c22.136 0 40.195 18.059 40.195 40.195s-18.059 40.196-40.195 40.196-40.196-18.06-40.196-40.196 18.06-40.195 40.196-40.195zm-186.996 0c22.136 0 40.195 18.059 40.195 40.195s-18.059 40.196-40.195 40.196-40.196-18.06-40.196-40.196 18.06-40.195 40.196-40.195zm93.207 344.865c-101.363 0-183.501-82.721-183.501-184.084v-9.903h366.418v9.903c.583 101.363-81.556 184.084-182.917 184.084z" fill="#FFF"/></svg>')}`
 
 // 3D 倾斜效果
 const cardRef = ref(null)
@@ -175,14 +174,15 @@ const parsedTags = computed(() => {
 })
 
 // 店主头像 URL
+const ownerAvatarSeed = computed(() =>
+  props.shop.owner_username || props.shop.owner_user_id || props.shop.name || 'shop'
+)
+
 const ownerAvatarUrl = computed(() => {
   const template = props.shop.owner_avatar_template
-  if (!template) return defaultAvatar
-  
-  // 替换模板中的 {size} 为实际尺寸
-  return template.replace('{size}', '48')
-    // 如果是相对路径，补全域名
-    .replace(/^\//, 'https://linux.do/')
+  if (!template) return buildFallbackAvatar(ownerAvatarSeed.value, 48)
+
+  return resolveAvatarUrl(template, 48) || buildFallbackAvatar(ownerAvatarSeed.value, 48)
 })
 
 // 处理图片加载错误
@@ -192,7 +192,9 @@ const handleImageError = (e) => {
 }
 
 const handleAvatarError = (e) => {
-  e.target.src = defaultAvatar
+  const seed = e?.target?.dataset?.avatarSeed || ownerAvatarSeed.value || 'shop'
+  e.target.onerror = null
+  e.target.src = buildFallbackAvatar(seed, 48)
 }
 
 // 标签样式类

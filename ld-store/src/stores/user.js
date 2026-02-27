@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { storage } from '@/utils/storage'
 import { isTokenExpired } from '@/utils/auth'
+import { resolveAvatarUrl, buildFallbackAvatar } from '@/utils/avatar'
 
 export const useUserStore = defineStore('user', () => {
   // 状态
@@ -15,7 +16,13 @@ export const useUserStore = defineStore('user', () => {
     return !isTokenExpired(token.value)
   })
   const username = computed(() => user.value?.username || '')
-  const avatar = computed(() => user.value?.avatar || user.value?.avatar_url || '')
+  const avatarSeed = computed(() =>
+    user.value?.name || user.value?.username || user.value?.id || 'user'
+  )
+  const avatar = computed(() =>
+    resolveAvatarUrl(user.value?.avatar || user.value?.avatar_url || '', 128)
+      || buildFallbackAvatar(avatarSeed.value, 128)
+  )
   const trustLevel = computed(() => user.value?.trust_level || user.value?.trustLevel || null)
 
   // 恢复会话
