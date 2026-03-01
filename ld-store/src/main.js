@@ -17,6 +17,78 @@ app.use(pinia)
 // 使用路由
 app.use(router)
 
+const CHUNK_RETRY_MARK_KEY = 'ld_store_chunk_retry_mark'
+
+function isDynamicImportError(error) {
+  const message = String(error?.message || error || '').toLowerCase()
+  if (!message) return false
+
+  return (
+    message.includes('failed to fetch dynamically imported module')
+    || message.includes('error loading dynamically imported module')
+    || message.includes('importing a module script failed')
+    || message.includes('chunkloaderror')
+    || (message.includes('loading') && message.includes('chunk'))
+  )
+}
+
+function getRetryMark(targetPath) {
+  return `path:${String(targetPath || '')}`
+}
+
+// 全局动态分包兜底：首次失败自动强刷，二次失败给出提示，避免首页空白无提示
+if (typeof window !== 'undefined' && !window.__LD_STORE_CHUNK_ERROR_HANDLER__) {
+  window.__LD_STORE_CHUNK_ERROR_HANDLER__ = true
+
+  router.onError((error, to) => {
+    if (!isDynamicImportError(error)) return
+
+    const targetPath = to?.fullPath || `${window.location.pathname}${window.location.search}${window.location.hash}`
+    const retryMark = getRetryMark(targetPath)
+    let previousMark = ''
+
+    try {
+      previousMark = sessionStorage.getItem(CHUNK_RETRY_MARK_KEY) || ''
+    } catch {
+      previousMark = ''
+    }
+
+    if (previousMark !== retryMark) {
+      try {
+        sessionStorage.setItem(CHUNK_RETRY_MARK_KEY, retryMark)
+      } catch {
+        // ignore sessionStorage errors
+      }
+
+      const retryUrl = new URL(window.location.href)
+      retryUrl.searchParams.set('__chunk_retry', String(Date.now()))
+      window.location.replace(retryUrl.toString())
+      return
+    }
+
+    try {
+      sessionStorage.removeItem(CHUNK_RETRY_MARK_KEY)
+    } catch {
+      // ignore sessionStorage errors
+    }
+
+    const uiStore = useUiStore(pinia)
+    uiStore.showToast('页面资源加载失败，请刷新页面后重试', 'error', 5000)
+
+    if (router.currentRoute.value?.path !== '/') {
+      router.replace('/').catch(() => {})
+    }
+  })
+
+  router.afterEach(() => {
+    try {
+      sessionStorage.removeItem(CHUNK_RETRY_MARK_KEY)
+    } catch {
+      // ignore sessionStorage errors
+    }
+  })
+}
+
 // 全局认证失效处理：清理登录态 + 提示 + 跳转登录
 if (typeof window !== 'undefined' && !window.__LD_STORE_AUTH_EXPIRED_HANDLER__) {
   window.__LD_STORE_AUTH_EXPIRED_HANDLER__ = true

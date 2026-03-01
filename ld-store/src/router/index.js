@@ -2,13 +2,14 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { MAINTENANCE_MODE } from '@/config/maintenance'
 import { storage } from '@/utils/storage'
+import HomeView from '@/views/Home.vue'
 
 // 路由配置
 const routes = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('@/views/Home.vue'),
+    component: HomeView,
     meta: { title: 'LD士多 - LDC积分商城' }
   },
   {
