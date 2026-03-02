@@ -10,7 +10,7 @@ const routes = [
     path: '/',
     name: 'Home',
     component: HomeView,
-    meta: { title: 'LD士多-LinuxDo站点积分兑换中心' }
+    meta: { title: 'LD士多 - LinuxDo站点积分兑换中心' }
   },
   {
     path: '/product/:id',

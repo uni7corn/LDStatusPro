@@ -72,7 +72,8 @@
                 <p class="tip-item">✅ 用于测试 LDC 支付回调通知是否正常</p>
                 <p class="tip-item">✅ 购买后会正常扣款和发放 CDK</p>
                 <p class="tip-item">✅ 测试完成后请及时下架或删除测试物品</p>
-                <p class="tip-item warning">⏱️ 测试模式商品上架 30 分钟后会自动下架</p>
+                <p class="tip-item">✅ 测试完成请务必在 <a href="https://credit.linux.do/merchant" target="_blank" style="color: #007bff;">LDC集市</a> 中关闭应用的测试模式</p>
+                <p class="tip-item warning">⏱️ 测试模式商品上架 60 分钟后会自动下架</p>
               </div>
               <p class="guide-modal-warning test-warning">
                 ⚠️ <strong>请确保已在 LDC 应用中开启测试模式</strong>，否则可能无法收到回调通知。
@@ -305,20 +306,20 @@
               <div class="notice-item">
                 <span class="item-num">1</span>
                 <div class="item-text">
-                  <strong>配置 LDC 收款信息</strong>：在「收款设置」中填写 Client ID 和 Client Key
+                  <strong>在<a href="/user/settings" target="_blank" style="color: #007bff;"> LD士多 </a>配置 LDC 收款信息</strong>：在「收款设置」中填写 Client ID 和 Client Key
                 </div>
               </div>
               <div class="notice-item highlight">
                 <span class="item-num">2</span>
                 <div class="item-text">
-                  <strong>配置通知地址（最重要⚠️）</strong>：这是支付成功后自动发货的关键！
+                  <strong>在<a href="https://credit.linux.do/merchant" target="_blank" style="color: #007bff;"> LDC集市 </a>配置通知地址（最重要⚠️）</strong>：这是支付成功后自动发货的关键！
                   <code class="notice-url">https://api.ldspro.qzz.io/api/shop/ldc/notify</code>
                 </div>
               </div>
               <div class="notice-item">
                 <span class="item-num">3</span>
                 <div class="item-text">
-                  <strong>配置回调地址</strong>：支付完成后浏览器跳转地址
+                  <strong>在<a href="https://credit.linux.do/merchant" target="_blank" style="color: #007bff;"> LDC集市 </a>配置回调地址</strong>：支付完成后浏览器跳转地址
                   <code class="notice-url">https://api.ldspro.qzz.io/api/shop/ldc/return</code>
                 </div>
               </div>
@@ -334,7 +335,7 @@
               v-model="form.cdkCodes"
               class="form-textarea code"
               :class="{ 'input-error': showError('cdkCodes', cdkCodesError) }"
-              placeholder="每行一个 CDK，支持批量添加&#10;物品发布后也可在「我的物品」中管理 CDK 库存"
+              placeholder="每行一个 CDK，支持批量添加，会自动去重&#10;物品发布后也可在「我的物品」中管理 CDK 库存"
               rows="5"
               ref="cdkCodesInput"
               @input="markTouched('cdkCodes')"
@@ -614,7 +615,7 @@ const form = ref({
   price: '',
   discount: 1,
   imageUrl: '',
-  productType: 'link', // 默认链接类型
+  productType: 'cdk', // 默认cdk类型
   paymentLink: '',
   cdkCodes: '',
   isTestMode: false,   // 测试模式（仅 CDK 类型可用）
@@ -683,8 +684,9 @@ async function loadCategories() {
 
 // 物品类型（只有链接和CDK两种）
 const productTypes = [
-  { id: 'link', name: '链接类型', desc: '提供外部支付链接', icon: '🔗' },
-  { id: 'cdk', name: 'CDK 类型', desc: '平台内支付+自动发货', icon: '🎫' }
+  { id: 'cdk', name: 'CDK 类型', desc: '平台内支付+自动发货', icon: '🎫' },
+  { id: 'link', name: '链接类型', desc: '提供外部支付链接', icon: '🔗' }
+  
 ]
 
 // CDK 数量
