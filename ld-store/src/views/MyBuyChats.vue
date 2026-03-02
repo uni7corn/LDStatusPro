@@ -94,7 +94,7 @@
 
             <div class="system-bottom">
               <span class="system-meta">
-                {{ item.messageType === 'product_comment' ? '商品评论通知' : '系统通知' }}
+                {{ systemMessageTypeText(item.messageType) }}
               </span>
               <div class="system-actions">
                 <button
@@ -297,6 +297,15 @@ function requestStatusText(status) {
 
 function sessionStatusText(status) {
   return sessionStatusOptions.find((item) => item.value === status)?.label || status
+}
+
+function systemMessageTypeText(type) {
+  const map = {
+    product_comment: '商品评论通知',
+    product_restock: '商品补货通知',
+    seller_restock_alert: '卖家补货提醒'
+  }
+  return map[String(type || '').trim()] || '系统通知'
 }
 
 function isDealCompleted(session) {
