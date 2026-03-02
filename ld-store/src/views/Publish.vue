@@ -324,7 +324,7 @@
               </div>
             </div>
             <div class="notice-footer">
-              📖 <a href="https://ldst0re.qzz.io/docs/publish-cdk" target="_blank" rel="noopener">查看详细配置教程</a>
+              📖 <a href="https://ldstore.cc.cd/docs/publish-cdk" target="_blank" rel="noopener">查看详细配置教程</a>
             </div>
           </div>
           

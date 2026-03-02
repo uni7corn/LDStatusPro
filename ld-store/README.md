@@ -153,6 +153,9 @@ npm run preview
 3. **环境变量**（如需要）
    ```
    NODE_VERSION: 18
+   LD_STORE_META_API_BASE: https://api2.ldspro.qzz.io
+   LD_STORE_SITE_URL: https://ldstore.cc.cd/
+   LD_STORE_DEFAULT_OG_IMAGE: https://img.ldspro.qzz.io/JackyLiii/20260123_og-image_9zs1sl.png
    ```
 
 4. **自动部署**
@@ -202,13 +205,26 @@ npm run preview
 - 格式：JPG（推荐）或 PNG
 - 大小：建议 < 500KB
 
+### 🔗 动态链接预览（论坛/社交平台）
+
+项目在 `public/_worker.js` 中提供了动态元信息注入能力：
+
+- 访问 `/product/:id` 时，分享卡片标题会变为 `商品名 - LD士多`
+- 访问 `/shop/:id` 时，分享卡片标题会变为 `店铺名 - LD士多`
+- 同步更新 `title`、`og:title`、`twitter:title`、`oembed` 等字段
+
+说明：
+- 本地 `npm run dev` 仍按前端 SPA 行为运行，动态抓取逻辑在 Cloudflare Pages 边缘生效
+- 若使用自定义 API 域名，请同步配置 `LD_STORE_META_API_BASE`
+
 ## 📁 项目结构
 
 ```
 ld-store/
 ├── public/                 # 静态资源
 │   ├── _headers           # Cloudflare 安全头配置
-│   └── _redirects         # SPA 路由重定向配置
+│   ├── _redirects         # SPA 路由重定向配置
+│   └── _worker.js         # Cloudflare Pages 动态元信息注入
 ├── src/
 │   ├── components/        # Vue 组件
 │   │   ├── common/        # 通用组件（LiquidTabs 液态Tab等）
