@@ -1,11 +1,11 @@
 const DEFAULT_SITE_URL = 'https://ldstore.cc.cd/'
 const DEFAULT_API_BASE = 'https://api2.ldspro.qzz.io'
 const DEFAULT_OG_IMAGE = 'https://img.ldspro.qzz.io/JackyLiii/20260123_og-image_9zs1sl.png'
-const DEFAULT_TITLE = 'LD士多 —— LinuxDo站点积分兑换中心'
+const DEFAULT_TITLE = 'LD士多-LinuxDo站点积分兑换中心'
 const DEFAULT_DESCRIPTION = '在 LD士多 使用 Linux.do 社区积分兑换精选虚拟物品与服务。'
 
 const STATIC_ROUTE_TITLES = [
-  [/^\/$/, 'LD士多 —— LinuxDo站点积分兑换中心'],
+  [/^\/$/, 'LD士多-LinuxDo站点积分兑换中心'],
   [/^\/category\/[^/]+\/?$/, '分类商品 - LD士多'],
   [/^\/search\/?$/, '搜索 - LD士多'],
   [/^\/buy-request\/[^/]+\/?$/, '求购详情 - LD士多'],
@@ -349,6 +349,23 @@ function shouldBypassHtmlRewrite(pathname) {
   return /\.[a-zA-Z0-9]+$/.test(pathname)
 }
 
+function isRedirectStatus(status) {
+  return status >= 300 && status < 400
+}
+
+function isSameDestination(location, requestUrl) {
+  const raw = String(location || '').trim()
+  if (!raw) return false
+  try {
+    const target = new URL(raw, requestUrl)
+    return target.origin === requestUrl.origin
+      && target.pathname === requestUrl.pathname
+      && target.search === requestUrl.search
+  } catch (_) {
+    return false
+  }
+}
+
 function jsonResponse(body, status = 200, cacheControl = 'public, max-age=300', isHead = false) {
   const text = JSON.stringify(body)
   return new Response(isHead ? null : text, {
@@ -400,8 +417,28 @@ async function handleOembed(request, env) {
 async function handleHtmlRequest(request, env) {
   const requestUrl = new URL(request.url)
   const metadata = await resolvePageMetadata(requestUrl, env)
-  const indexUrl = new URL('/index.html', requestUrl)
-  const assetResponse = await env.ASSETS.fetch(new Request(indexUrl.toString(), request))
+
+  let assetResponse = await env.ASSETS.fetch(request)
+
+  // Some Pages setups may return a self-redirect (for example "/" -> "/").
+  // Do not pass that redirect through, otherwise the browser loops forever.
+  if (isRedirectStatus(assetResponse.status)) {
+    const location = assetResponse.headers.get('location')
+    if (isSameDestination(location, requestUrl)) {
+      const fallbackUrl = new URL('/', requestUrl)
+      assetResponse = await env.ASSETS.fetch(new Request(fallbackUrl.toString(), request))
+    }
+  }
+
+  if (!assetResponse.ok) {
+    return assetResponse
+  }
+
+  const contentType = (assetResponse.headers.get('content-type') || '').toLowerCase()
+  if (!contentType.includes('text/html')) {
+    return assetResponse
+  }
+
   const html = await assetResponse.text()
   const rewritten = injectMetadataIntoHtml(html, metadata, env)
 
@@ -411,13 +448,13 @@ async function handleHtmlRequest(request, env) {
 
   if (request.method === 'HEAD') {
     return new Response(null, {
-      status: assetResponse.status,
+      status: 200,
       headers
     })
   }
 
   return new Response(rewritten, {
-    status: assetResponse.status,
+    status: 200,
     headers
   })
 }
