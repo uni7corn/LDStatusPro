@@ -221,7 +221,8 @@
 
       <div v-show="activeSection === 'buy'" class="section-content">
         <div class="buy-header">
-          <p class="buy-desc">求购信息处于<span style="color: #ff6b35;font-weight:bold"> 试运行阶段 </span>。有任何问题请L站私信 <a href="https://linux.do/u/JackyLiii">@JackyLiii</a>。🪧<a href="/docs/buy-request" style="color: green;">查看求购操作指南👈</a></p>
+          <p class="buy-desc">🚨 为了保证双方的权益，请勿在私信中直接联系方式。沟通好积分后支付LDC后会开放双方L站联系方式！🪧<a href="/docs/buy-request" style="color: green;">查看求购操作指南👈</a></p>
+          
           <button class="buy-publish-btn" @click="publishBuyRequest">+ 发布求购</button>
         </div>
 
@@ -491,10 +492,15 @@ const inStockOnly = computed(() => shopStore.inStockOnly)
 const loading = computed(() => shopStore.loading)
 const hasMore = computed(() => shopStore.hasMore)
 const total = computed(() => shopStore.total)
+const guestHiddenCategoryNames = new Set(['卡券', '服务', '订阅', '接码'])
 
-const marketCategories = computed(() =>
-  categories.value.filter(c => c?.name !== '小店' && c?.name !== '友情小店')
-)
+const marketCategories = computed(() => categories.value.filter((c) => {
+  const name = String(c?.name || '')
+  if (!name) return false
+  if (name === '小店' || name === '友情小店') return false
+  if (!userStore.isLoggedIn && guestHiddenCategoryNames.has(name)) return false
+  return true
+}))
 const marketProducts = computed(() =>
   toSafeArray(products.value).filter(p => p?.product_type !== 'store')
 )

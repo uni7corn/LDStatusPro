@@ -12,14 +12,16 @@
     <div class="tilt-glare" :style="glareStyle"></div>
     
     <!-- 折扣标签 -->
-    <span v-if="hasDiscount" class="discount-tag">
-      -{{ discountPercent }}%
-    </span>
+    <div v-if="showFeaturedBadge" class="badge-stack badge-stack--right">
+      <span v-if="showFeaturedBadge" class="selection-badge" :style="featuredBadgeStyle">士多甄选</span>
+    </div>
     
     <!-- 类型标签 -->
-    <span v-if="isTestMode" class="type-tag test">🧪 测试</span>
-    <span v-else-if="isCdk" class="type-tag cdk">CDK</span>
-    <span v-else-if="isStore" class="type-tag store">小店</span>
+    <div v-if="isTestMode || isCdk || isStore" class="badge-stack">
+      <span v-if="isTestMode" class="type-tag test type-tag--stacked">🧪 测试</span>
+      <span v-else-if="isCdk" class="type-tag cdk type-tag--stacked">CDK</span>
+      <span v-else-if="isStore" class="type-tag store type-tag--stacked">小店</span>
+    </div>
     
     <!-- 商品图片 -->
     <div class="product-cover" :style="coverStyle">
@@ -48,6 +50,9 @@
         <span v-if="isCdk" :class="['product-stock', stockClass]">
           {{ stockDisplay }}
         </span>
+        <span v-if="hasDiscount" class="product-stock product-discount">
+          {{ discountFoldLabel }}
+        </span>
         <span class="product-time">{{ updateTime }}</span>
       </div>
       
@@ -73,9 +78,13 @@
       
       <!-- 价格和浏览量 -->
       <div class="product-footer">
-        <div :class="['product-price', { discounted: hasDiscount }]">
-          {{ finalPrice }}<span class="unit">LDC</span>
-          <span v-if="hasDiscount" class="original-price">{{ originalPrice }}</span>
+        <div class="price-block">
+          <div class="price-row">
+            <div :class="['product-price', { discounted: hasDiscount }]">
+              {{ finalPrice }}<span class="unit">LDC</span>
+            </div>
+            <span v-if="hasDiscount" class="original-price">{{ originalPrice }} LDC</span>
+          </div>
         </div>
         <span class="product-views">👁 {{ product.view_count || 0 }}</span>
       </div>
@@ -198,18 +207,43 @@ const productType = computed(() => props.product.product_type || 'link')
 const isCdk = computed(() => productType.value === 'cdk')
 const isStore = computed(() => productType.value === 'store')
 const isTestMode = computed(() => !!props.product.is_test_mode || !!props.product.isTestMode)
+const showFeaturedBadge = computed(() => !!props.product.is_pinned && !!props.product.pin_is_paid)
+const featuredBadgeStyle = computed(() => {
+  const seed = getAnimationSeed(props.product.id ?? props.product.name ?? 'selection-badge')
+  const duration = 3.1 + (seed % 5) * 0.18
+  const phase = ((seed % 100) / 100) * duration
+  const drift = -12 + (seed % 7) * 4
+
+  return {
+    '--featured-wave-duration': `${duration.toFixed(2)}s`,
+    '--featured-wave-delay': `${(-phase).toFixed(2)}s`,
+    '--featured-wave-drift': `${drift}%`
+  }
+})
 
 // 价格计算
 const price = computed(() => parseFloat(props.product.price) || 0)
 const discount = computed(() => parseFloat(props.product.discount) || 1)
 const hasDiscount = computed(() => discount.value < 1)
-const discountPercent = computed(() => Math.round((1 - discount.value) * 100))
+const discountFoldLabel = computed(() => `${Number((discount.value * 10).toFixed(1))}折`)
 const finalPrice = computed(() => formatPrice(price.value * discount.value))
 const originalPrice = computed(() => formatPrice(price.value))
 
 function toSafeInt(value, fallback = 0) {
   const parsed = Number.parseInt(value, 10)
   return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function getAnimationSeed(value) {
+  const raw = String(value ?? '')
+  let hash = 2166136261
+
+  for (let index = 0; index < raw.length; index += 1) {
+    hash ^= raw.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+
+  return Math.abs(hash >>> 0) || 1
 }
 
 // 库存
@@ -373,36 +407,33 @@ function handleAvatarError(e) {
   z-index: 10;
 }
 
-/* 标签 */
-.discount-tag {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: white;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 5px 10px;
-  border-radius: 10px;
-  z-index: 5;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
-  animation: pulse-discount 2s ease-in-out infinite;
-}
-
-@keyframes pulse-discount {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-}
-
 .type-tag {
-  position: absolute;
-  top: 10px;
-  left: 10px;
   font-size: 10px;
   font-weight: 700;
   padding: 4px 8px;
   border-radius: 8px;
+}
+
+.badge-stack {
+  position: absolute;
+  top: 10px;
+  left: 10px;
   z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.badge-stack--right {
+  left: auto;
+  right: 10px;
+  align-items: flex-end;
+}
+
+.type-tag--stacked {
+  position: static;
+  width: fit-content;
 }
 
 .type-tag.cdk {
@@ -420,6 +451,127 @@ function handleAvatarError(e) {
 .type-tag.store {
   background: linear-gradient(135deg, #7d8d69 0%, #627151 100%);
   color: white;
+}
+
+.selection-badge {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  width: fit-content;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #fff9ef;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    linear-gradient(135deg, #ffe49a 0%, #d69727 28%, #8f5d12 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 240, 199, 0.3),
+    0 0 14px rgba(255, 199, 73, 0.35),
+    0 6px 18px rgba(179, 119, 16, 0.28);
+}
+
+.selection-badge::before,
+.selection-badge::after {
+  content: '';
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  animation-delay: var(--featured-wave-delay, 0s);
+}
+
+.selection-badge::before {
+  inset: -22% -35%;
+  background: linear-gradient(
+    112deg,
+    transparent 18%,
+    rgba(255, 251, 236, 0.05) 32%,
+    rgba(255, 255, 255, 0.82) 50%,
+    rgba(255, 247, 204, 0.16) 68%,
+    transparent 82%
+  );
+  transform: translate3d(-118%, 0, 0) skewX(-16deg) scaleX(0.94);
+  filter: blur(0.4px);
+  animation: featured-badge-wave-core var(--featured-wave-duration, 3.4s) linear infinite;
+}
+
+.selection-badge::after {
+  inset: -46% -20%;
+  background: radial-gradient(
+    circle at calc(30% + var(--featured-wave-drift, 0%)) 50%,
+    rgba(255, 255, 255, 0.46) 0%,
+    rgba(255, 247, 212, 0.22) 18%,
+    rgba(255, 221, 128, 0.12) 36%,
+    transparent 72%
+  );
+  transform: translate3d(-10%, 0, 0) scale(0.96);
+  filter: blur(2.4px);
+  animation: featured-badge-wave-glow var(--featured-wave-duration, 3.4s) linear infinite;
+}
+
+@keyframes featured-badge-wave-core {
+  0%,
+  64%,
+  100% {
+    transform: translate3d(-118%, 0, 0) skewX(-16deg) scaleX(0.94);
+    opacity: 0;
+  }
+
+  12% {
+    opacity: 0;
+  }
+
+  20% {
+    transform: translate3d(-78%, 0, 0) skewX(-16deg) scaleX(0.97);
+    opacity: 0.14;
+  }
+
+  28% {
+    transform: translate3d(-26%, 0, 0) skewX(-16deg) scaleX(1);
+    opacity: 0.72;
+  }
+
+  36% {
+    transform: translate3d(18%, 0, 0) skewX(-16deg) scaleX(1.02);
+    opacity: 0.64;
+  }
+
+  44% {
+    transform: translate3d(70%, 0, 0) skewX(-16deg) scaleX(0.98);
+    opacity: 0.12;
+  }
+}
+
+@keyframes featured-badge-wave-glow {
+  0%,
+  64%,
+  100% {
+    transform: translate3d(-10%, 0, 0) scale(0.96);
+    opacity: 0;
+  }
+
+  16% {
+    opacity: 0.04;
+  }
+
+  30% {
+    transform: translate3d(0, 0, 0) scale(1.04);
+    opacity: 0.22;
+  }
+
+  40% {
+    transform: translate3d(8%, 0, 0) scale(1.08);
+    opacity: 0.16;
+  }
+
+  48% {
+    transform: translate3d(14%, 0, 0) scale(1.11);
+    opacity: 0.04;
+  }
 }
 
 /* 封面 */
@@ -513,6 +665,7 @@ function handleAvatarError(e) {
   padding: 3px 8px;
   border-radius: 6px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 /* 库存充足 (>5) - 绿色 */
@@ -538,6 +691,12 @@ function handleAvatarError(e) {
   background: var(--color-danger-bg);
   color: var(--color-danger);
   font-weight: 700;
+}
+
+.product-discount {
+  background: rgba(244, 63, 94, 0.12);
+  color: #e11d48;
+  box-shadow: inset 0 0 0 1px rgba(225, 29, 72, 0.14);
 }
 
 .product-time {
@@ -583,14 +742,29 @@ function handleAvatarError(e) {
 /* 底部 */
 .product-footer {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
+  gap: 12px;
+}
+
+.price-block {
+  min-width: 0;
+}
+
+.price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: nowrap;
 }
 
 .product-price {
   font-size: 18px;
   font-weight: 700;
   color: var(--color-warning);
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .product-price .unit {
@@ -607,16 +781,14 @@ function handleAvatarError(e) {
   font-size: 11px;
   color: var(--text-tertiary);
   text-decoration: line-through;
-  margin-left: 4px;
   font-weight: 400;
-  background: var(--bg-secondary);
-  padding: 1px 4px;
-  border-radius: 3px;
+  white-space: nowrap;
 }
 
 .product-views {
   font-size: 12px;
   color: var(--text-tertiary);
+  white-space: nowrap;
 }
 
 /* 移动端适配 */

@@ -156,6 +156,12 @@ const routes = [
     meta: { title: '支持 LDStatus Pro - LD士多' }
   },
   {
+    path: '/merchant-services',
+    name: 'MerchantServices',
+    component: () => import('@/views/MerchantServices.vue'),
+    meta: { title: '商家服务 - LD士多', requiresAuth: true }
+  },
+  {
     path: '/maintenance',
     name: 'Maintenance',
     component: () => import('@/views/Maintenance.vue'),

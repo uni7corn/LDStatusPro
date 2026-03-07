@@ -91,7 +91,8 @@ const categoryConfig = {
   'AI': { name: 'AI', icon: '🤖' },
   '存储': { name: '存储', icon: '💾' },
   '小鸡': { name: '小鸡', icon: '🐔' },
-  '咨询': { name: '咨询', icon: '💬' }
+  '咨询': { name: '咨询', icon: '💬' },
+  '卡券': { name: '卡券', icon: '🎫' }
 }
 
 // 排序选项

@@ -13,14 +13,15 @@
       </div>
 
       <div class="toolbar">
-        <select v-model="statusFilter" class="toolbar-select" @change="loadRequests">
-          <option value="">全部状态</option>
-          <option value="pending_review">待审核</option>
-          <option value="open">开放中</option>
-          <option value="negotiating">洽谈中</option>
-          <option value="matched">已匹配</option>
-          <option value="closed">已关闭</option>
-        </select>
+        <AppSelect
+          v-model="statusFilter"
+          class="toolbar-select"
+          :options="statusOptions"
+          placeholder="全部状态"
+          full-width
+          variant="toolbar"
+          @change="loadRequests"
+        />
         <input
           v-model="searchKeyword"
           type="text"
@@ -97,6 +98,7 @@ import { api } from '@/utils/api'
 import { useToast } from '@/composables/useToast'
 import { useDialog } from '@/composables/useDialog'
 import { formatPrice, formatRelativeTime } from '@/utils/format'
+import AppSelect from '@/components/common/AppSelect.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 
 const router = useRouter()
@@ -107,6 +109,14 @@ const loading = ref(false)
 const requests = ref([])
 const statusFilter = ref('')
 const searchKeyword = ref('')
+
+const statusOptions = [
+  { value: 'pending_review', label: '待审核' },
+  { value: 'open', label: '开放中' },
+  { value: 'negotiating', label: '洽谈中' },
+  { value: 'matched', label: '已匹配' },
+  { value: 'closed', label: '已关闭' }
+]
 
 function statusText(status) {
   const map = {
@@ -233,7 +243,10 @@ onMounted(loadRequests)
   margin-bottom: 14px;
 }
 
-.toolbar-select,
+.toolbar-select {
+  min-width: 0;
+}
+
 .toolbar-input {
   border: 1px solid var(--border-color);
   border-radius: 10px;

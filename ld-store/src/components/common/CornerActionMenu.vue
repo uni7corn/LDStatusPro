@@ -80,6 +80,71 @@
     </button>
 
     <button
+      class="corner-action action-merchant"
+      :style="actionStyle(2)"
+      @click.stop="openMerchantServices"
+      title="商家服务"
+      aria-label="商家服务"
+    >
+      <svg
+        class="action-icon"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M5 10l2-5h10l2 5"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path
+          d="M4 10h16v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8z"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linejoin="round"
+        />
+        <path
+          d="M9 14h6"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+        />
+      </svg>
+      <span class="action-label">商家服务</span>
+    </button>
+
+    <Transition name="backtop-fade">
+      <button
+        v-if="showBackToTop"
+        class="backtop-button"
+        :class="{ 'is-shifted': isOpen }"
+        @click.stop="scrollToTop"
+        title="快速回顶"
+        aria-label="快速回顶"
+      >
+        <svg class="backtop-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M12 17V7"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+          <path
+            d="M7.5 11.5L12 7l4.5 4.5"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
+    </Transition>
+
+    <button
       class="corner-fab"
       @click.stop="toggleMenu"
       :aria-expanded="String(isOpen)"
@@ -119,11 +184,13 @@ const menuRef = ref(null)
 const showMenu = ref(false)
 const isOpen = ref(false)
 const isEnabled = ref(props.modelValue)
+const showBackToTop = ref(false)
 
-const radius = 72
+const radius = 78
 const positions = [
   { x: 0, y: radius },
-  { x: radius * 0.72, y: radius * 0.72 }
+  { x: radius * 0.72, y: radius * 0.72 },
+  { x: radius, y: 0 }
 ]
 
 const actionStyle = (index) => {
@@ -160,6 +227,28 @@ function openSupport() {
   router.push('/support')
 }
 
+function openMerchantServices() {
+  isOpen.value = false
+  router.push('/merchant-services')
+}
+
+function updateBackToTopVisibility() {
+  showBackToTop.value = window.scrollY > 280
+}
+
+function handleScroll() {
+  updateBackToTopVisibility()
+}
+
+function scrollToTop() {
+  isOpen.value = false
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  window.scrollTo({
+    top: 0,
+    behavior: prefersReducedMotion ? 'auto' : 'smooth'
+  })
+}
+
 function handleDocClick(event) {
   if (!isOpen.value) return
   const target = menuRef.value
@@ -172,11 +261,14 @@ onMounted(() => {
   setTimeout(() => {
     showMenu.value = true
   }, 450)
+  updateBackToTopVisibility()
   document.addEventListener('click', handleDocClick)
+  window.addEventListener('scroll', handleScroll, { passive: true })
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleDocClick)
+  window.removeEventListener('scroll', handleScroll)
 })
 
 watch(
@@ -190,6 +282,7 @@ watch(
   () => route.fullPath,
   () => {
     isOpen.value = false
+    updateBackToTopVisibility()
   }
 )
 </script>
@@ -270,6 +363,18 @@ watch(
   box-shadow: 0 12px 24px rgba(239, 122, 122, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
+.action-merchant {
+  --label-shift-y: 45%;
+  color: #9b6a11;
+  border-color: color-mix(in srgb, #c48a22 45%, transparent);
+  background: linear-gradient(135deg, rgba(196, 138, 34, 0.22), rgba(255, 248, 230, 0.95));
+}
+
+.action-merchant:hover {
+  color: #7a4f08;
+  box-shadow: 0 12px 24px rgba(196, 138, 34, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
 .action-label {
   position: absolute;
   right: 56px;
@@ -314,6 +419,55 @@ watch(
   border: 1px solid rgba(255, 255, 255, 0.55);
   overflow: hidden;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.backtop-button {
+  position: absolute;
+  right: 4px;
+  bottom: 68px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border-light);
+  background: var(--glass-bg-light);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 22px var(--glass-shadow), inset 0 1px 0 var(--glass-shine);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: transform 0.28s ease, opacity 0.24s ease, box-shadow 0.24s ease, color 0.24s ease;
+}
+
+.backtop-button:hover {
+  color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.backtop-button.is-shifted {
+  transform: translateY(-82px);
+}
+
+.backtop-button.is-shifted:hover {
+  transform: translateY(-84px);
+}
+
+.backtop-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.backtop-fade-enter-active,
+.backtop-fade-leave-active {
+  transition: opacity 0.24s ease, transform 0.24s ease;
+}
+
+.backtop-fade-enter-from,
+.backtop-fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px) scale(0.92);
 }
 
 .fab-label {
@@ -427,6 +581,21 @@ watch(
     height: 48px;
   }
 
+  .backtop-button {
+    right: 2px;
+    bottom: 62px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .backtop-button.is-shifted {
+    transform: translateY(-72px);
+  }
+
+  .backtop-button.is-shifted:hover {
+    transform: translateY(-74px);
+  }
+
   .action-label {
     font-size: 11px;
     padding: 3px 8px;
@@ -443,7 +612,8 @@ watch(
   .corner-action,
   .action-label,
   .corner-fab,
-  .fab-icon {
+  .fab-icon,
+  .backtop-button {
     transition: none;
   }
 

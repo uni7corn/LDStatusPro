@@ -35,11 +35,13 @@
           placeholder="搜索订单号、商品名、用户名"
           @keyup.enter="applyFilters"
         />
-        <select v-model="timeRange" class="filter-select" @change="applyFilters">
-          <option value="1m">最近1个月</option>
-          <option value="6m">最近半年</option>
-          <option value="1y">最近一年</option>
-        </select>
+        <AppSelect
+          v-model="timeRange"
+          class="filter-select-wrap"
+          :options="timeRangeOptions"
+          placeholder="选择时间范围"
+          @change="applyFilters"
+        />
         <button class="filter-btn" :disabled="loading || loadingMore" @click="applyFilters">
           搜索
         </button>
@@ -261,6 +263,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useShopStore } from '@/stores/shop'
 import { useToast } from '@/composables/useToast'
 import { useDialog } from '@/composables/useDialog'
+import AppSelect from '@/components/common/AppSelect.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { isValidLdcPaymentUrl } from '@/utils/security'
 import { prepareNewTab, openInNewTab, cleanupPreparedTab } from '@/utils/newTab'
@@ -280,6 +283,11 @@ const pageSize = 20
 const currentRole = ref(route.query.tab === 'buy' ? 'buy' : 'buyer')
 const orderSearch = ref('')
 const timeRange = ref('1m')
+const timeRangeOptions = [
+  { value: '1m', label: '最近1个月' },
+  { value: '6m', label: '最近半年' },
+  { value: '1y', label: '最近一年' }
+]
 const cancellingOrderId = ref(null)
 const deliverFormOrderId = ref(null)
 const deliverContent = ref('')
@@ -856,20 +864,8 @@ onUnmounted(() => {
   border-color: var(--color-primary);
 }
 
-.filter-select {
-  height: 42px;
+.filter-select-wrap {
   min-width: 118px;
-  padding: 0 12px;
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  font-size: 14px;
-}
-
-.filter-select:focus {
-  outline: none;
-  border-color: var(--color-primary);
 }
 
 .filter-btn {

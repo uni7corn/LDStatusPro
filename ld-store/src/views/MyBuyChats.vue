@@ -45,11 +45,15 @@
 
       <section v-if="activeTab === 'system'" class="panel-wrap">
         <div class="toolbar">
-          <select v-model="systemFilter.readStatus" class="toolbar-select" @change="loadSystemMessages(true)">
-            <option value="">全部状态</option>
-            <option value="unread">仅未读</option>
-            <option value="read">仅已读</option>
-          </select>
+          <AppSelect
+            v-model="systemFilter.readStatus"
+            class="toolbar-select"
+            :options="systemReadStatusOptions"
+            placeholder="全部状态"
+            full-width
+            variant="toolbar"
+            @change="loadSystemMessages(true)"
+          />
           <input
             v-model="systemFilter.search"
             type="text"
@@ -90,7 +94,11 @@
               <span class="system-time">{{ formatRelativeTime(item.createdAt || 0) }}</span>
             </div>
 
-            <p class="system-content">{{ item.content || '-' }}</p>
+            <ExpandableText
+              class="system-content"
+              as="p"
+              :text="item.content || '-'"
+            />
 
             <div class="system-bottom">
               <span class="system-meta">
@@ -112,6 +120,7 @@
         </div>
 
         <div v-if="systemPagination.totalPages > 1" class="pager">
+          <span class="pager-summary">共 {{ systemPagination.total }} 条，每页 {{ systemPagination.pageSize }} 条</span>
           <button :disabled="systemPagination.page <= 1" @click="goSystemPage(systemPagination.page - 1)">上一页</button>
           <span>{{ systemPagination.page }} / {{ systemPagination.totalPages }}</span>
           <button
@@ -125,17 +134,24 @@
 
       <section v-else class="panel-wrap">
         <div class="toolbar">
-          <select v-model="buyFilter.role" class="toolbar-select" @change="loadSessions(true)">
-            <option value="">全部身份</option>
-            <option value="requester">我是求购方</option>
-            <option value="provider">我是服务方</option>
-          </select>
-          <select v-model="buyFilter.status" class="toolbar-select" @change="loadSessions(true)">
-            <option value="">全部会话状态</option>
-            <option v-for="item in sessionStatusOptions" :key="item.value" :value="item.value">
-              {{ item.label }}
-            </option>
-          </select>
+          <AppSelect
+            v-model="buyFilter.role"
+            class="toolbar-select"
+            :options="buyRoleOptions"
+            placeholder="全部身份"
+            full-width
+            variant="toolbar"
+            @change="loadSessions(true)"
+          />
+          <AppSelect
+            v-model="buyFilter.status"
+            class="toolbar-select"
+            :options="sessionStatusOptions"
+            placeholder="全部会话状态"
+            full-width
+            variant="toolbar"
+            @change="loadSessions(true)"
+          />
           <input
             v-model="buyFilter.search"
             type="text"
@@ -183,9 +199,11 @@
               <span>密码：{{ item.counterpartyPublicPassword || '-' }}</span>
             </div>
 
-            <div class="latest-message" v-if="item.latestMessage?.content">
-              {{ item.latestMessage.content }}
-            </div>
+            <ExpandableText
+              v-if="item.latestMessage?.content"
+              class="latest-message"
+              :text="item.latestMessage.content"
+            />
             <div class="latest-message muted" v-else>
               暂无消息
             </div>
@@ -199,6 +217,7 @@
         </div>
 
         <div v-if="buyPagination.totalPages > 1" class="pager">
+          <span class="pager-summary">共 {{ buyPagination.total }} 条，每页 {{ buyPagination.pageSize }} 条</span>
           <button :disabled="buyPagination.page <= 1" @click="goBuyPage(buyPagination.page - 1)">上一页</button>
           <span>{{ buyPagination.page }} / {{ buyPagination.totalPages }}</span>
           <button :disabled="buyPagination.page >= buyPagination.totalPages" @click="goBuyPage(buyPagination.page + 1)">
@@ -216,10 +235,13 @@ import { useRouter } from 'vue-router'
 import { api } from '@/utils/api'
 import { useToast } from '@/composables/useToast'
 import { formatPrice, formatRelativeTime } from '@/utils/format'
+import AppSelect from '@/components/common/AppSelect.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import ExpandableText from '@/components/common/ExpandableText.vue'
 
 const router = useRouter()
 const toast = useToast()
+const MESSAGE_PAGE_SIZE = 20
 
 const activeTab = ref('system')
 
@@ -242,10 +264,15 @@ const systemFilter = reactive({
 })
 const systemPagination = reactive({
   page: 1,
-  pageSize: 20,
+  pageSize: MESSAGE_PAGE_SIZE,
   total: 0,
   totalPages: 0
 })
+
+const systemReadStatusOptions = [
+  { value: 'unread', label: '仅未读' },
+  { value: 'read', label: '仅已读' }
+]
 
 // 求购洽谈
 const buyLoading = ref(false)
@@ -257,10 +284,15 @@ const buyFilter = reactive({
 })
 const buyPagination = reactive({
   page: 1,
-  pageSize: 20,
+  pageSize: MESSAGE_PAGE_SIZE,
   total: 0,
   totalPages: 0
 })
+
+const buyRoleOptions = [
+  { value: 'requester', label: '我是求购方' },
+  { value: 'provider', label: '我是服务方' }
+]
 
 const sessionStatusOptions = [
   { value: 'negotiating', label: '洽谈中' },
@@ -301,6 +333,7 @@ function sessionStatusText(status) {
 
 function systemMessageTypeText(type) {
   const map = {
+    product_offline: '物品下架通知',
     product_comment: '商品评论通知',
     product_restock: '商品补货通知',
     seller_restock_alert: '卖家补货提醒'
@@ -350,6 +383,8 @@ async function loadSystemMessages(reset = false) {
 
     systemMessages.value = result.data?.messages || []
     const pageData = result.data?.pagination || {}
+    systemPagination.page = Number(pageData.page || systemPagination.page || 1)
+    systemPagination.pageSize = Number(pageData.pageSize || MESSAGE_PAGE_SIZE)
     systemPagination.total = Number(pageData.total || 0)
     systemPagination.totalPages = Number(pageData.totalPages || 0)
 
@@ -457,6 +492,8 @@ async function loadSessions(reset = false) {
 
     sessions.value = result.data?.sessions || []
     const pageData = result.data?.pagination || {}
+    buyPagination.page = Number(pageData.page || buyPagination.page || 1)
+    buyPagination.pageSize = Number(pageData.pageSize || MESSAGE_PAGE_SIZE)
     buyPagination.total = Number(pageData.total || 0)
     buyPagination.totalPages = Number(pageData.totalPages || 0)
 
@@ -659,7 +696,10 @@ onUnmounted(() => {
   margin-bottom: 12px;
 }
 
-.toolbar-select,
+.toolbar-select {
+  min-width: 0;
+}
+
 .toolbar-input {
   border: 1px solid var(--border-color);
   border-radius: 10px;
@@ -972,11 +1012,16 @@ onUnmounted(() => {
 .pager {
   margin-top: 14px;
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
   gap: 10px;
   color: var(--text-tertiary);
   font-size: 13px;
+}
+
+.pager-summary {
+  margin-right: auto;
 }
 
 .pager button {

@@ -1,6 +1,7 @@
 const DEFAULT_SITE_URL = 'https://ldstore.cc.cd/'
 const DEFAULT_API_BASE = 'https://api2.ldspro.qzz.io'
 const DEFAULT_OG_IMAGE = 'https://img.ldspro.qzz.io/JackyLiii/20260123_og-image_9zs1sl.png'
+const DEFAULT_LEGACY_HOSTS = ['ldst0re.qzz.io']
 const DEFAULT_TITLE = 'LD士多-LinuxDo站点积分兑换中心'
 const DEFAULT_DESCRIPTION = '在 LD士多 使用 Linux.do 社区积分兑换精选虚拟物品与服务。'
 
@@ -366,6 +367,44 @@ function isSameDestination(location, requestUrl) {
   }
 }
 
+function getLegacyHosts(env) {
+  const raw = String(env.LD_STORE_LEGACY_HOSTS || '').trim()
+  const hosts = raw
+    ? raw.split(',').map((item) => item.trim().toLowerCase()).filter(Boolean)
+    : DEFAULT_LEGACY_HOSTS
+  return new Set(hosts)
+}
+
+function maybeRedirectLegacyHost(requestUrl, env) {
+  const hostname = requestUrl.hostname.toLowerCase()
+  const legacyHosts = getLegacyHosts(env)
+  if (!legacyHosts.has(hostname)) {
+    return null
+  }
+
+  const siteUrl = String(env.LD_STORE_SITE_URL || DEFAULT_SITE_URL).trim() || DEFAULT_SITE_URL
+  let destination
+  try {
+    destination = new URL(siteUrl)
+  } catch (_) {
+    destination = new URL(DEFAULT_SITE_URL)
+  }
+
+  // Prevent redirect loops if env hosts are misconfigured.
+  if (hostname === destination.hostname.toLowerCase()) {
+    return null
+  }
+
+  const targetUrl = new URL(requestUrl.pathname + requestUrl.search, destination)
+  return new Response(null, {
+    status: 301,
+    headers: {
+      location: targetUrl.toString(),
+      'cache-control': 'public, max-age=3600'
+    }
+  })
+}
+
 function jsonResponse(body, status = 200, cacheControl = 'public, max-age=300', isHead = false) {
   const text = JSON.stringify(body)
   return new Response(isHead ? null : text, {
@@ -463,6 +502,11 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url)
     const method = request.method.toUpperCase()
+    const legacyRedirect = maybeRedirectLegacyHost(url, env)
+
+    if (legacyRedirect) {
+      return legacyRedirect
+    }
 
     if (method !== 'GET' && method !== 'HEAD') {
       return env.ASSETS.fetch(request)

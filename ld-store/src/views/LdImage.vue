@@ -27,6 +27,31 @@
         </Transition>
       </div>
 
+      <div class="pay-return-banner">
+        <div class="pay-return-title">⚠️ 支付完成后请立即回到本页确认</div>
+        <p class="pay-return-text">
+          付费上传会在新页面发起支付。完成后请返回当前页面点击
+          <strong>“✅ 我已支付，立即检查”</strong>，系统才会继续上传。
+        </p>
+        <template v-if="showPayOrderActions">
+          <p class="pay-return-meta">
+            订单号：{{ paymentOrderNo }} · 金额：{{ paymentAmount || priceInfo?.currentPrice || 1 }} LDC
+          </p>
+          <div class="pay-return-actions">
+            <button v-if="paymentUrl" class="pay-return-btn reopen" @click="openPayment">
+              🔗 再次前往支付页
+            </button>
+            <button class="pay-return-btn confirm" @click="checkPayment" :disabled="checking">
+              {{ checking ? '检查中...' : '✅ 我已支付，立即检查' }}
+            </button>
+            <button class="pay-return-btn cancel" @click="cancelPayment" :disabled="checking">
+              ✖ 取消本次支付
+            </button>
+          </div>
+          <p v-if="payError" class="pay-error pay-inline-error">{{ payError }}</p>
+        </template>
+      </div>
+
       <!-- 维护提示（非免费用户） -->
       <div v-if="isLoggedIn && !isMaintenanceTester && isMaintenance" class="maintenance-notice">
         <div class="maintenance-icon">🔧</div>
@@ -215,35 +240,7 @@
       </template>
     </div>
 
-    <!-- 支付弹窗 -->
     <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showPayModal" class="modal-overlay" @click.self="cancelPayment">
-          <div class="pay-modal">
-            <div class="modal-header">
-              <h3>💳 支付确认</h3>
-              <button class="close-btn" @click="cancelPayment">✕</button>
-            </div>
-            <div class="modal-body">
-              <div class="pay-info">
-                <p>上传图片需支付 <strong>{{ paymentAmount || priceInfo?.currentPrice || 1 }} LDC</strong></p>
-                <p class="pay-tip">订单号：{{ paymentOrderNo }}</p>
-                <p class="pay-tip">请在新窗口中完成支付，支付后点击"我已支付"</p>
-              </div>
-              <div class="pay-actions">
-                <button v-if="paymentUrl" class="pay-btn" @click="openPayment">
-                  🔗 前往支付
-                </button>
-                <button class="check-btn" @click="checkPayment" :disabled="checking">
-                  {{ checking ? '检查中...' : '✅ 我已支付' }}
-                </button>
-              </div>
-              <p v-if="payError" class="pay-error">{{ payError }}</p>
-            </div>
-          </div>
-        </div>
-      </Transition>
-
       <!-- 删除确认弹窗 -->
       <Transition name="modal">
         <div v-if="showDeleteModal" class="modal-overlay" @click.self="cancelDelete">
@@ -296,7 +293,6 @@ const history = ref([])
 const historyLoading = ref(false)
 
 // 支付相关
-const showPayModal = ref(false)
 const paymentUrl = ref('')
 const paymentOrderNo = ref('')
 const paymentAmount = ref(0)
@@ -333,6 +329,9 @@ const isFreeUser = computed(() => {
 const currentMaxSizeMB = computed(() => Number(priceInfo.value?.currentMaxSizeMB || 5))
 const canUpload = computed(() => {
   return selectedFile.value && uploadStatus.value === 'idle'
+})
+const showPayOrderActions = computed(() => {
+  return uploadStatus.value === 'paying' && !!paymentOrderNo.value
 })
 
 // 判断是否为当前价格档位
@@ -492,10 +491,10 @@ async function startUpload() {
           cleanupPreparedTab(preparedWindow)
         }
       }
-      // 显示支付弹窗
-      showPayModal.value = true
-      if (!paymentOpened) {
-        cleanupPreparedTab(preparedWindow)
+      if (paymentOpened) {
+        toast.warning('请在支付完成后返回此页，点击“我已支付，立即检查”', 5000)
+      } else {
+        toast.warning('未能自动打开支付页，请点击上方“再次前往支付页”', 5000)
       }
     } else {
       cleanupPreparedTab(preparedWindow)
@@ -534,7 +533,6 @@ async function checkPayment() {
     const result = await api.get(`/api/image/check-payment?orderNo=${paymentOrderNo.value}`)
     if (result.success && result.data?.paid && result.data?.credential) {
       uploadCredential.value = result.data.credential
-      showPayModal.value = false
       toast.success('支付成功，开始上传')
       await doUpload()
     } else if (result.success && result.data?.paid) {
@@ -553,10 +551,11 @@ async function checkPayment() {
 
 // 取消支付
 function cancelPayment() {
-  showPayModal.value = false
   uploadStatus.value = 'idle'
   paymentUrl.value = ''
   paymentOrderNo.value = ''
+  paymentAmount.value = 0
+  payError.value = ''
 }
 
 // 执行上传（通过后端代理上传，解决 CORS 问题）
@@ -724,6 +723,94 @@ onMounted(() => {
 .page-header {
   margin-bottom: 16px;
   text-align: center;
+}
+
+.pay-return-banner {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 2px solid rgba(245, 158, 11, 0.65);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(239, 68, 68, 0.12));
+  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.2);
+  animation: pay-reminder-pulse 1.8s ease-in-out infinite;
+}
+
+.pay-return-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #b45309;
+  margin-bottom: 6px;
+}
+
+.pay-return-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.pay-return-text strong {
+  color: #b45309;
+}
+
+.pay-return-meta {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.pay-return-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pay-return-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pay-return-btn.reopen {
+  background: rgba(59, 130, 246, 0.15);
+  color: #1d4ed8;
+}
+
+.pay-return-btn.reopen:hover {
+  background: rgba(59, 130, 246, 0.22);
+}
+
+.pay-return-btn.confirm {
+  background: rgba(34, 197, 94, 0.18);
+  color: #166534;
+}
+
+.pay-return-btn.confirm:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.28);
+}
+
+.pay-return-btn.cancel {
+  background: rgba(107, 114, 128, 0.16);
+  color: #374151;
+}
+
+.pay-return-btn.cancel:hover:not(:disabled) {
+  background: rgba(107, 114, 128, 0.26);
+}
+
+.pay-return-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@keyframes pay-reminder-pulse {
+  0%, 100% { box-shadow: 0 8px 20px rgba(245, 158, 11, 0.2); }
+  50% { box-shadow: 0 10px 26px rgba(245, 158, 11, 0.32); }
 }
 
 .page-title {
@@ -1460,7 +1547,7 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
-/* 支付弹窗 */
+/* 弹窗层 */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -1470,15 +1557,6 @@ onMounted(() => {
   justify-content: center;
   z-index: 1000;
   padding: 20px;
-}
-
-.pay-modal {
-  background: var(--bg-card);
-  border-radius: 20px;
-  width: 100%;
-  max-width: 400px;
-  box-shadow: var(--shadow-lg);
-  border: 1px solid var(--border-light);
 }
 
 .modal-header {
@@ -1511,71 +1589,6 @@ onMounted(() => {
   padding: 24px;
 }
 
-.pay-info {
-  text-align: center;
-  margin-bottom: 24px;
-}
-
-.pay-info p {
-  margin: 0 0 8px;
-  font-size: 16px;
-  color: var(--text-primary);
-}
-
-.pay-info strong {
-  color: var(--color-warning);
-  font-size: 20px;
-}
-
-.pay-tip {
-  font-size: 13px !important;
-  color: var(--text-tertiary) !important;
-}
-
-.pay-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.pay-btn {
-  padding: 14px;
-  background: linear-gradient(135deg, var(--color-success) 0%, #7a9a7a 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.pay-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(90, 140, 90, 0.4);
-}
-
-.check-btn {
-  padding: 14px;
-  background: var(--bg-secondary);
-  color: var(--text-secondary);
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.check-btn:hover:not(:disabled) {
-  background: var(--bg-tertiary);
-}
-
-.check-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .pay-error {
   margin-top: 16px;
   padding: 12px;
@@ -1586,14 +1599,18 @@ onMounted(() => {
   text-align: center;
 }
 
+.pay-inline-error {
+  margin-top: 10px;
+}
+
 /* 弹窗动画 */
 .modal-enter-active,
 .modal-leave-active {
   transition: opacity 0.3s ease;
 }
 
-.modal-enter-active .pay-modal,
-.modal-leave-active .pay-modal {
+.modal-enter-active .delete-modal,
+.modal-leave-active .delete-modal {
   transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
@@ -1602,8 +1619,8 @@ onMounted(() => {
   opacity: 0;
 }
 
-.modal-enter-from .pay-modal,
-.modal-leave-to .pay-modal {
+.modal-enter-from .delete-modal,
+.modal-leave-to .delete-modal {
   transform: scale(0.9);
   opacity: 0;
 }

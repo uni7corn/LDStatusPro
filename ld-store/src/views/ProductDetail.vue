@@ -507,12 +507,19 @@
       <!-- 错误状态 -->
       <EmptyState
         v-else
-        icon="😢"
-        text="物品不存在"
-        hint="该物品可能已下架或被删除"
+        :icon="detailErrorContent.icon"
+        :text="detailErrorContent.text"
+        :hint="detailErrorContent.hint"
       >
         <template #action>
-          <router-link to="/" class="btn btn-primary mt-4">
+          <button
+            v-if="detailErrorType === 'login_required'"
+            class="btn btn-primary mt-4"
+            @click="goLogin"
+          >
+            去登录
+          </button>
+          <router-link v-else to="/" class="btn btn-primary mt-4">
             返回首页
           </router-link>
         </template>
@@ -627,6 +634,7 @@ import { formatRelativeTime, formatPrice } from '@/utils/format'
 import { escapeHtml } from '@/utils/security'
 import { prepareNewTab, openInNewTab, cleanupPreparedTab } from '@/utils/newTab'
 import { resolveAvatarUrl, buildFallbackAvatar } from '@/utils/avatar'
+import { api } from '@/utils/api'
 import Skeleton from '@/components/common/Skeleton.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 
@@ -640,6 +648,7 @@ const dialog = useDialog()
 // 状态
 const loading = ref(true)
 const product = ref(null)
+const detailErrorType = ref('not_found')
 const purchasing = ref(false)
 const showImagePreview = ref(false)
 const showReportModal = ref(false)
@@ -809,6 +818,22 @@ const buyButtonText = computed(() => {
   return `🛒 立即兑换 (${totalPrice.value} LDC)`
 })
 
+const detailErrorContent = computed(() => {
+  if (detailErrorType.value === 'login_required') {
+    return {
+      icon: '🔐',
+      text: '请先登录后查看',
+      hint: '该物品仅登录用户可查看，登录后可继续访问当前页面'
+    }
+  }
+
+  return {
+    icon: '😢',
+    text: '物品不存在',
+    hint: '该物品可能已下架或被删除'
+  }
+})
+
 const quantityHint = computed(() => {
   const hints = []
 
@@ -915,6 +940,17 @@ async function refreshRestockSubscriptionStatus() {
   }
 }
 
+function resolveDetailErrorType(result) {
+  const status = Number(result?.status || 0)
+  const errorMessage = String(result?.error || '')
+
+  if (!userStore.isLoggedIn && (status === 401 || /登录/.test(errorMessage))) {
+    return 'login_required'
+  }
+
+  return 'not_found'
+}
+
 // 加载物品
 onMounted(async () => {
   document.addEventListener('click', handleDocumentClick)
@@ -928,18 +964,20 @@ onMounted(async () => {
   await shopStore.fetchCategories()
   
   // 获取物品详情
-  const data = await shopStore.fetchProduct(productId, true)
-  if (data) {
-    product.value = data
+  const result = await api.get(`/api/shop/products/${encodeURIComponent(productId)}`)
+  if (result?.success && result?.data?.product) {
+    product.value = result.data.product
     // 更新页面标题
-    document.title = `${data.name} - LD士多`
-    if (data.product_type === 'cdk') {
+    document.title = `${product.value.name} - LD士多`
+    if (product.value.product_type === 'cdk') {
       await loadComments(1)
     }
+  } else {
+    detailErrorType.value = resolveDetailErrorType(result)
   }
   
   loading.value = false
-  if (route.hash === '#comments') {
+  if (product.value && route.hash === '#comments') {
     await nextTick()
     document.getElementById('comments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
