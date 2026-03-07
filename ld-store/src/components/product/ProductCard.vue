@@ -380,11 +380,6 @@ const colors = [
 ]
 const coverStyle = computed(() => {
   if (props.product.image_url) return {}
-  if (showFeaturedBadge.value) {
-    return {
-      background: '#fbf5e3'
-    }
-  }
   const index = props.product.id ? Math.abs(props.product.id) % colors.length : 0
   return { background: colors[index] }
 })
@@ -422,7 +417,7 @@ function handleAvatarError(e) {
 }
 
 .product-card--featured {
-  background: #fffdf8;
+  background: var(--bg-card);
   border-color: rgba(197, 151, 49, 0.24);
   box-shadow:
     0 10px 24px rgba(156, 117, 31, 0.14),
