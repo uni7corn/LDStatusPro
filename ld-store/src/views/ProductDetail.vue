@@ -127,7 +127,10 @@
               <div v-if="quantityHint" class="quantity-hint">{{ quantityHint }}</div>
             </div>
 
-            <div class="seller-card" @click="goToSeller">
+            <div
+              :class="['seller-card', { disabled: !product.seller_username }]"
+              @click="goToSeller"
+            >
               <img
                 :src="sellerAvatar"
                 alt=""
@@ -138,7 +141,7 @@
               />
               <div class="seller-content">
                 <div class="seller-name">@{{ product.seller_username || '未知' }}</div>
-                <div class="seller-hint">点击前往 Linux.do 联系 →</div>
+                <div class="seller-hint">点击查看商家主页</div>
               </div>
             </div>
             
@@ -1527,9 +1530,15 @@ function goBack() {
 }
 
 function goToSeller() {
-  if (product.value?.seller_username) {
-    window.open(`https://linux.do/u/${product.value.seller_username}`, '_blank')
+  const username = String(product.value?.seller_username || '').trim()
+  if (!username) {
+    toast.warning('商家主页暂不可用')
+    return
   }
+  router.push({
+    name: 'MerchantProfile',
+    params: { username }
+  })
 }
 
 async function toggleFavorite() {
@@ -2450,6 +2459,15 @@ async function handleBuyLink() {
 .seller-card:hover {
   background: var(--bg-tertiary);
   transform: translateY(-1px);
+}
+
+.seller-card.disabled {
+  cursor: default;
+}
+
+.seller-card.disabled:hover {
+  background: var(--bg-secondary);
+  transform: none;
 }
 
 .seller-avatar {

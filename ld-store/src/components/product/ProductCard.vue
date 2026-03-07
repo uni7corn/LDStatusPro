@@ -2,7 +2,7 @@
   <router-link
     ref="cardRef"
     :to="`/product/${product.id}`"
-    :class="['product-card', { 'out-of-stock': isOutOfStock }]"
+    :class="['product-card', { 'out-of-stock': isOutOfStock, 'product-card--featured': showFeaturedBadge }]"
     :style="tiltStyle"
     @mouseenter="handleMouseEnter"
     @mousemove="handleMouseMove"
@@ -151,11 +151,16 @@ function updateTilt() {
   const shadowX = -currentX * 8
   const shadowY = currentY * 8 + 15
   const shadowBlur = 20 + currentShadow * 25
-  const shadowAlpha = 0.06 + currentShadow * 0.1
+  const shadowConfig = getCardShadowConfig()
+  const shadowAlpha = shadowConfig.primaryBase + currentShadow * shadowConfig.primaryBoost
+  const liftY = shadowConfig.secondaryBaseY + currentShadow * shadowConfig.secondaryBoostY
+  const liftBlur = shadowConfig.secondaryBaseBlur + currentShadow * shadowConfig.secondaryBoostBlur
+  const liftAlpha = shadowConfig.secondaryBaseAlpha + currentShadow * shadowConfig.secondaryBoostAlpha
+  const accentShadow = shadowConfig.accentShadow ? `, ${shadowConfig.accentShadow}` : ''
   
   tiltStyle.value = {
     transform: `perspective(${perspective}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(${currentScale}, ${currentScale}, ${currentScale})`,
-    boxShadow: `${shadowX}px ${shadowY}px ${shadowBlur}px rgba(0, 0, 0, ${shadowAlpha}), 0 ${4 + currentShadow * 6}px ${8 + currentShadow * 12}px rgba(0, 0, 0, ${0.05 + currentShadow * 0.05})`
+    boxShadow: `${shadowX}px ${shadowY}px ${shadowBlur}px rgba(${shadowConfig.primaryRgb}, ${shadowAlpha.toFixed(3)}), 0 ${liftY}px ${liftBlur}px rgba(${shadowConfig.secondaryRgb}, ${liftAlpha.toFixed(3)})${accentShadow}`
   }
   
   // 光泽跟随
@@ -196,7 +201,7 @@ function handleMouseLeave() {
   
   tiltStyle.value = {
     transform: `perspective(${perspective}px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`,
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08)',
+    boxShadow: getCardShadowConfig().restingShadow,
     transition: `transform ${speed}ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow ${speed}ms cubic-bezier(0.23, 1, 0.32, 1)`
   }
   glareStyle.value = { opacity: 0 }
@@ -244,6 +249,39 @@ function getAnimationSeed(value) {
   }
 
   return Math.abs(hash >>> 0) || 1
+}
+function getCardShadowConfig() {
+  if (showFeaturedBadge.value) {
+    return {
+      primaryRgb: '168, 126, 35',
+      secondaryRgb: '107, 77, 20',
+      primaryBase: 0.14,
+      primaryBoost: 0.12,
+      secondaryBaseY: 6,
+      secondaryBoostY: 8,
+      secondaryBaseBlur: 12,
+      secondaryBoostBlur: 16,
+      secondaryBaseAlpha: 0.08,
+      secondaryBoostAlpha: 0.08,
+      accentShadow: '0 0 0 1px rgba(255, 241, 205, 0.52) inset',
+      restingShadow: '0 10px 24px rgba(156, 117, 31, 0.14), 0 1px 0 rgba(255, 255, 255, 0.68) inset, 0 0 0 1px rgba(255, 241, 205, 0.52) inset'
+    }
+  }
+
+  return {
+    primaryRgb: '0, 0, 0',
+    secondaryRgb: '0, 0, 0',
+    primaryBase: 0.06,
+    primaryBoost: 0.1,
+    secondaryBaseY: 4,
+    secondaryBoostY: 6,
+    secondaryBaseBlur: 8,
+    secondaryBoostBlur: 12,
+    secondaryBaseAlpha: 0.05,
+    secondaryBoostAlpha: 0.05,
+    accentShadow: '',
+    restingShadow: '0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08)'
+  }
 }
 
 // 库存
@@ -342,6 +380,11 @@ const colors = [
 ]
 const coverStyle = computed(() => {
   if (props.product.image_url) return {}
+  if (showFeaturedBadge.value) {
+    return {
+      background: '#fbf5e3'
+    }
+  }
   const index = props.product.id ? Math.abs(props.product.id) % colors.length : 0
   return { background: colors[index] }
 })
@@ -375,7 +418,18 @@ function handleAvatarError(e) {
   position: relative;
   transform-style: preserve-3d;
   will-change: transform, box-shadow;
+  transition: background 0.28s ease, border-color 0.28s ease;
 }
+
+.product-card--featured {
+  background: #fffdf8;
+  border-color: rgba(197, 151, 49, 0.24);
+  box-shadow:
+    0 10px 24px rgba(156, 117, 31, 0.14),
+    0 1px 0 rgba(255, 255, 255, 0.68) inset,
+    0 0 0 1px rgba(255, 241, 205, 0.52) inset;
+}
+
 
 /* 3D 光泽层 */
 .tilt-glare {
@@ -386,6 +440,12 @@ function handleAvatarError(e) {
   z-index: 20;
   opacity: 0;
   transition: opacity 0.3s ease;
+}
+
+.product-card--featured .product-cover,
+.product-card--featured .product-body {
+  position: relative;
+  z-index: 1;
 }
 
 .product-card.out-of-stock {
@@ -585,6 +645,10 @@ function handleAvatarError(e) {
   background: var(--bg-secondary);
 }
 
+.product-card--featured .product-cover {
+  box-shadow: inset 0 -1px 0 rgba(190, 149, 55, 0.18);
+}
+
 /* 骨架屏 */
 .cover-skeleton {
   position: absolute;
@@ -634,6 +698,7 @@ function handleAvatarError(e) {
   padding: 12px;
 }
 
+
 .product-name {
   font-size: 14px;
   font-weight: 600;
@@ -643,6 +708,10 @@ function handleAvatarError(e) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.product-card--featured .product-name {
+  color: #b88622;
 }
 
 .product-meta {
@@ -659,6 +728,12 @@ function handleAvatarError(e) {
   background: var(--bg-secondary);
   padding: 2px 6px;
   border-radius: 4px;
+}
+
+.product-card--featured .product-category {
+  background: rgba(184, 140, 34, 0.1);
+  color: #8b6520;
+  box-shadow: inset 0 0 0 1px rgba(184, 140, 34, 0.16);
 }
 
 .product-stock {
@@ -719,6 +794,10 @@ function handleAvatarError(e) {
   flex-shrink: 0;
 }
 
+.product-card--featured .seller-avatar {
+  box-shadow: 0 0 0 1px rgba(199, 160, 73, 0.45);
+}
+
 .store-owner-label {
   font-size: 12px;
   color: var(--text-tertiary);
@@ -765,6 +844,13 @@ function handleAvatarError(e) {
   color: var(--color-warning);
   line-height: 1;
   white-space: nowrap;
+}
+
+.product-card--featured .store-owner-label,
+.product-card--featured .seller-name,
+.product-card--featured .product-time,
+.product-card--featured .product-views {
+  color: #8a6b37;
 }
 
 .product-price .unit {

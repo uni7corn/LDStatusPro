@@ -265,6 +265,19 @@ export const useShopStore = defineStore('shop', () => {
     return fetchProduct(id, force)
   }
 
+  async function fetchMerchantProfile(username) {
+    const safeUsername = String(username || '').trim()
+    if (!safeUsername) {
+      return { success: false, error: '商家用户名无效' }
+    }
+
+    try {
+      return await api.get(`/api/shop/merchants/${encodeURIComponent(safeUsername)}`)
+    } catch (e) {
+      return { success: false, error: e.message || '加载商家主页失败，请稍后重试' }
+    }
+  }
+
   function setProductFavoriteState(productId, favorited) {
     const cacheKey = String(productId)
     const targetState = !!favorited
@@ -981,6 +994,7 @@ export const useShopStore = defineStore('shop', () => {
     fetchOrders,
     fetchOrderDetail,
     fetchProductDetail,
+    fetchMerchantProfile,
     reportProduct,
     fetchProductComments,
     createProductComment,

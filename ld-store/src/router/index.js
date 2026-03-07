@@ -19,6 +19,12 @@ const routes = [
     meta: { title: '商品详情 - LD士多' }
   },
   {
+    path: '/merchant/:username',
+    name: 'MerchantProfile',
+    component: () => import('@/views/MerchantProfile.vue'),
+    meta: { title: '商家主页 - LD士多' }
+  },
+  {
     path: '/category/:name',
     name: 'Category',
     component: () => import('@/views/Category.vue'),

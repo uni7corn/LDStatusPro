@@ -211,6 +211,7 @@ npm run preview
 
 - 访问 `/product/:id` 时，分享卡片标题会变为 `商品名 - LD士多`
 - 访问 `/shop/:id` 时，分享卡片标题会变为 `店铺名 - LD士多`
+- 访问 `/merchant/:username` 时，分享卡片标题会变为 `用户名的小店 - LD士多`
 - 同步更新 `title`、`og:title`、`twitter:title`、`oembed` 等字段
 
 说明：
