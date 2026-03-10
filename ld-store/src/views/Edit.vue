@@ -175,6 +175,22 @@
             </p>
           </div>
         </div>
+
+        <div class="form-card">
+          <h3 class="card-title">兑换门槛</h3>
+
+          <div class="form-group">
+            <label class="form-label">商品购买信任等级门槛</label>
+            <select v-model.number="form.purchaseTrustLevel" class="form-input">
+              <option v-for="level in purchaseTrustLevelOptions" :key="level" :value="level">
+                TL{{ level }}{{ level === 0 ? '（不限制）' : '' }}
+              </option>
+            </select>
+            <p class="form-hint">
+              仅影响“兑换”门槛；TL0 表示任何能看到该商品的用户都可以兑换。
+            </p>
+          </div>
+        </div>
         
         <!-- CDK 类型提示 -->
         <div class="form-card" v-if="getProductType(product) === 'cdk'">
@@ -274,9 +290,11 @@ const form = ref({
   discount: 1,
   imageUrl: '',
   paymentLink: '',
+  purchaseTrustLevel: 0,
   limitEnabled: false,
   maxPurchaseQuantity: ''
 })
+const purchaseTrustLevelOptions = [0, 1, 2, 3, 4]
 
 const updateBusy = computed(() => submitting.value || updateConfirming.value)
 const editOverlayVisible = computed(() => updateBusy.value)
@@ -455,6 +473,12 @@ function hasExpectedProductState(latestProduct, expectedData, expectedType) {
     if (latestPaymentLink !== expectedPaymentLink) return false
   }
 
+  const latestPurchaseTrustLevel = Number(
+    latestProduct.purchase_trust_level ?? latestProduct.purchaseTrustLevel ?? 0
+  )
+  const expectedPurchaseTrustLevel = Number(expectedData.purchaseTrustLevel || 0)
+  if (latestPurchaseTrustLevel !== expectedPurchaseTrustLevel) return false
+
   if (expectedType === 'cdk') {
     const latestLimit = Number(latestProduct.max_purchase_quantity || latestProduct.maxPurchaseQuantity || 0)
     const expectedLimit = Number(expectedData.maxPurchaseQuantity || 0)
@@ -559,6 +583,9 @@ async function loadProduct() {
         discount: product.value.discount || 1,
         imageUrl: product.value.image_url || product.value.imageUrl || '',
         paymentLink: product.value.payment_link || product.value.paymentLink || '',
+        purchaseTrustLevel: Number(
+          product.value.purchase_trust_level ?? product.value.purchaseTrustLevel ?? 0
+        ),
         limitEnabled: Number(product.value.max_purchase_quantity || product.value.maxPurchaseQuantity || 0) > 0,
         maxPurchaseQuantity: Number(product.value.max_purchase_quantity || product.value.maxPurchaseQuantity || 0) > 0
           ? Number(product.value.max_purchase_quantity || product.value.maxPurchaseQuantity)
@@ -674,7 +701,8 @@ async function submitForm() {
       description: form.value.description.trim(),
       price: parseFloat(form.value.price),
       discount: parseFloat(form.value.discount) || 1,
-      imageUrl: form.value.imageUrl.trim() || undefined
+      imageUrl: form.value.imageUrl.trim() || undefined,
+      purchaseTrustLevel: Number(form.value.purchaseTrustLevel) || 0
     }
     
     // 类型特定数据

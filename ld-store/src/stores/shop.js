@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { useUserStore } from '@/stores/user'
+import { storage } from '@/utils/storage'
 import {
   addFavoriteRequest,
   createProductCommentReplyRequest,
@@ -13,6 +15,7 @@ import {
   fetchProductRequest,
   fetchProductsRequest,
   fetchPublicStatsRequest,
+  fetchUserDashboardRequest,
   getProductRestockSubscriptionStatusRequest,
   normalizeFavoritesOptions,
   removeFavoriteRequest,
@@ -56,6 +59,7 @@ import {
 
 const DEFAULT_PAGE_SIZE = 20
 const CACHE_TTL = 60000
+const IN_STOCK_ONLY_STORAGE_KEY = 'shop_in_stock_only'
 
 function getPositiveInt(value, fallback, min = 1, max = Number.POSITIVE_INFINITY) {
   const parsed = Number.parseInt(value, 10)
@@ -118,16 +122,24 @@ export const useShopStore = defineStore('shop', () => {
     return Array.isArray(value) ? value : []
   }
 
+  function getCategoryCacheKey() {
+    const userStore = useUserStore()
+    const trustLevel = Number.isInteger(Number(userStore.trustLevel))
+      ? Number(userStore.trustLevel)
+      : 0
+    return `${userStore.isLoggedIn ? 'auth' : 'guest'}:${trustLevel}`
+  }
+
   // 缓存
   const productCache = new Map()
-  const categoryCache = ref({ data: null, time: 0 })
+  const categoryCache = ref({ key: '', data: null, time: 0 })
   let latestProductsRequestId = 0
 
   // 排序状态
   const currentSort = ref('default')
 
   // 筛选：只看有库存
-  const inStockOnly = ref(false)
+  const inStockOnly = ref(storage.get(IN_STOCK_ONLY_STORAGE_KEY, false) === true)
 
   // 计算属性
   const currentCategoryName = computed(() => {
@@ -139,7 +151,13 @@ export const useShopStore = defineStore('shop', () => {
   // 获取分类列表
   async function fetchCategories(force = false) {
     const now = Date.now()
-    if (!force && Array.isArray(categoryCache.value.data) && now - categoryCache.value.time < CACHE_TTL) {
+    const cacheKey = getCategoryCacheKey()
+    if (
+      !force
+      && categoryCache.value.key === cacheKey
+      && Array.isArray(categoryCache.value.data)
+      && now - categoryCache.value.time < CACHE_TTL
+    ) {
       categories.value = categoryCache.value.data
       setLastError('')
       return categories.value
@@ -150,7 +168,7 @@ export const useShopStore = defineStore('shop', () => {
       if (result.success && Array.isArray(result.data?.categories)) {
         const nextCategories = toSafeArray(result.data.categories)
         categories.value = nextCategories
-        categoryCache.value = { data: nextCategories, time: now }
+        categoryCache.value = { key: cacheKey, data: nextCategories, time: now }
         setLastError('')
       } else if (result.success) {
         categories.value = []
@@ -460,7 +478,7 @@ export const useShopStore = defineStore('shop', () => {
 
     const {
       sort = 'default',
-      inStockOnly: onlyInStock = false,
+      inStockOnly: onlyInStock = inStockOnly.value,
       page: searchPage = 1,
       pageSize: searchPageSize = pageSize
     } = options
@@ -750,12 +768,35 @@ export const useShopStore = defineStore('shop', () => {
     }
   }
 
+  function setInStockOnly(nextValue) {
+    const normalizedValue = !!nextValue
+    inStockOnly.value = normalizedValue
+    storage.set(IN_STOCK_ONLY_STORAGE_KEY, normalizedValue, 0)
+    return normalizedValue
+  }
+
   async function toggleInStockOnly() {
-    inStockOnly.value = !inStockOnly.value
+    setInStockOnly(!inStockOnly.value)
     page.value = 1
     hasMore.value = true
     products.value = []
     return fetchProducts(currentCategory.value, true)
+  }
+
+  async function fetchUserDashboard() {
+    try {
+      const result = await fetchUserDashboardRequest()
+      if (result.success) {
+        setLastError('')
+        return result.data
+      }
+      setLastError(result.error || '鍔犺浇涓汉缁熻澶辫触锛岃绋嶅悗閲嶈瘯')
+      return null
+    } catch (error) {
+      console.error('Fetch user dashboard failed:', error)
+      setLastError(error.message || '鍔犺浇涓汉缁熻澶辫触锛岃绋嶅悗閲嶈瘯')
+      return null
+    }
   }
 
   return {
@@ -788,6 +829,7 @@ export const useShopStore = defineStore('shop', () => {
     fetchProducts,
     restoreFromCache,
     loadMore,
+    setInStockOnly,
     toggleInStockOnly,
     fetchProduct,
     searchProducts,
@@ -839,6 +881,7 @@ export const useShopStore = defineStore('shop', () => {
     updateMerchantConfig,
     consumeLastError,
     invalidateCache,
-    fetchPublicStats
+    fetchPublicStats,
+    fetchUserDashboard
   }
 })

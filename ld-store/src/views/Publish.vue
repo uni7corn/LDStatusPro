@@ -291,6 +291,22 @@
             </p>
           </div>
         </div>
+
+        <div class="form-card">
+          <h3 class="card-title">兑换门槛</h3>
+
+          <div class="form-group">
+            <label class="form-label">商品购买信任等级门槛</label>
+            <select v-model.number="form.purchaseTrustLevel" class="form-input">
+              <option v-for="level in purchaseTrustLevelOptions" :key="level" :value="level">
+                TL{{ level }}{{ level === 0 ? '（不限制）' : '' }}
+              </option>
+            </select>
+            <p class="form-hint">
+              仅影响“兑换”门槛；TL0 表示任何能看到该商品的用户都可以兑换。
+            </p>
+          </div>
+        </div>
         
         <!-- CDK 类型设置 -->
         <div class="form-card" v-if="form.productType === 'cdk'">
@@ -617,6 +633,7 @@ const form = ref({
   imageUrl: '',
   productType: 'cdk', // 默认cdk类型
   paymentLink: '',
+  purchaseTrustLevel: 0,
   cdkCodes: '',
   isTestMode: false,   // 测试模式（仅 CDK 类型可用）
   limitEnabled: false,
@@ -688,6 +705,7 @@ const productTypes = [
   { id: 'link', name: '链接类型', desc: '提供外部支付链接', icon: '🔗' }
   
 ]
+const purchaseTrustLevelOptions = [0, 1, 2, 3, 4]
 
 // CDK 数量
 const cdkCount = computed(() => {
@@ -992,6 +1010,7 @@ function buildProductFingerprint(productData) {
     imageUrl: productData.imageUrl || '',
     productType: productData.productType || 'link',
     paymentLink: productData.paymentLink || '',
+    purchaseTrustLevel: Number(productData.purchaseTrustLevel || 0),
     maxPurchaseQuantity: Number(productData.maxPurchaseQuantity || 0),
     cdkCodes: productData.cdkCodes || '',
     isTestMode: !!productData.isTestMode
@@ -1173,7 +1192,8 @@ async function submitForm() {
       price: parseFloat(form.value.price),
       discount: parseFloat(form.value.discount) || 1,
       imageUrl: form.value.imageUrl.trim() || undefined,
-      productType: form.value.productType
+      productType: form.value.productType,
+      purchaseTrustLevel: Number(form.value.purchaseTrustLevel) || 0
     }
     
     // 类型特定数据

@@ -173,7 +173,10 @@ const trustBadgeClass = computed(() => {
 })
 const emptyHint = computed(() => {
   if (!userStore.isLoggedIn && Number(stats.value.onlineCount || 0) > products.value.length) {
-    return '该商家还有仅登录用户可见的在售物品，登录后可查看更多。'
+    return '该商家还有更高信任等级可见的在售物品，登录并提升账号信任等级后可查看更多。'
+  }
+  if (userStore.isLoggedIn && Number(stats.value.onlineCount || 0) > products.value.length) {
+    return '该商家还有更高信任等级可见的在售物品，提升账号信任等级后可查看更多。'
   }
   return '该商家当前没有公开在售物品。'
 })

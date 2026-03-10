@@ -56,6 +56,15 @@
       </div>
       
       <!-- 加载中 -->
+      <div v-if="hasDirectFilters" class="direct-filter-bar">
+        <span class="direct-filter-chip strong">{{ currentRole === 'seller' ? '我卖的' : '我买的' }}</span>
+        <span v-if="onlyDealOrders" class="direct-filter-chip">已成交</span>
+        <span v-if="activeCategoryName" class="direct-filter-chip">{{ activeCategoryName }}</span>
+        <button class="direct-filter-clear" @click="clearDirectFilters">
+          清除直达筛选
+        </button>
+      </div>
+
       <div v-if="loading" class="loading-state">
         <div class="skeleton-card" v-for="i in 3" :key="i">
           <div class="skeleton-header">
@@ -194,9 +203,17 @@
                   {{ payingOrderId === getOrderKey(order) ? '跳转中...' : '立即支付' }}
                 </button>
                 <button
+                  v-if="currentRole === 'buyer' && isCdkOrder(order)"
+                  class="action-btn ghost-btn"
+                  @click.stop="handleRefreshOrder(order)"
+                  :disabled="refreshingOrderId === getOrderKey(order) || payingOrderId === getOrderKey(order)"
+                >
+                  {{ refreshingOrderId === getOrderKey(order) ? '检查中...' : '检查支付' }}
+                </button>
+                <button
                   class="action-btn cancel-btn"
                   @click.stop="handleCancelOrder(order)"
-                  :disabled="cancellingOrderId === getOrderKey(order) || payingOrderId === getOrderKey(order)"
+                  :disabled="cancellingOrderId === getOrderKey(order) || payingOrderId === getOrderKey(order) || refreshingOrderId === getOrderKey(order)"
                 >
                   {{ cancellingOrderId === getOrderKey(order) ? '取消中...' : '取消订单' }}
                 </button>
@@ -258,7 +275,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useShopStore } from '@/stores/shop'
 import { useToast } from '@/composables/useToast'
@@ -280,9 +297,12 @@ const orders = ref([])
 const page = ref(1)
 const hasMore = ref(false)
 const pageSize = 20
-const currentRole = ref(route.query.tab === 'buy' ? 'buy' : 'buyer')
+const currentRole = ref('buyer')
 const orderSearch = ref('')
 const timeRange = ref('1m')
+const activeCategoryId = ref(0)
+const activeCategoryName = ref('')
+const onlyDealOrders = ref(false)
 const timeRangeOptions = [
   { value: '1m', label: '最近1个月' },
   { value: '6m', label: '最近半年' },
@@ -293,33 +313,69 @@ const deliverFormOrderId = ref(null)
 const deliverContent = ref('')
 const deliveringOrderId = ref(null)
 const payingOrderId = ref(null)
+const refreshingOrderId = ref(null)
 const refreshingBuyOrderId = ref(null)
 const nowTs = ref(Date.now())
 let countdownTimer = null
 
+const hasDirectFilters = computed(() =>
+  currentRole.value !== 'buy' && (activeCategoryId.value > 0 || onlyDealOrders.value)
+)
+
+function normalizeOrderTab(value) {
+  const safeValue = String(value || '').trim().toLowerCase()
+  if (['buyer', 'seller', 'buy'].includes(safeValue)) {
+    return safeValue
+  }
+  return 'buyer'
+}
+
+function parsePositiveInt(value) {
+  const parsed = Number.parseInt(value, 10)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 0
+}
+
+function parseRouteBoolean(value) {
+  return ['1', 'true', 'yes', 'on'].includes(String(value || '').trim().toLowerCase())
+}
+
+function syncRouteState() {
+  currentRole.value = normalizeOrderTab(route.query.tab)
+  activeCategoryId.value = currentRole.value === 'buy' ? 0 : parsePositiveInt(route.query.categoryId)
+  activeCategoryName.value = activeCategoryId.value > 0
+    ? String(route.query.categoryName || `分类 #${activeCategoryId.value}`).trim()
+    : ''
+  onlyDealOrders.value = currentRole.value === 'buy' ? false : parseRouteBoolean(route.query.dealOnly)
+}
+
 // 切换角色
 async function switchRole(role) {
-  if (currentRole.value === role) return
-  currentRole.value = role
-  page.value = 1
-  closeDeliverForm()
   const nextQuery = { ...route.query }
+  if (role === currentRole.value && normalizeOrderTab(route.query.tab) === role) return
+
+  nextQuery.tab = role
   if (role === 'buy') {
-    nextQuery.tab = 'buy'
-  } else {
-    delete nextQuery.tab
+    delete nextQuery.categoryId
+    delete nextQuery.categoryName
+    delete nextQuery.dealOnly
   }
   router.replace({ query: nextQuery }).catch(() => {})
-  await loadOrders()
 }
 
 function buildOrderQueryOptions() {
-  return {
+  const options = {
     page: page.value,
     pageSize,
     search: orderSearch.value.trim(),
     timeRange: timeRange.value
   }
+  if (currentRole.value !== 'buy' && activeCategoryId.value > 0) {
+    options.categoryId = activeCategoryId.value
+  }
+  if (currentRole.value !== 'buy' && onlyDealOrders.value) {
+    options.dealOnly = true
+  }
+  return options
 }
 
 // 加载订单
@@ -374,6 +430,14 @@ async function clearSearch() {
   if (!orderSearch.value) return
   orderSearch.value = ''
   await applyFilters()
+}
+
+async function clearDirectFilters() {
+  const nextQuery = { ...route.query, tab: currentRole.value }
+  delete nextQuery.categoryId
+  delete nextQuery.categoryName
+  delete nextQuery.dealOnly
+  await router.replace({ query: nextQuery }).catch(() => {})
 }
 
 function getOrderKey(order) {
@@ -678,6 +742,37 @@ async function handleRepay(order) {
   }
 }
 
+async function handleRefreshOrder(order) {
+  const orderNo = getOrderKey(order)
+  if (!orderNo || refreshingOrderId.value === orderNo) return
+
+  refreshingOrderId.value = orderNo
+  try {
+    const result = await shopStore.refreshOrderStatus(orderNo)
+    if (!result?.success) {
+      toast.error(extractErrorMessage(result, '检查支付状态失败'))
+      return
+    }
+
+    const status = result?.data?.status || ''
+    if (status === 'delivered') {
+      toast.success('支付成功，已自动发货')
+    } else if (status === 'paid') {
+      toast.success('支付成功，订单状态已更新')
+    } else if (status === 'expired') {
+      toast.warning('订单已过期，请重新下单')
+    } else {
+      toast.show(result?.data?.message || '订单尚未支付')
+    }
+
+    await loadOrders()
+  } catch (error) {
+    toast.error(error?.message || '检查支付状态失败')
+  } finally {
+    refreshingOrderId.value = null
+  }
+}
+
 async function handleRefreshBuyOrder(order) {
   const orderNo = getOrderKey(order)
   if (!orderNo || refreshingBuyOrderId.value === orderNo) return
@@ -772,8 +867,18 @@ onMounted(() => {
   countdownTimer = setInterval(() => {
     nowTs.value = Date.now()
   }, 1000)
-  loadOrders()
 })
+
+watch(
+  () => [route.query.tab, route.query.categoryId, route.query.categoryName, route.query.dealOnly].join('|'),
+  async () => {
+    syncRouteState()
+    page.value = 1
+    closeDeliverForm()
+    await loadOrders()
+  },
+  { immediate: true }
+)
 
 onUnmounted(() => {
   if (countdownTimer) {
@@ -845,6 +950,42 @@ onUnmounted(() => {
   gap: 10px;
   flex-wrap: wrap;
   margin-bottom: 16px;
+}
+
+.direct-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: -6px 0 16px;
+}
+
+.direct-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(181, 168, 152, 0.14);
+  color: #7c6f62;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.direct-filter-chip.strong {
+  background: rgba(143, 163, 141, 0.18);
+  color: #5d715b;
+}
+
+.direct-filter-clear {
+  height: 34px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 13px;
+  cursor: pointer;
 }
 
 .filter-input {

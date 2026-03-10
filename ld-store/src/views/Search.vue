@@ -117,7 +117,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useShopStore } from '@/stores/shop'
 import { useToast } from '@/composables/useToast'
@@ -138,7 +138,7 @@ const hasSearched = ref(false)
 const results = ref([])
 const searchHistory = ref([])
 const currentSort = ref('default')
-const inStockOnly = ref(false)
+const inStockOnly = computed(() => shopStore.inStockOnly)
 
 const sortTabs = [
   { value: 'default', label: '默认' },
@@ -261,7 +261,7 @@ function handleSortChange(sort) {
 }
 
 function handleToggleInStock() {
-  inStockOnly.value = !inStockOnly.value
+  shopStore.setInStockOnly(!inStockOnly.value)
   if (keyword.value.trim()) {
     doSearch({ saveHistory: false })
   }

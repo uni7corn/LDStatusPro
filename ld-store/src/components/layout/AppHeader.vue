@@ -182,7 +182,7 @@
                 />
                 <div class="dropdown-user-info">
                   <div class="dropdown-username">{{ username }}</div>
-                  <div class="dropdown-trust" v-if="trustLevel">信任等级: {{ trustLevel }}</div>
+                  <div class="dropdown-trust" v-if="trustLevelText">信任等级: {{ trustLevelText }}</div>
                 </div>
               </router-link>
               
@@ -271,6 +271,9 @@ const avatarFallback = computed(() =>
   buildFallbackAvatar(username.value || userStore.user?.id || 'user', 128)
 )
 const trustLevel = computed(() => userStore.trustLevel)
+const trustLevelText = computed(() => (
+  trustLevel.value === null || trustLevel.value === undefined ? '' : `TL${trustLevel.value}`
+))
 const unreadDisplay = computed(() => (messageUnread.value > 99 ? '99+' : String(messageUnread.value || 0)))
 const shouldPollMessageUnread = computed(() => (
   isLoggedIn.value

@@ -492,13 +492,11 @@ const inStockOnly = computed(() => shopStore.inStockOnly)
 const loading = computed(() => shopStore.loading)
 const hasMore = computed(() => shopStore.hasMore)
 const total = computed(() => shopStore.total)
-const guestHiddenCategoryNames = new Set(['卡券', '服务', '订阅', '接码'])
 
 const marketCategories = computed(() => categories.value.filter((c) => {
   const name = String(c?.name || '')
   if (!name) return false
   if (name === '小店' || name === '友情小店') return false
-  if (!userStore.isLoggedIn && guestHiddenCategoryNames.has(name)) return false
   return true
 }))
 const marketProducts = computed(() =>

@@ -9,6 +9,7 @@
 | [../README.md](../README.md) | 项目介绍、开发命令、Cloudflare Pages 部署说明 |
 | [../../PROJECT_STRUCTURE.md](../../PROJECT_STRUCTURE.md) | 仓库级项目边界、后端域名语义、服务职责分工 |
 | [../.env.example](../.env.example) | 前端运行时环境变量示例 |
+| [./SHOP_OPS_COPILOT.md](./SHOP_OPS_COPILOT.md) | 小卖部运营分析 Agent 的设计、配置建议与扩展模式 |
 
 ## 维护时优先查看的文件
 

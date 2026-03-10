@@ -9,6 +9,7 @@ export const useUserStore = defineStore('user', () => {
   const token = ref(null)
   const user = ref(null)
   const loading = ref(false)
+  const ldcInfo = ref(null)
 
   // 计算属性
   const isLoggedIn = computed(() => {
@@ -23,7 +24,12 @@ export const useUserStore = defineStore('user', () => {
     resolveAvatarUrl(user.value?.avatar || user.value?.avatar_url || '', 128)
       || buildFallbackAvatar(avatarSeed.value, 128)
   )
-  const trustLevel = computed(() => user.value?.trust_level || user.value?.trustLevel || null)
+  const trustLevel = computed(() => {
+    const value = user.value?.trust_level ?? user.value?.trustLevel
+    if (value === undefined || value === null || value === '') return null
+    const parsed = Number.parseInt(value, 10)
+    return Number.isInteger(parsed) ? parsed : null
+  })
 
   // 恢复会话
   async function restoreSession() {
@@ -84,11 +90,17 @@ export const useUserStore = defineStore('user', () => {
     return true
   }
 
+  async function fetchLdcInfo() {
+    ldcInfo.value = null
+    return null
+  }
+
   return {
     // 状态
     token,
     user,
     loading,
+    ldcInfo,
     // 计算属性
     isLoggedIn,
     username,
@@ -99,6 +111,7 @@ export const useUserStore = defineStore('user', () => {
     login,
     logout,
     updateUser,
-    ensureValidSession
+    ensureValidSession,
+    fetchLdcInfo
   }
 })

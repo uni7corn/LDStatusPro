@@ -29,6 +29,8 @@ function buildOrderListParams(role, rawOptions = {}) {
   const status = String(options.status || '').trim()
   const search = String(options.search || '').trim()
   const timeRange = String(options.timeRange || '').trim()
+  const categoryId = Number.parseInt(options.categoryId, 10)
+  const dealOnly = options.dealOnly === true || String(options.dealOnly || '').trim() === '1'
   const page = getPositiveInt(options.page, 1)
   const pageSize = getPositiveInt(options.pageSize, 20, 1, 50)
   const params = new URLSearchParams()
@@ -39,6 +41,8 @@ function buildOrderListParams(role, rawOptions = {}) {
   if (status) params.set('status', status)
   if (search) params.set('search', search)
   if (timeRange) params.set('timeRange', timeRange)
+  if (Number.isInteger(categoryId) && categoryId > 0) params.set('categoryId', String(categoryId))
+  if (dealOnly) params.set('dealOnly', '1')
 
   return { params, page, pageSize }
 }

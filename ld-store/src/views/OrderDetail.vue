@@ -223,10 +223,18 @@
             >
               {{ paying ? '跳转中...' : '立即支付' }}
             </button>
+            <button
+              v-if="canRefreshPaymentStatus"
+              class="refresh-btn"
+              @click="handleRefreshPaymentStatus"
+              :disabled="checkingPayment || cancelling || paying"
+            >
+              {{ checkingPayment ? '检查中...' : '检查支付状态' }}
+            </button>
             <button 
               v-if="order.status === 'pending'" 
               class="cancel-btn" 
-              :class="{ 'full-width': !canRepay }"
+              :class="{ 'full-width': !canRepay && !canRefreshPaymentStatus }"
               @click="handleCancelOrder"
               :disabled="cancelling || paying"
             >
@@ -240,7 +248,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useShopStore } from '@/stores/shop'
 import { useToast } from '@/composables/useToast'
@@ -261,6 +269,8 @@ const orderLogs = ref([])
 const showCdk = ref(false)
 const cancelling = ref(false)
 const paying = ref(false)
+const checkingPayment = ref(false)
+let pendingOrderAutoRefreshTimer = null
 
 // 当前用户角色（买家/卖家）
 const currentRole = computed(() => route.query.role || 'buyer')
@@ -271,6 +281,10 @@ const showActions = computed(() => {
 })
 
 const canRepay = computed(() => {
+  return currentRole.value === 'buyer' && order.value?.status === 'pending' && getProductType(order.value) === 'cdk'
+})
+
+const canRefreshPaymentStatus = computed(() => {
   return currentRole.value === 'buyer' && order.value?.status === 'pending' && getProductType(order.value) === 'cdk'
 })
 
@@ -352,9 +366,12 @@ function getProductDescription(orderData) {
 }
 
 // 加载订单详情
-async function loadOrder() {
+async function loadOrder(options = {}) {
+  const silent = options?.silent === true
   try {
-    loading.value = true
+    if (!silent) {
+      loading.value = true
+    }
     const orderId = route.params.id
     const role = route.query.role || 'buyer'
     const result = await shopStore.fetchOrderDetail(orderId, role)
@@ -363,10 +380,30 @@ async function loadOrder() {
     // 订单日志
     orderLogs.value = result?.logs || result?.data?.logs || []
   } catch (error) {
-    toast.error('加载订单详情失败')
+    if (!silent) {
+      toast.error('加载订单详情失败')
+    }
   } finally {
-    loading.value = false
+    if (!silent) {
+      loading.value = false
+    }
   }
+}
+
+function stopPendingOrderAutoRefresh() {
+  if (pendingOrderAutoRefreshTimer) {
+    clearInterval(pendingOrderAutoRefreshTimer)
+    pendingOrderAutoRefreshTimer = null
+  }
+}
+
+function startPendingOrderAutoRefresh() {
+  stopPendingOrderAutoRefresh()
+  if (!canRefreshPaymentStatus.value) return
+
+  pendingOrderAutoRefreshTimer = setInterval(() => {
+    loadOrder({ silent: true }).catch(() => {})
+  }, 30000)
 }
 
 // 日志图标
@@ -489,6 +526,39 @@ function extractErrorMessage(result, fallback) {
   return fallback
 }
 
+async function handleRefreshPaymentStatus() {
+  if (!canRefreshPaymentStatus.value || !order.value || checkingPayment.value) return
+
+  const orderNo = order.value?.order_no || order.value?.orderNo
+  if (!orderNo) return
+
+  checkingPayment.value = true
+  try {
+    const result = await shopStore.refreshOrderStatus(orderNo)
+    if (!result?.success) {
+      toast.error(extractErrorMessage(result, '检查支付状态失败'))
+      return
+    }
+
+    const status = result?.data?.status || ''
+    if (status === 'delivered') {
+      toast.success('支付成功，已自动发货')
+    } else if (status === 'paid') {
+      toast.success('支付成功，订单状态已更新')
+    } else if (status === 'expired') {
+      toast.warning('订单已过期，请重新下单')
+    } else {
+      toast.show(result?.data?.message || '订单尚未支付')
+    }
+
+    await loadOrder({ silent: true })
+  } catch (error) {
+    toast.error(error?.message || '检查支付状态失败')
+  } finally {
+    checkingPayment.value = false
+  }
+}
+
 async function handleRepay() {
   if (!canRepay.value || !order.value) return
 
@@ -559,6 +629,19 @@ onMounted(async () => {
     loadOrder(),
     shopStore.fetchCategories().catch(() => null)
   ])
+  startPendingOrderAutoRefresh()
+})
+
+watch(canRefreshPaymentStatus, (enabled) => {
+  if (enabled) {
+    startPendingOrderAutoRefresh()
+  } else {
+    stopPendingOrderAutoRefresh()
+  }
+})
+
+onUnmounted(() => {
+  stopPendingOrderAutoRefresh()
 })
 </script>
 
@@ -965,6 +1048,28 @@ onMounted(async () => {
 }
 
 .pay-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.refresh-btn {
+  flex: 1;
+  padding: 16px 24px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+}
+
+.refresh-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

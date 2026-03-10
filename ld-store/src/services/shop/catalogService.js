@@ -202,3 +202,7 @@ export async function fetchFavoritesRequest(options = {}) {
 export async function fetchPublicStatsRequest() {
   return api.get('/api/shop/stats')
 }
+
+export async function fetchUserDashboardRequest() {
+  return api.get('/api/shop/user/dashboard')
+}

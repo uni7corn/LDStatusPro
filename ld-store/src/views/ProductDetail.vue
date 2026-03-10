@@ -100,6 +100,12 @@
                 <span class="status-icon">🔥</span>
                 <span class="status-text">已售 {{ soldCount }}</span>
               </div>
+              <div v-if="purchaseTrustLevel > 0" class="status-item">
+                <span class="status-icon">🔐</span>
+                <span :class="['status-text', { low: !canPurchaseByTrustLevel }]">
+                  兑换需 TL{{ purchaseTrustLevel }}
+                </span>
+              </div>
               <div class="status-item">
                 <span class="status-icon">📅</span>
                 <span class="status-text">{{ updateTime }}</span>
@@ -149,14 +155,13 @@
             
             <div class="action-section desktop-only">
               <template v-if="isStore">
-                                            <a
-                                              :href="product.payment_link"
-                                              target="_blank"
-                                              rel="noopener"
+                                            <button
+                                              type="button"
                                               class="buy-btn store"
+                                              @click="handleOpenStore"
                                             >
                                               🏪 立即前往
-                                            </a>
+                                            </button>
                                           </template>
                                           <template v-else-if="isCdk">
                                             <div v-if="isOutOfStock" class="buy-action-row">
@@ -446,14 +451,13 @@
         <!-- 底部购买按钮（移动端固定底部） -->
                 <div class="action-bottom mobile-only">
           <template v-if="isStore">
-                                <a
-                                  :href="product.payment_link"
-                                  target="_blank"
-                                  rel="noopener"
+                                <button
+                                  type="button"
                                   class="buy-btn store"
+                                  @click="handleOpenStore"
                                 >
                                   🏪 立即前往
-                                </a>
+                                </button>
                               </template>
                               <template v-else-if="isCdk">
                                 <div v-if="isOutOfStock" class="buy-action-row">
@@ -652,6 +656,7 @@ const dialog = useDialog()
 const loading = ref(true)
 const product = ref(null)
 const detailErrorType = ref('not_found')
+const detailErrorMessage = ref('')
 const purchasing = ref(false)
 const showImagePreview = ref(false)
 const showReportModal = ref(false)
@@ -714,6 +719,11 @@ const isSeller = computed(() => {
 const isFavorited = computed(() =>
   !!(product.value?.isFavorited || product.value?.is_favorited)
 )
+const viewerTrustLevel = computed(() => {
+  const raw = userStore.trustLevel
+  const parsed = Number.parseInt(raw, 10)
+  return Number.isInteger(parsed) ? parsed : 0
+})
 
 // 价格计算
 const price = computed(() => parseFloat(product.value?.price) || 0)
@@ -789,6 +799,19 @@ const maxPurchaseQuantity = computed(() => {
   if (!Number.isInteger(raw) || raw < 0) return 0
   return raw
 })
+const purchaseTrustLevel = computed(() => {
+  const raw = Number(product.value?.purchase_trust_level ?? product.value?.purchaseTrustLevel ?? 0)
+  if (!Number.isInteger(raw) || raw < 0) return 0
+  return Math.min(raw, 4)
+})
+const canPurchaseByTrustLevel = computed(() => viewerTrustLevel.value >= purchaseTrustLevel.value)
+const purchaseTrustBlockMessage = computed(() => {
+  if (purchaseTrustLevel.value <= 0 || canPurchaseByTrustLevel.value) return ''
+  if (!userStore.isLoggedIn) {
+    return `该商品需登录且信任等级达到 TL${purchaseTrustLevel.value} 才可兑换`
+  }
+  return `当前账号信任等级为 TL${viewerTrustLevel.value}，需达到 TL${purchaseTrustLevel.value} 才可兑换`
+})
 
 const maxSelectableQuantity = computed(() => {
   const limits = [1000]
@@ -826,7 +849,15 @@ const detailErrorContent = computed(() => {
     return {
       icon: '🔐',
       text: '请先登录后查看',
-      hint: '该物品仅登录用户可查看，登录后可继续访问当前页面'
+      hint: detailErrorMessage.value || '该物品需要更高的账号信任等级，登录后可继续访问当前页面'
+    }
+  }
+
+  if (detailErrorType.value === 'trust_required') {
+    return {
+      icon: '🔒',
+      text: '信任等级不足',
+      hint: detailErrorMessage.value || '当前账号信任等级不足，暂时无法查看该物品'
     }
   }
 
@@ -842,6 +873,10 @@ const quantityHint = computed(() => {
 
   if (maxPurchaseQuantity.value > 0) {
     hints.push(`单次最多购买 ${maxPurchaseQuantity.value} 个`)
+  }
+
+  if (purchaseTrustLevel.value > 0) {
+    hints.push(`兑换需信任等级 TL${purchaseTrustLevel.value}`)
   }
 
   if (!isUnlimitedStock.value) {
@@ -951,6 +986,10 @@ function resolveDetailErrorType(result) {
     return 'login_required'
   }
 
+  if (status === 403 || /信任等级|TL\d/.test(errorMessage)) {
+    return 'trust_required'
+  }
+
   return 'not_found'
 }
 
@@ -970,12 +1009,14 @@ onMounted(async () => {
   const result = await api.get(`/api/shop/products/${encodeURIComponent(productId)}`)
   if (result?.success && result?.data?.product) {
     product.value = result.data.product
+    detailErrorMessage.value = ''
     // 更新页面标题
     document.title = `${product.value.name} - LD士多`
     if (product.value.product_type === 'cdk') {
       await loadComments(1)
     }
   } else {
+    detailErrorMessage.value = String(result?.error || '').trim()
     detailErrorType.value = resolveDetailErrorType(result)
   }
   
@@ -1763,9 +1804,57 @@ async function handleSubscribeRestock() {
   }
 }
 
+async function handleBlockedPurchaseByTrustLevel() {
+  const message = purchaseTrustBlockMessage.value
+  if (!message) return false
+
+  if (!userStore.isLoggedIn) {
+    const confirmed = await dialog.confirm(message, {
+      title: '需要登录',
+      icon: '🔐',
+      confirmText: '去登录'
+    })
+    if (confirmed) {
+      router.push({ name: 'Login', query: { redirect: route.fullPath } })
+    }
+    return true
+  }
+
+  await dialog.alert(message, {
+    title: '兑换受限',
+    icon: '🔒'
+  })
+  return true
+}
+
+async function openExternalProductLink() {
+  const preparedWindow = prepareNewTab()
+
+  try {
+    const result = await api.get(`/api/shop/products/${encodeURIComponent(product.value?.id)}/external-link`)
+    if (result?.success && result.data?.paymentLink) {
+      const opened = openInNewTab(result.data.paymentLink, preparedWindow)
+      if (!opened) {
+        cleanupPreparedTab(preparedWindow)
+      }
+      return
+    }
+
+    cleanupPreparedTab(preparedWindow)
+    toast.error(result?.error || '打开外链失败')
+  } catch (error) {
+    cleanupPreparedTab(preparedWindow)
+    toast.error(`打开外链失败：${error.message}`)
+  }
+}
+
 async function handleBuyCdk() {
   // 检查登录
   if (!userStore.isLoggedIn) {
+    if (purchaseTrustLevel.value > 0) {
+      await handleBlockedPurchaseByTrustLevel()
+      return
+    }
     const confirmed = await dialog.confirm('请先登录后再兑换物品', {
       title: '需要登录',
       icon: '🔐',
@@ -1774,6 +1863,11 @@ async function handleBuyCdk() {
     if (confirmed) {
       router.push({ name: 'Login', query: { redirect: route.fullPath } })
     }
+    return
+  }
+
+  if (!canPurchaseByTrustLevel.value) {
+    await handleBlockedPurchaseByTrustLevel()
     return
   }
   
@@ -1833,6 +1927,11 @@ async function handleBuyCdk() {
 
 // 外链物品兑换
 async function handleBuyLink() {
+  if (!canPurchaseByTrustLevel.value) {
+    await handleBlockedPurchaseByTrustLevel()
+    return
+  }
+
   const confirmed = await dialog.confirm(
     `<div style="text-align: left; line-height: 1.8;">
       <p>⚠️ <strong>外链物品提示</strong></p>
@@ -1852,13 +1951,17 @@ async function handleBuyLink() {
     }
   )
   
-  if (confirmed && product.value?.payment_link) {
-    const preparedWindow = prepareNewTab()
-    const opened = openInNewTab(product.value.payment_link, preparedWindow)
-    if (!opened) {
-      cleanupPreparedTab(preparedWindow)
-    }
+  if (confirmed) {
+    await openExternalProductLink()
   }
+}
+
+async function handleOpenStore() {
+  if (!canPurchaseByTrustLevel.value) {
+    await handleBlockedPurchaseByTrustLevel()
+    return
+  }
+  await openExternalProductLink()
 }
 </script>
 
