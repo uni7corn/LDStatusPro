@@ -186,38 +186,24 @@
                 </div>
               </router-link>
               
-              <div class="dropdown-divider"></div>
-              
-              <a href="/user/orders" class="dropdown-item" @click.prevent="navigateTo('/user/orders')">
-                📋 我的订单
-              </a>
-              <a href="/user/favorites" class="dropdown-item" @click.prevent="navigateTo('/user/favorites')">
-                ⭐ 我的收藏
-              </a>
-              <a href="/user/products" class="dropdown-item" @click.prevent="navigateTo('/user/products')">
-                📦 我发布的
-              </a>
-              <a href="/user/buy-requests" class="dropdown-item" @click.prevent="navigateTo('/user/buy-requests')">
-                🌱 我的求购
-              </a>
-              <a
-                href="/user/messages"
-                class="dropdown-item"
-                :class="{ 'with-unread': messageUnread > 0 }"
-                @click.prevent="navigateTo('/user/messages')"
+              <div
+                v-for="(group, groupIndex) in dropdownMenuGroups"
+                :key="`dropdown-group-${groupIndex}`"
+                class="dropdown-group"
               >
-                💬 我的消息
-                <span v-if="messageUnread > 0" class="dropdown-badge">{{ unreadDisplay }}</span>
-              </a>
-              <a href="/user/my-shop" class="dropdown-item" @click.prevent="navigateTo('/user/my-shop')">
-                🏪 小店入驻
-              </a>
-              <a href="/user/settings" class="dropdown-item" @click.prevent="navigateTo('/user/settings')">
-                💳 收款设置
-              </a>
-              <a href="/ld-image" class="dropdown-item" @click.prevent="navigateTo('/ld-image')">
-                🖼️ 士多图床
-              </a>
+                <a
+                  v-for="item in group"
+                  :key="item.path"
+                  :href="item.path"
+                  class="dropdown-item"
+                  :class="{ 'with-unread': item.withUnread }"
+                  @click.prevent="navigateTo(item.path)"
+                >
+                  <span class="dropdown-item-icon">{{ item.icon }}</span>
+                  <span class="dropdown-item-text">{{ item.label }}</span>
+                  <span v-if="item.badge" class="dropdown-badge">{{ item.badge }}</span>
+                </a>
+              </div>
               
               <div class="dropdown-divider"></div>
               
@@ -275,6 +261,77 @@ const trustLevelText = computed(() => (
   trustLevel.value === null || trustLevel.value === undefined ? '' : `TL${trustLevel.value}`
 ))
 const unreadDisplay = computed(() => (messageUnread.value > 99 ? '99+' : String(messageUnread.value || 0)))
+const dropdownMenuGroups = computed(() => ([
+  [
+    {
+      path: '/user/messages',
+      icon: '💬',
+      label: '我的消息',
+      withUnread: messageUnread.value > 0,
+      badge: messageUnread.value > 0 ? unreadDisplay.value : ''
+    },
+    {
+      path: '/user/favorites',
+      icon: '⭐',
+      label: '我的收藏',
+      withUnread: false,
+      badge: ''
+    }
+  ],
+  [
+    {
+      path: '/user/orders',
+      icon: '📋',
+      label: '我的订单',
+      withUnread: false,
+      badge: ''
+    },
+    {
+      path: '/user/products',
+      icon: '📦',
+      label: '我的物品',
+      withUnread: false,
+      badge: ''
+    },
+    {
+      path: '/user/buy-requests',
+      icon: '🌱',
+      label: '我的求购',
+      withUnread: false,
+      badge: ''
+    }
+  ],
+  [
+    {
+      path: '/user/settings',
+      icon: '💳',
+      label: '收款设置',
+      withUnread: false,
+      badge: ''
+    },
+    {
+      path: '/user/my-shop',
+      icon: '🏪',
+      label: '小店入驻',
+      withUnread: false,
+      badge: ''
+    },
+    {
+      path: '/ld-image',
+      icon: '🖼️',
+      label: '士多图床',
+      withUnread: false,
+      badge: ''
+    },
+    {
+      path: '/merchant-services',
+      icon: '🧰',
+      label: '商家服务',
+      withUnread: false,
+      badge: ''
+    }
+  ]
+]))
 const shouldPollMessageUnread = computed(() => (
   isLoggedIn.value
   && String(route.name || '') !== 'MyMessages'
@@ -908,7 +965,7 @@ watch(
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  min-width: 200px;
+  min-width: 220px;
   background: var(--dropdown-bg);
   border-radius: 16px;
   box-shadow: var(--dropdown-shadow);
@@ -977,6 +1034,12 @@ watch(
   margin: 4px 0;
 }
 
+.dropdown-group + .dropdown-group {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-light);
+}
+
 .dropdown-item {
   display: flex;
   align-items: center;
@@ -992,6 +1055,17 @@ watch(
   cursor: pointer;
   transition: background 0.2s;
   text-align: left;
+}
+
+.dropdown-item-icon {
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+}
+
+.dropdown-item-text {
+  flex: 1;
+  min-width: 0;
 }
 
 .dropdown-item:hover {

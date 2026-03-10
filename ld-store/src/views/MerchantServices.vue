@@ -25,7 +25,7 @@
               <div class="panel-title-row">
                 <div>
                   <h2 class="panel-title">选择服务</h2>
-                  <p class="panel-subtitle">先选商品，再选套餐与天数。每个子分类最多 4 个分类置顶，“全部”分类最多 4 个全站置顶；全站置顶会同步展示在所属分类，但不占用分类置顶名额。</p>
+                  <p class="panel-subtitle">先选商品，再选套餐与天数。每个子分类最多 4 个付费分类置顶名额，“全部”分类最多 4 个付费全站置顶名额；管理员手动设置的非有偿置顶不占用这些名额。全站置顶会同步展示在所属分类，但不占用分类置顶名额。</p>
                 </div>
                 <button class="ghost-btn" :disabled="optionsLoading" @click="loadOptions">
                   {{ optionsLoading ? '刷新中...' : '刷新额度' }}
@@ -128,7 +128,7 @@
                     <span class="summary-point-index">02</span>
                     <div class="summary-point-copy">
                       <strong>专属铭牌，提升辨识度</strong>
-                      <p>全站置顶显示“士多甄选”，分类置顶显示“士多优选”，并附带额外的物品卡片效果；其中全站置顶不会占用分类置顶名额。</p>
+                      <p>付费全站置顶显示“士多甄选”，付费分类置顶显示“士多优选”，并附带额外的物品卡片效果；管理员非有偿置顶仅保留排序能力，不附带专属样式。</p>
                     </div>
                   </div>
                   <div class="summary-point">
@@ -162,11 +162,12 @@
               <div class="notice-card">
                 <h3>购买须知</h3>
                 <ul>
-                  <li>为保证服务质量，每种套餐置顶额度有限</li>
-                  <li>全站置顶最多同时 4 个，且同步出现在所属分类，但不占用该分类的 4 个分类置顶名额。</li>
+                  <li>为保证服务质量，付费置顶套餐名额有限。</li>
+                  <li>全站付费置顶最多同时 4 个，且同步出现在所属分类，但不占用该分类的 4 个付费分类置顶名额。</li>
                   <li>订单支付成功时间即为置顶服务生效时间。</li>
                   <li>同一物品同一时间只能有一条生效中或待支付的置顶服务。</li>
                   <li>置顶到期时会自动失效，并通过系统消息提醒你。</li>
+                  <li>管理员手动设置的非有偿置顶不占用付费名额，会排在付费置顶之后、普通物品之前。</li>
                   <li style="color: #cf697b;">「分类置顶」支持包年服务，如有需要请联系管理员。</li>
                 </ul>
               </div>
@@ -176,6 +177,7 @@
                 <p>该物品已存在 {{ selectedProduct.currentTopOrder.packageName }} 订单。</p>
                 <p>状态：{{ getOrderStatusText(selectedProduct.currentTopOrder.status) }}</p>
                 <p>到期：{{ selectedProduct.currentTopOrder.expiredAt || '永久置顶' }}</p>
+                <p v-if="!selectedProduct.currentTopOrder.isPaidService">说明：这是管理员手动设置的非有偿置顶，不占用付费名额。</p>
               </div>
             </aside>
           </div>
@@ -186,7 +188,7 @@
             <div class="board-toolbar">
               <div>
                 <h2 class="panel-title">名额看板</h2>
-                <p class="panel-subtitle">查看全站置顶与分类置顶剩余名额，并按分类浏览当前生效中的服务，提前判断什么时候会空出新额度。</p>
+                <p class="panel-subtitle">查看付费全站置顶与付费分类置顶剩余名额，并按分类浏览当前生效中的服务，提前判断什么时候会空出新额度。</p>
               </div>
               <div class="board-actions">
                 <div class="board-filter-select">
@@ -258,7 +260,7 @@
                 <article class="board-summary-card board-summary-card--global">
                   <span class="board-summary-kicker">全站置顶</span>
                   <strong class="board-summary-value">{{ globalQuota.globalRemaining }} / {{ globalQuota.globalLimit }}</strong>
-                  <p class="board-summary-copy">当前剩余全站置顶名额。全站置顶会同步展示在所属分类，但不会占用分类置顶名额。</p>
+                  <p class="board-summary-copy">当前剩余付费全站置顶名额。全站置顶会同步展示在所属分类，但不会占用付费分类置顶名额。</p>
                   <div class="board-summary-meta">
                     <span>生效中 {{ globalQuota.globalUsed }} 个</span>
                     <span>{{ formatQuotaReleaseHint(globalQuota.nextGlobalReleaseAt, globalQuota.hasPermanentGlobalTop, globalQuota.globalUsed, 'global') }}</span>
@@ -272,12 +274,12 @@
                   </strong>
                   <p class="board-summary-copy">
                     {{ selectedQuotaCategory
-                      ? `${selectedQuotaCategory.categoryName} 当前分类置顶剩余名额；本分类可见 ${selectedQuotaCategory.visibleTotal} 个置顶项（含全站置顶）。`
+                      ? `${selectedQuotaCategory.categoryName} 当前付费分类置顶剩余名额；本分类可见 ${selectedQuotaCategory.visibleTotal} 个置顶项（含管理员非有偿置顶与全站置顶）。`
                       : `当前正在展示全部分类的 ${filteredQuotaRecords.length} 条生效服务，可通过下方分类卡片或右上角筛选器查看具体分类。` }}
                   </p>
                   <div class="board-summary-meta">
                     <template v-if="selectedQuotaCategory">
-                      <span>分类置顶生效 {{ selectedQuotaCategory.categoryUsed }} 个</span>
+                      <span>分类付费置顶生效 {{ selectedQuotaCategory.categoryUsed }} 个</span>
                       <span>可见全站 {{ selectedQuotaCategory.globalVisibleCount }} 个</span>
                       <span>{{ formatQuotaReleaseHint(selectedQuotaCategory.nextCategoryReleaseAt, selectedQuotaCategory.hasPermanentCategoryTop, selectedQuotaCategory.categoryUsed, 'category') }}</span>
                     </template>
@@ -303,7 +305,7 @@
                     </span>
                     <span class="category-quota-pill">{{ quotaBoard.activeRecords?.length || 0 }} 条</span>
                   </div>
-                  <p class="category-quota-copy">查看全站置顶与全部分类置顶的生效服务，快速判断全站和分类的总体拥挤程度。</p>
+                  <p class="category-quota-copy">查看全部分类下正在展示的置顶服务，快速判断付费名额与管理员非有偿置顶的总体分布。</p>
                   <div class="category-quota-meta">
                     <span>分类总数 {{ quotaBoardCategories.length }} 个</span>
                     <span>全站生效 {{ globalQuota.globalUsed }} 个</span>
@@ -325,7 +327,7 @@
                     </span>
                     <span class="category-quota-pill">{{ category.categoryRemaining }} / {{ category.categoryLimit }}</span>
                   </div>
-                  <p class="category-quota-copy">分类置顶生效 {{ category.categoryUsed }} 个，可见全站置顶 {{ category.globalVisibleCount }} 个。</p>
+                  <p class="category-quota-copy">分类付费置顶生效 {{ category.categoryUsed }} 个，可见全站置顶 {{ category.globalVisibleCount }} 个。</p>
                   <div class="category-quota-meta">
                     <span>当前可见 {{ category.visibleTotal }} 个置顶项</span>
                     <span>{{ formatQuotaReleaseHint(category.nextCategoryReleaseAt, category.hasPermanentCategoryTop, category.categoryUsed, 'category') }}</span>
@@ -353,6 +355,9 @@
                         <div class="active-service-badges">
                           <span :class="['active-service-type', `type-${record.packageType || 'category'}`]">
                             {{ record.packageType === 'global' ? '士多甄选' : '士多优选' }}
+                          </span>
+                          <span v-if="!record.isPaidService" class="active-service-source">
+                            管理员非有偿
                           </span>
                           <span class="active-service-category">
                             {{ record.categoryIcon || '📦' }} {{ record.categoryName || '未分类' }}
@@ -523,7 +528,7 @@ const productOptions = computed(() => products.value.map((item) => ({
   value: String(item.id),
   label: item.name,
   description: item.currentTopOrder
-    ? `当前存在 ${item.currentTopOrder.packageName} 订单`
+    ? `当前存在${item.currentTopOrder.isPaidService ? '' : '管理员非有偿'} ${item.currentTopOrder.packageName} 订单`
     : `${item.categoryName || '未分类'} · 分类置顶余量 ${item.quota?.categoryRemaining ?? '-'} · 全站置顶余量 ${item.quota?.globalRemaining ?? '-'}`,
   icon: item.categoryIcon || '📦',
   disabled: false
@@ -1501,6 +1506,7 @@ onMounted(async () => {
 }
 
 .active-service-type,
+.active-service-source,
 .active-service-category {
   display: inline-flex;
   align-items: center;
@@ -1518,6 +1524,11 @@ onMounted(async () => {
 .active-service-type.type-category {
   background: rgba(89, 119, 64, 0.12);
   color: #52643a;
+}
+
+.active-service-source {
+  background: rgba(113, 113, 122, 0.12);
+  color: #5f6470;
 }
 
 .active-service-category {
