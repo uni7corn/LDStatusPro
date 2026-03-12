@@ -3,9 +3,9 @@
   
   # 🚀 LDStatus Pro
 
-> **Linux.do & IDCFlare 社区增强工具** - 信任级别追踪 · LD 士多 · 阅读统计 · 云同步 · 排行榜
+> **Linux.do & IDCFlare 社区增强工具** - 信任级别追踪 · 阅读统计 · 云同步 · 排行榜 · LD 士多入口
 
-![Version](https://img.shields.io/badge/version-v3.5.4.6-blue)
+![Version](https://img.shields.io/badge/version-v3.8.8.9-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Tampermonkey](https://img.shields.io/badge/Tampermonkey-✓-brightgreen)
 ![Multi-Site](https://img.shields.io/badge/Multi--Site-✓-brightgreen)
@@ -113,11 +113,11 @@
 
 ### 🏪 LD 士多
 
-- **兑换信息中心** - 虚拟物品和服务兑换平台
-- **CDK 自动发放** - 兑换成功后自动获取卡密
-- **分类浏览** - AI/存储/小鸡/咨询/订阅/接码/服务/小店
-- **订单追踪** - 查看兑换记录和状态
-- **商家入驻** - 绑定 LDC 账户发布兑换信息
+- **网页版快捷入口** - 面板内一键跳转 LD 士多网页版
+- **新标签页打开** - 保持当前论坛页面不受影响
+- **与主脚本分离** - 士多功能由独立站点持续迭代
+- **入口保留** - 继续保留面板中的士多按钮
+- **使用更稳定** - 避免内嵌面板带来的兼容问题
 
 </td>
 </tr>
@@ -215,7 +215,7 @@
 
 | 浏览器         | 推荐扩展     | 安装链接                                                                                               |
 | -------------- | ------------ | ------------------------------------------------------------------------------------------------------ |
-| Chrome/Edge    | Tampermonkey | [Chrome 商店](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobblkf) |
+| Chrome/Edge    | Tampermonkey | [Chrome 商店](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo?hl=zh-CN&utm_source=chrome-ntp-launcher) |
 | Firefox        | Tampermonkey | [Firefox 商店](https://addons.mozilla.org/zh-CN/firefox/addon/tampermonkey/)                           |
 | Safari (macOS) | Tampermonkey | [App Store](https://apps.apple.com/us/app/tampermonkey/id1482490089)                                   |
 | Safari (iOS)   | Stay         | [App Store](https://apps.apple.com/app/stay-for-safari/id1591620171)                                   |
@@ -232,7 +232,7 @@
 - 访问 [Linux.do](https://linux.do) 或 [IDCFlare](https://idcflare.com)
 - 面板自动显示在页面
 - 点击登录启用云同步和排行榜
-- 进入 LDC 积分面板访问「LD 士多」
+- 通过面板中的「士多」入口在新标签页打开 LD 士多网页版
 
 ---
 
@@ -301,6 +301,14 @@ LDStatusPro/
 ---
 
 ## 📋 更新日志
+
+### v3.8.8.9
+
+- 🔧 修复升级要求目标值偶发显示为 `0` 的问题，补强 connect 页面目标值解析
+- 🪪 排行榜与用户头像新增字母头像兜底，远程头像失败时自动退避
+- 🏪 移除脚本内嵌士多逻辑，保留入口并改为在新标签页打开网页版
+- ✨ 恢复最小化图标的原设计与动画，同时提升渲染兼容性和稳定性
+- 📘 README 同步更新安装链接、版本号与士多使用说明
 
 ### v3.5.4.x 🏪 LD 士多
 
@@ -425,13 +433,12 @@ LDStatusPro/
 </details>
 
 <details>
-<summary><b>🏪 如何在 LD士多发布兑换信息？</b></summary>
+<summary><b>🏪 如何打开 LD 士多？</b></summary>
 
-1. 打开 LDC 积分面板，切换到「LD 士多」标签
-2. 点击「我的发布」→「商家设置」
-3. 填写 LDC PID（从 credit.linux.do 个人页面获取）
-4. 配置通知地址（可选，用于接收订单回调）
-5. 保存后即可开始发布兑换信息
+1. 打开脚本面板中的「士多」入口
+2. 脚本会在新标签页打开 LD 士多网页版
+3. 当前 Linux.do / IDCFlare 页面会保持不变
+4. 如果浏览器拦截了新标签页，请允许弹窗后重试
 </details>
 
 ---
