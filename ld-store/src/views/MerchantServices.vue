@@ -25,7 +25,7 @@
               <div class="panel-title-row">
                 <div>
                   <h2 class="panel-title">选择服务</h2>
-                  <p class="panel-subtitle">先选商品，再选套餐与天数。每个子分类最多 4 个付费分类置顶名额，“全部”分类最多 4 个付费全站置顶名额；管理员手动设置的非有偿置顶不占用这些名额。全站置顶会同步展示在所属分类，但不占用分类置顶名额。</p>
+                  <p class="panel-subtitle">先选商品，再选套餐与天数。每个子分类最多 4 个付费分类置顶名额，“全部”分类最多 4 个付费全站置顶名额；管理员手动设置的非有偿置顶不占用这些名额。全站置顶会同步展示在所属分类，但不占用分类置顶名额；其中入站、卡券分类由于不会出现在“全部”里，开通士多甄选也不占用这 4 个全站名额。</p>
                 </div>
                 <button class="ghost-btn" :disabled="optionsLoading" @click="loadOptions">
                   {{ optionsLoading ? '刷新中...' : '刷新额度' }}
@@ -75,7 +75,7 @@
                     <div class="package-head">
                       <div>
                         <h3 class="package-title">{{ group.name }}</h3>
-                        <p class="package-desc">{{ group.type === 'global' ? '【士多甄选】同步展示在所属分类和“全部”分类，且不占用分类置顶名额' : '【士多优选】仅在所属分类顶部展示，占用该分类置顶名额' }}</p>
+                        <p class="package-desc">{{ getPackageDescription(group.type) }}</p>
                       </div>
                       <span class="quota-pill">剩余额度：{{ formatRemaining(group.type) }}</span>
                     </div>
@@ -164,11 +164,12 @@
                 <ul>
                   <li>为保证服务质量，付费置顶套餐名额有限。</li>
                   <li>全站付费置顶最多同时 4 个，且同步出现在所属分类，但不占用该分类的 4 个付费分类置顶名额。</li>
+                  <li>入站、卡券分类的物品不会显示在“全部”分类，因此开通「士多甄选」时不会占用这 4 个全站名额。</li>
                   <li>订单支付成功时间即为置顶服务生效时间。</li>
                   <li>同一物品同一时间只能有一条生效中或待支付的置顶服务。</li>
                   <li>置顶到期时会自动失效，并通过系统消息提醒你。</li>
                   <li>管理员手动设置的非有偿置顶不占用付费名额，会排在付费置顶之后、普通物品之前。</li>
-                  <li style="color: #cf697b;">「分类置顶」支持包年服务，如有需要请联系管理员。</li>
+                  <li class="notice-card-highlight">「分类置顶」支持包年服务，如有需要请联系管理员。</li>
                 </ul>
               </div>
 
@@ -178,6 +179,7 @@
                 <p>状态：{{ getOrderStatusText(selectedProduct.currentTopOrder.status) }}</p>
                 <p>到期：{{ selectedProduct.currentTopOrder.expiredAt || '永久置顶' }}</p>
                 <p v-if="!selectedProduct.currentTopOrder.isPaidService">说明：这是管理员手动设置的非有偿置顶，不占用付费名额。</p>
+                <p v-else-if="selectedProduct.currentTopOrder.packageType === 'global' && selectedProduct?.quota?.globalQuotaExempt">说明：当前分类不会展示在“全部”分类，因此这条士多甄选不会占用全站 4 个付费名额。</p>
               </div>
             </aside>
           </div>
@@ -260,9 +262,10 @@
                 <article class="board-summary-card board-summary-card--global">
                   <span class="board-summary-kicker">全站置顶</span>
                   <strong class="board-summary-value">{{ globalQuota.globalRemaining }} / {{ globalQuota.globalLimit }}</strong>
-                  <p class="board-summary-copy">当前剩余付费全站置顶名额。全站置顶会同步展示在所属分类，但不会占用付费分类置顶名额。</p>
+                  <p class="board-summary-copy">{{ globalQuotaSummaryText }}</p>
                   <div class="board-summary-meta">
-                    <span>生效中 {{ globalQuota.globalUsed }} 个</span>
+                    <span>占用中 {{ globalQuota.globalUsed }} 个</span>
+                    <span v-if="globalQuota.exemptUsed > 0">豁免中 {{ globalQuota.exemptUsed }} 个</span>
                     <span>{{ formatQuotaReleaseHint(globalQuota.nextGlobalReleaseAt, globalQuota.hasPermanentGlobalTop, globalQuota.globalUsed, 'global') }}</span>
                   </div>
                 </article>
@@ -274,13 +277,14 @@
                   </strong>
                   <p class="board-summary-copy">
                     {{ selectedQuotaCategory
-                      ? `${selectedQuotaCategory.categoryName} 当前付费分类置顶剩余名额；本分类可见 ${selectedQuotaCategory.visibleTotal} 个置顶项（含管理员非有偿置顶与全站置顶）。`
+                      ? `${selectedQuotaCategory.categoryName} 当前付费分类置顶剩余名额；本分类可见 ${selectedQuotaCategory.visibleTotal} 个置顶项（含管理员非有偿置顶与全站置顶）${selectedQuotaCategory.globalQuotaExempt ? '。本分类的士多甄选不会占用全站 4 个付费名额。' : '。'}`
                       : `当前正在展示全部分类的 ${filteredQuotaRecords.length} 条生效服务，可通过下方分类卡片或右上角筛选器查看具体分类。` }}
                   </p>
                   <div class="board-summary-meta">
                     <template v-if="selectedQuotaCategory">
                       <span>分类付费置顶生效 {{ selectedQuotaCategory.categoryUsed }} 个</span>
                       <span>可见全站 {{ selectedQuotaCategory.globalVisibleCount }} 个</span>
+                      <span v-if="selectedQuotaCategory.globalExemptVisibleCount > 0">全站豁免 {{ selectedQuotaCategory.globalExemptVisibleCount }} 个</span>
                       <span>{{ formatQuotaReleaseHint(selectedQuotaCategory.nextCategoryReleaseAt, selectedQuotaCategory.hasPermanentCategoryTop, selectedQuotaCategory.categoryUsed, 'category') }}</span>
                     </template>
                     <template v-else>
@@ -327,9 +331,10 @@
                     </span>
                     <span class="category-quota-pill">{{ category.categoryRemaining }} / {{ category.categoryLimit }}</span>
                   </div>
-                  <p class="category-quota-copy">分类付费置顶生效 {{ category.categoryUsed }} 个，可见全站置顶 {{ category.globalVisibleCount }} 个。</p>
+                  <p class="category-quota-copy">{{ formatCategoryQuotaCopy(category) }}</p>
                   <div class="category-quota-meta">
                     <span>当前可见 {{ category.visibleTotal }} 个置顶项</span>
+                    <span v-if="category.globalExemptVisibleCount > 0">豁免全站 {{ category.globalExemptVisibleCount }} 个</span>
                     <span>{{ formatQuotaReleaseHint(category.nextCategoryReleaseAt, category.hasPermanentCategoryTop, category.categoryUsed, 'category') }}</span>
                   </div>
                 </button>
@@ -358,6 +363,9 @@
                           </span>
                           <span v-if="!record.isPaidService" class="active-service-source">
                             管理员非有偿
+                          </span>
+                          <span v-else-if="record.packageType === 'global' && !record.occupiesGlobalQuota" class="active-service-source active-service-source--exempt">
+                            名额豁免
                           </span>
                           <span class="active-service-category">
                             {{ record.categoryIcon || '📦' }} {{ record.categoryName || '未分类' }}
@@ -523,13 +531,16 @@ function unwrap(result) {
 }
 
 const selectedProduct = computed(() => products.value.find(item => String(item.id) === String(selectedProductId.value)) || null)
+const selectedProductGlobalQuotaExempt = computed(() => Boolean(selectedProduct.value?.quota?.globalQuotaExempt))
 
 const productOptions = computed(() => products.value.map((item) => ({
   value: String(item.id),
   label: item.name,
   description: item.currentTopOrder
     ? `当前存在${item.currentTopOrder.isPaidService ? '' : '管理员非有偿'} ${item.currentTopOrder.packageName} 订单`
-    : `${item.categoryName || '未分类'} · 分类置顶余量 ${item.quota?.categoryRemaining ?? '-'} · 全站置顶余量 ${item.quota?.globalRemaining ?? '-'}`,
+    : item.quota?.globalQuotaExempt
+      ? `${item.categoryName || '未分类'} · 分类置顶余量 ${item.quota?.categoryRemaining ?? '-'} · 士多甄选不占全站 4 名额`
+      : `${item.categoryName || '未分类'} · 分类置顶余量 ${item.quota?.categoryRemaining ?? '-'} · 全站置顶余量 ${item.quota?.globalRemaining ?? '-'}`,
   icon: item.categoryIcon || '📦',
   disabled: false
 })))
@@ -540,9 +551,15 @@ const globalQuota = computed(() => quotaBoard.value.globalQuota || {
   globalLimit: 4,
   globalUsed: 0,
   globalRemaining: 4,
+  exemptUsed: 0,
   nextGlobalReleaseAt: '',
   hasPermanentGlobalTop: false
 })
+const globalQuotaSummaryText = computed(() => (
+  globalQuota.value.exemptUsed > 0
+    ? `当前剩余付费全站置顶名额。另有 ${globalQuota.value.exemptUsed} 个入站/卡券分类的士多甄选正在展示，但不占用这 4 个名额。`
+    : '当前剩余付费全站置顶名额。全站置顶会同步展示在所属分类，但不会占用付费分类置顶名额。'
+))
 const quotaBoardCategoryOptions = computed(() => [
   {
     value: 'all',
@@ -553,7 +570,9 @@ const quotaBoardCategoryOptions = computed(() => [
   ...quotaBoardCategories.value.map((item) => ({
     value: String(item.categoryId),
     label: item.categoryName || '未分类',
-    description: `分类剩余 ${item.categoryRemaining}/${item.categoryLimit} · 可见全站 ${item.globalVisibleCount}`,
+    description: item.globalQuotaExempt
+      ? `分类剩余 ${item.categoryRemaining}/${item.categoryLimit} · 本类士多甄选不占全站 4 名额`
+      : `分类剩余 ${item.categoryRemaining}/${item.categoryLimit} · 可见全站 ${item.globalVisibleCount}`,
     icon: item.categoryIcon || '📦'
   }))
 ])
@@ -581,6 +600,7 @@ const selectedConfig = computed(() => {
 const canSubmit = computed(() => {
   if (!selectedProduct.value || !selectedConfig.value) return false
   if (selectedProduct.value.currentTopOrder) return false
+  if (selectedConfig.value.packageType === 'global' && selectedProductGlobalQuotaExempt.value) return true
   const remaining = selectedConfig.value.packageType === 'global'
     ? selectedProduct.value.quota?.globalRemaining
     : selectedProduct.value.quota?.categoryRemaining
@@ -614,8 +634,19 @@ function handleProductChange() {
   selectedDurationDays.value = 0
 }
 
+function getPackageDescription(type) {
+  if (type !== 'global') {
+    return '【士多优选】仅在所属分类顶部展示，占用该分类置顶名额'
+  }
+  if (selectedProductGlobalQuotaExempt.value) {
+    return `【士多甄选】在 ${selectedProduct.value?.categoryName || '当前分类'} 中展示甄选样式与优先排序；由于该分类不会出现在“全部”中，因此不占用“全部”分类的 4 个名额`
+  }
+  return '【士多甄选】同步展示在所属分类和“全部”分类，且不占用分类置顶名额；入站、卡券分类因不会显示在“全部”中，不占用“全部”分类的 4 个名额'
+}
+
 function formatRemaining(type) {
   if (!selectedProduct.value) return '请选择物品'
+  if (type === 'global' && selectedProductGlobalQuotaExempt.value) return '本类豁免'
   const remaining = type === 'global'
     ? selectedProduct.value.quota?.globalRemaining
     : selectedProduct.value.quota?.categoryRemaining
@@ -624,6 +655,7 @@ function formatRemaining(type) {
 
 function isPackageDisabled(type) {
   if (!selectedProduct.value) return true
+  if (type === 'global' && selectedProductGlobalQuotaExempt.value) return false
   const remaining = type === 'global'
     ? selectedProduct.value.quota?.globalRemaining
     : selectedProduct.value.quota?.categoryRemaining
@@ -656,6 +688,14 @@ function formatQuotaReleaseHint(nextReleaseAt = '', hasPermanent = false, used =
     return '含永久生效服务'
   }
   return '当前暂无预计释放时间'
+}
+
+function formatCategoryQuotaCopy(category = {}) {
+  const globalVisibleCount = Number(category.globalVisibleCount || 0)
+  if (category.globalQuotaExempt) {
+    return `分类付费置顶生效 ${category.categoryUsed} 个，可见士多甄选 ${globalVisibleCount} 个；这些士多甄选不占用全站 4 个名额。`
+  }
+  return `分类付费置顶生效 ${category.categoryUsed} 个，可见全站置顶 ${globalVisibleCount} 个。`
 }
 
 async function loadOptions() {
@@ -800,6 +840,149 @@ onMounted(async () => {
 .merchant-services-page {
   min-height: 100vh;
   padding: 24px 0 72px;
+  color-scheme: light;
+  background: linear-gradient(180deg, #f8f2e7 0%, #f1e9dd 100%);
+  --services-panel-border: var(--glass-border-light);
+  --services-panel-bg:
+    radial-gradient(circle at top left, rgba(255, 220, 145, 0.35), transparent 42%),
+    linear-gradient(155deg, rgba(255, 255, 255, 0.92), rgba(251, 244, 231, 0.96));
+  --services-panel-shadow: 0 24px 60px var(--glass-shadow);
+  --services-card-border: var(--glass-border-light);
+  --services-card-bg: rgba(255, 255, 255, 0.84);
+  --services-card-bg-strong: rgba(255, 255, 255, 0.92);
+  --services-card-shadow: 0 14px 36px var(--glass-shadow-light);
+  --services-title: #30210d;
+  --services-title-strong: #34240f;
+  --services-copy-strong: #5d4c2d;
+  --services-copy: #6d5731;
+  --services-accent: #9b6c13;
+  --services-accent-strong: #c78d1e;
+  --services-accent-deep: #8a5a15;
+  --services-success-bg: rgba(49, 158, 97, 0.12);
+  --services-success-text: #1f7b4b;
+  --services-muted-chip-bg: rgba(113, 113, 122, 0.12);
+  --services-muted-chip-text: #5f6470;
+  --services-category-chip-bg: rgba(98, 113, 81, 0.1);
+  --services-category-chip-text: #5c6650;
+  --services-category-type-bg: rgba(89, 119, 64, 0.12);
+  --services-category-type-text: #52643a;
+  --services-accent-soft: rgba(203, 153, 33, 0.12);
+  --services-accent-soft-strong: rgba(191, 139, 31, 0.14);
+  --services-accent-border: rgba(191, 139, 31, 0.24);
+  --services-accent-border-soft: rgba(191, 139, 31, 0.12);
+  --services-accent-shadow: rgba(193, 138, 25, 0.16);
+  --services-badge-bg:
+    radial-gradient(circle at top, rgba(255, 248, 210, 0.28), transparent 45%),
+    linear-gradient(145deg, #b88624, #6f4a14);
+  --services-badge-color: #fff7e3;
+  --services-btn-bg: linear-gradient(135deg, #c78d1e, #8a5a15);
+  --services-btn-shadow: 0 18px 34px rgba(151, 98, 18, 0.24);
+  --services-hover-border: rgba(193, 138, 25, 0.4);
+  --services-hover-shadow: 0 18px 34px rgba(193, 138, 25, 0.16);
+  --services-muted-bg: rgba(255, 250, 239, 0.72);
+  --services-muted-border: rgba(191, 139, 31, 0.28);
+  --services-highlight-bg:
+    radial-gradient(circle at top right, rgba(255, 223, 150, 0.4), transparent 36%),
+    linear-gradient(160deg, rgba(255, 251, 242, 0.98), rgba(248, 239, 216, 0.94));
+  --services-highlight-shadow:
+    0 18px 42px rgba(145, 105, 24, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --services-highlight-overlay: linear-gradient(135deg, rgba(255, 255, 255, 0.26), rgba(255, 248, 233, 0.08) 58%, transparent 76%);
+  --app-select-trigger-border: var(--services-card-border);
+  --app-select-trigger-bg: var(--services-card-bg-strong);
+  --app-select-trigger-shadow: var(--services-card-shadow);
+  --app-select-trigger-hover-border: var(--services-hover-border);
+  --app-select-trigger-hover-shadow: 0 14px 30px var(--services-accent-shadow);
+  --app-select-panel-border: var(--services-card-border);
+  --app-select-panel-bg: rgba(255, 250, 242, 0.98);
+  --app-select-panel-shadow: 0 20px 40px rgba(145, 105, 24, 0.12);
+  --app-select-option-divider: rgba(191, 139, 31, 0.12);
+  --app-select-option-hover-bg: var(--services-accent-soft);
+  --liquid-tabs-shell-bg: rgba(255, 251, 244, 0.92);
+  --liquid-tabs-shell-border: var(--services-card-border);
+  --liquid-tabs-shell-shadow:
+    0 14px 30px rgba(145, 105, 24, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  --liquid-indicator-bg: rgba(255, 255, 255, 0.96);
+  --liquid-indicator-border: rgba(191, 139, 31, 0.16);
+  --liquid-indicator-shadow:
+    0 10px 20px rgba(145, 105, 24, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --liquid-shine-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.64) 0%, rgba(255, 255, 255, 0.18) 50%, transparent 100%);
+  --liquid-tab-hover-overlay: linear-gradient(135deg, rgba(244, 201, 109, 0.16) 0%, transparent 58%);
+}
+
+:global(html.dark .merchant-services-page) {
+  color-scheme: dark;
+  background: linear-gradient(180deg, #15120e 0%, #0e0b08 100%);
+  --services-panel-border: rgba(255, 236, 196, 0.08);
+  --services-panel-bg:
+    radial-gradient(circle at top left, rgba(218, 164, 61, 0.18), transparent 42%),
+    linear-gradient(155deg, rgba(31, 26, 20, 0.96), rgba(18, 15, 11, 0.98));
+  --services-panel-shadow: 0 24px 60px rgba(0, 0, 0, 0.38);
+  --services-card-border: rgba(255, 223, 164, 0.09);
+  --services-card-bg: rgba(42, 35, 27, 0.82);
+  --services-card-bg-strong: rgba(48, 40, 31, 0.92);
+  --services-card-shadow: 0 14px 36px rgba(0, 0, 0, 0.26);
+  --services-title: #f3e6cf;
+  --services-title-strong: #f7ead3;
+  --services-copy-strong: #d7c1a0;
+  --services-copy: #c5b18f;
+  --services-accent: #f2c15f;
+  --services-accent-strong: #f4c96d;
+  --services-accent-deep: #d6a446;
+  --services-success-bg: rgba(74, 222, 128, 0.16);
+  --services-success-text: #86efac;
+  --services-muted-chip-bg: rgba(148, 163, 184, 0.14);
+  --services-muted-chip-text: #cbd5e1;
+  --services-category-chip-bg: rgba(244, 201, 109, 0.1);
+  --services-category-chip-text: #e8d7b4;
+  --services-category-type-bg: rgba(124, 175, 118, 0.16);
+  --services-category-type-text: #b9e2b4;
+  --services-accent-soft: rgba(244, 201, 109, 0.18);
+  --services-accent-soft-strong: rgba(244, 201, 109, 0.2);
+  --services-accent-border: rgba(244, 201, 109, 0.18);
+  --services-accent-border-soft: rgba(244, 201, 109, 0.12);
+  --services-accent-shadow: rgba(216, 163, 60, 0.18);
+  --services-badge-bg:
+    radial-gradient(circle at top, rgba(255, 228, 157, 0.18), transparent 45%),
+    linear-gradient(145deg, #8f661a, #51340f);
+  --services-badge-color: #fff0cf;
+  --services-btn-bg: linear-gradient(135deg, #d8a33c, #8f661a);
+  --services-btn-shadow: 0 18px 34px rgba(216, 163, 60, 0.2);
+  --services-hover-border: rgba(244, 201, 109, 0.34);
+  --services-hover-shadow: 0 18px 34px rgba(216, 163, 60, 0.16);
+  --services-muted-bg: rgba(54, 43, 32, 0.76);
+  --services-muted-border: rgba(244, 201, 109, 0.18);
+  --services-highlight-bg:
+    radial-gradient(circle at top right, rgba(244, 201, 109, 0.16), transparent 36%),
+    linear-gradient(160deg, rgba(55, 44, 33, 0.96), rgba(37, 29, 22, 0.94));
+  --services-highlight-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 240, 214, 0.06);
+  --services-highlight-overlay: linear-gradient(135deg, rgba(255, 240, 214, 0.08), rgba(255, 240, 214, 0) 58%, transparent 76%);
+  --app-select-trigger-border: var(--services-card-border);
+  --app-select-trigger-bg: rgba(46, 38, 30, 0.96);
+  --app-select-trigger-shadow: 0 16px 30px rgba(0, 0, 0, 0.22);
+  --app-select-trigger-hover-border: var(--services-hover-border);
+  --app-select-trigger-hover-shadow: 0 14px 30px rgba(0, 0, 0, 0.24);
+  --app-select-panel-border: var(--services-card-border);
+  --app-select-panel-bg: rgba(36, 29, 23, 0.98);
+  --app-select-panel-shadow: 0 24px 44px rgba(0, 0, 0, 0.32);
+  --app-select-option-divider: rgba(244, 201, 109, 0.08);
+  --app-select-option-hover-bg: rgba(244, 201, 109, 0.16);
+  --liquid-tabs-shell-bg: rgba(44, 36, 29, 0.92);
+  --liquid-tabs-shell-border: var(--services-card-border);
+  --liquid-tabs-shell-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 240, 214, 0.05);
+  --liquid-indicator-bg: rgba(55, 45, 36, 0.96);
+  --liquid-indicator-border: rgba(244, 201, 109, 0.12);
+  --liquid-indicator-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 240, 214, 0.08);
+  --liquid-shine-bg: linear-gradient(180deg, rgba(255, 240, 214, 0.16) 0%, rgba(255, 255, 255, 0.04) 50%, transparent 100%);
+  --liquid-tab-hover-overlay: linear-gradient(135deg, rgba(244, 201, 109, 0.1) 0%, transparent 60%);
 }
 
 .page-shell {
@@ -811,12 +994,10 @@ onMounted(async () => {
 
 .hero-card,
 .content-card {
-  border: 1px solid var(--glass-border-light);
+  border: 1px solid var(--services-panel-border);
   border-radius: 30px;
-  background:
-    radial-gradient(circle at top left, rgba(255, 220, 145, 0.35), transparent 42%),
-    linear-gradient(155deg, rgba(255, 255, 255, 0.92), rgba(251, 244, 231, 0.96));
-  box-shadow: 0 24px 60px var(--glass-shadow);
+  background: var(--services-panel-bg);
+  box-shadow: var(--services-panel-shadow);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
@@ -833,14 +1014,14 @@ onMounted(async () => {
   font-size: 12px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #9d7b2f;
+  color: var(--services-accent);
 }
 
 .hero-title {
   margin: 0;
   font-size: clamp(32px, 5vw, 48px);
   line-height: 1.02;
-  color: #34240f;
+  color: var(--services-title-strong);
 }
 
 .hero-desc {
@@ -848,7 +1029,7 @@ onMounted(async () => {
   max-width: 640px;
   font-size: 15px;
   line-height: 1.8;
-  color: #5d4c2d;
+  color: var(--services-copy-strong);
 }
 
 .hero-badge {
@@ -858,10 +1039,8 @@ onMounted(async () => {
   justify-content: space-between;
   padding: 22px;
   border-radius: 24px;
-  color: #fff7e3;
-  background:
-    radial-gradient(circle at top, rgba(255, 248, 210, 0.28), transparent 45%),
-    linear-gradient(145deg, #b88624, #6f4a14);
+  color: var(--services-badge-color);
+  background: var(--services-badge-bg);
 }
 
 .hero-badge-label {
@@ -906,7 +1085,7 @@ onMounted(async () => {
 .panel-title {
   margin: 0;
   font-size: 22px;
-  color: #30210d;
+  color: var(--services-title);
 }
 
 .panel-subtitle,
@@ -941,10 +1120,10 @@ onMounted(async () => {
 .board-summary-card,
 .category-quota-card,
 .active-service-card {
-  border: 1px solid var(--glass-border-light);
+  border: 1px solid var(--services-card-border);
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.84);
-  box-shadow: 0 14px 36px var(--glass-shadow-light);
+  background: var(--services-card-bg);
+  box-shadow: var(--services-card-shadow);
 }
 
 .package-card {
@@ -976,7 +1155,7 @@ onMounted(async () => {
 .package-title {
   margin: 0;
   font-size: 18px;
-  color: #2f2515;
+  color: var(--services-title);
 }
 
 .package-desc {
@@ -1018,8 +1197,8 @@ onMounted(async () => {
   flex-shrink: 0;
   padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(203, 153, 33, 0.12);
-  color: #9b6c13;
+  background: var(--services-accent-soft);
+  color: var(--services-accent);
   font-size: 12px;
   font-weight: 700;
 }
@@ -1032,9 +1211,9 @@ onMounted(async () => {
 
 .duration-btn {
   width: 100%;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--services-card-border);
   border-radius: 16px;
-  background: rgba(255, 252, 246, 0.9);
+  background: var(--services-card-bg-strong);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1061,8 +1240,8 @@ onMounted(async () => {
 .duration-btn:hover:not(:disabled),
 .duration-btn.active {
   transform: translateY(-1px);
-  border-color: #c18a19;
-  box-shadow: 0 14px 30px rgba(193, 138, 25, 0.16);
+  border-color: var(--services-hover-border);
+  box-shadow: 0 14px 30px var(--services-accent-shadow);
 }
 
 .duration-btn:disabled {
@@ -1072,16 +1251,16 @@ onMounted(async () => {
 
 .package-empty-state {
   padding: 20px 18px;
-  border: 1px dashed rgba(191, 139, 31, 0.28);
+  border: 1px dashed var(--services-muted-border);
   border-radius: 18px;
-  background: rgba(255, 250, 239, 0.72);
+  background: var(--services-muted-bg);
   text-align: center;
 }
 
 .package-empty-state strong {
   display: block;
   font-size: 14px;
-  color: #6f4a14;
+  color: var(--services-accent-deep);
 }
 
 .package-empty-state p {
@@ -1098,7 +1277,7 @@ onMounted(async () => {
 
 .duration-price {
   font-size: 13px;
-  color: #8b6316;
+  color: var(--services-accent-deep);
 }
 
 .submit-btn,
@@ -1112,8 +1291,8 @@ onMounted(async () => {
   border: none;
   padding: 16px 22px;
   color: #fff;
-  background: linear-gradient(135deg, #c78d1e, #8a5a15);
-  box-shadow: 0 18px 34px rgba(151, 98, 18, 0.24);
+  background: var(--services-btn-bg);
+  box-shadow: var(--services-btn-shadow);
 }
 
 .submit-btn:disabled {
@@ -1123,15 +1302,15 @@ onMounted(async () => {
 
 .ghost-btn,
 .action-btn {
-  border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--services-card-border);
+  background: var(--services-card-bg-strong);
   color: var(--text-primary);
   padding: 11px 16px;
 }
 
 .action-btn.primary {
   border-color: transparent;
-  background: linear-gradient(135deg, #c78d1e, #8a5a15);
+  background: var(--services-btn-bg);
   color: #fff;
 }
 
@@ -1144,20 +1323,16 @@ onMounted(async () => {
 .summary-card--intro {
   position: relative;
   overflow: hidden;
-  border-color: rgba(203, 154, 41, 0.24);
-  background:
-    radial-gradient(circle at top right, rgba(255, 223, 150, 0.4), transparent 36%),
-    linear-gradient(160deg, rgba(255, 251, 242, 0.98), rgba(248, 239, 216, 0.94));
-  box-shadow:
-    0 18px 42px rgba(145, 105, 24, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  border-color: var(--services-accent-border);
+  background: var(--services-highlight-bg);
+  box-shadow: var(--services-highlight-shadow);
 }
 
 .summary-card--intro::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.24), transparent 58%);
+  background: var(--services-highlight-overlay);
   pointer-events: none;
 }
 
@@ -1170,7 +1345,7 @@ onMounted(async () => {
   display: grid;
   gap: 8px;
   padding-bottom: 16px;
-  border-bottom: 1px solid rgba(188, 141, 42, 0.18);
+  border-bottom: 1px solid var(--services-accent-border);
 }
 
 .summary-kicker {
@@ -1179,8 +1354,8 @@ onMounted(async () => {
   width: fit-content;
   padding: 6px 12px;
   border-radius: 999px;
-  background: rgba(191, 139, 31, 0.12);
-  color: #9c6a12;
+  background: var(--services-accent-soft);
+  color: var(--services-accent);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -1190,14 +1365,14 @@ onMounted(async () => {
 .summary-intro strong {
   font-size: 18px;
   line-height: 1.5;
-  color: #35240f;
+  color: var(--services-title-strong);
 }
 
 .summary-intro p {
   margin: 0;
   font-size: 13px;
   line-height: 1.7;
-  color: #6d5731;
+  color: var(--services-copy);
 }
 
 .summary-points {
@@ -1215,7 +1390,7 @@ onMounted(async () => {
 }
 
 .summary-point + .summary-point {
-  border-top: 1px dashed rgba(188, 141, 42, 0.2);
+  border-top: 1px dashed var(--services-accent-border);
 }
 
 .summary-point-index {
@@ -1224,26 +1399,26 @@ onMounted(async () => {
   width: 34px;
   height: 34px;
   border-radius: 12px;
-  background: linear-gradient(145deg, #cb9623, #8f5d14);
+  background: var(--services-btn-bg);
   color: #fff8e6;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.05em;
-  box-shadow: 0 10px 18px rgba(153, 101, 20, 0.22);
+  box-shadow: 0 10px 18px var(--services-accent-shadow);
 }
 
 .summary-point-copy strong {
   display: block;
   font-size: 14px;
   line-height: 1.5;
-  color: #2f2414;
+  color: var(--services-title);
 }
 
 .summary-point-copy p {
   margin: 6px 0 0;
   font-size: 13px;
   line-height: 1.7;
-  color: #6d5731;
+  color: var(--services-copy);
 }
 
 .summary-line {
@@ -1323,16 +1498,12 @@ onMounted(async () => {
 }
 
 .board-summary-card--global {
-  border-color: rgba(191, 139, 31, 0.24);
-  background:
-    radial-gradient(circle at top right, rgba(255, 225, 154, 0.42), transparent 36%),
-    linear-gradient(150deg, rgba(255, 252, 244, 0.98), rgba(247, 236, 208, 0.94));
+  border-color: var(--services-accent-border);
+  background: var(--services-highlight-bg);
 }
 
 .board-summary-card--focus {
-  background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.48), transparent 36%),
-    linear-gradient(150deg, rgba(255, 255, 255, 0.94), rgba(247, 242, 231, 0.92));
+  background: var(--services-panel-bg);
 }
 
 .board-summary-kicker {
@@ -1340,20 +1511,20 @@ onMounted(async () => {
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #9b6c13;
+  color: var(--services-accent);
 }
 
 .board-summary-value {
   font-size: clamp(28px, 4vw, 38px);
   line-height: 1;
-  color: #2f2414;
+  color: var(--services-title);
 }
 
 .board-summary-copy {
   margin: 0;
   font-size: 13px;
   line-height: 1.8;
-  color: #6d5731;
+  color: var(--services-copy);
 }
 
 .board-summary-meta,
@@ -1369,9 +1540,9 @@ onMounted(async () => {
   align-items: center;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(191, 139, 31, 0.1);
+  background: var(--services-accent-soft);
   font-size: 12px;
-  color: #7d5a1f;
+  color: var(--services-accent);
 }
 
 .category-quota-grid {
@@ -1384,10 +1555,8 @@ onMounted(async () => {
   width: 100%;
   padding: 18px;
   text-align: left;
-  border-color: rgba(191, 139, 31, 0.12);
-  background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.42), transparent 42%),
-    linear-gradient(155deg, rgba(255, 255, 255, 0.96), rgba(247, 242, 231, 0.92));
+  border-color: var(--services-accent-border-soft);
+  background: var(--services-panel-bg);
   cursor: pointer;
   appearance: none;
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
@@ -1396,14 +1565,12 @@ onMounted(async () => {
 .category-quota-card:hover,
 .category-quota-card.active {
   transform: translateY(-1px);
-  border-color: rgba(193, 138, 25, 0.4);
-  box-shadow: 0 18px 34px rgba(193, 138, 25, 0.16);
+  border-color: var(--services-hover-border);
+  box-shadow: var(--services-hover-shadow);
 }
 
 .category-quota-card--all {
-  background:
-    radial-gradient(circle at top right, rgba(255, 235, 184, 0.38), transparent 42%),
-    linear-gradient(155deg, rgba(255, 252, 245, 0.96), rgba(244, 236, 219, 0.92));
+  background: var(--services-highlight-bg);
 }
 
 .category-quota-card--loading,
@@ -1426,7 +1593,7 @@ onMounted(async () => {
   min-width: 0;
   font-size: 16px;
   font-weight: 700;
-  color: #2f2414;
+  color: var(--services-title);
 }
 
 .category-quota-icon {
@@ -1435,7 +1602,7 @@ onMounted(async () => {
   display: grid;
   place-items: center;
   border-radius: 10px;
-  background: rgba(191, 139, 31, 0.12);
+  background: var(--services-accent-soft);
   flex-shrink: 0;
 }
 
@@ -1443,10 +1610,10 @@ onMounted(async () => {
   flex-shrink: 0;
   padding: 7px 10px;
   border-radius: 999px;
-  background: rgba(191, 139, 31, 0.14);
+  background: var(--services-accent-soft-strong);
   font-size: 12px;
   font-weight: 800;
-  color: #9b6c13;
+  color: var(--services-accent);
 }
 
 .category-quota-copy {
@@ -1464,7 +1631,7 @@ onMounted(async () => {
 .board-list-title {
   margin: 0;
   font-size: 20px;
-  color: #30210d;
+  color: var(--services-title);
 }
 
 .board-generated-at {
@@ -1472,9 +1639,9 @@ onMounted(async () => {
   align-items: center;
   padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(191, 139, 31, 0.1);
+  background: var(--services-accent-soft);
   font-size: 12px;
-  color: #7d5a1f;
+  color: var(--services-accent);
 }
 
 .board-records {
@@ -1517,30 +1684,30 @@ onMounted(async () => {
 }
 
 .active-service-type.type-global {
-  background: rgba(191, 139, 31, 0.16);
-  color: #8f5d14;
+  background: var(--services-accent-soft-strong);
+  color: var(--services-accent-deep);
 }
 
 .active-service-type.type-category {
-  background: rgba(89, 119, 64, 0.12);
-  color: #52643a;
+  background: var(--services-category-type-bg);
+  color: var(--services-category-type-text);
 }
 
 .active-service-source {
-  background: rgba(113, 113, 122, 0.12);
-  color: #5f6470;
+  background: var(--services-muted-chip-bg);
+  color: var(--services-muted-chip-text);
 }
 
 .active-service-category {
-  background: rgba(98, 113, 81, 0.1);
-  color: #5c6650;
+  background: var(--services-category-chip-bg);
+  color: var(--services-category-chip-text);
 }
 
 .active-service-title {
   margin: 0;
   font-size: 18px;
   line-height: 1.5;
-  color: #2f2414;
+  color: var(--services-title);
 }
 
 .active-service-remaining {
@@ -1558,7 +1725,7 @@ onMounted(async () => {
 
 .active-service-remaining strong {
   font-size: 18px;
-  color: #8f5d14;
+  color: var(--services-accent-deep);
 }
 
 .active-service-grid {
@@ -1704,19 +1871,19 @@ onMounted(async () => {
 }
 
 .order-status.pending {
-  background: rgba(216, 158, 31, 0.12);
-  color: #9d6d0e;
+  background: var(--services-accent-soft);
+  color: var(--services-accent);
 }
 
 .order-status.active {
-  background: rgba(49, 158, 97, 0.12);
-  color: #1f7b4b;
+  background: var(--services-success-bg);
+  color: var(--services-success-text);
 }
 
 .order-status.expired,
 .order-status.cancelled {
-  background: rgba(107, 114, 128, 0.12);
-  color: #596172;
+  background: var(--services-muted-chip-bg);
+  color: var(--services-muted-chip-text);
 }
 
 .order-meta-grid {
@@ -1750,6 +1917,19 @@ onMounted(async () => {
   text-align: center;
   font-size: 14px;
   color: var(--text-secondary);
+}
+
+.notice-card-highlight {
+  color: #cf697b;
+}
+
+:global(html.dark .merchant-services-page .notice-card-highlight) {
+  color: #ff8fa3;
+}
+
+.active-service-source--exempt {
+  background: var(--services-accent-soft-strong);
+  color: var(--services-accent-deep);
 }
 
 @keyframes merchant-services-shimmer {
@@ -1800,56 +1980,394 @@ onMounted(async () => {
 
 @media (max-width: 640px) {
   .merchant-services-page {
-    padding-top: 16px;
+    padding-top: 12px;
+    padding-bottom: 64px;
   }
 
   .page-shell {
-    width: min(100% - 20px, 1120px);
+    width: min(100% - 16px, 1120px);
+    gap: 14px;
   }
 
   .hero-card,
   .content-card {
-    border-radius: 24px;
-    padding: 18px;
+    border-radius: 22px;
+    padding: 14px;
   }
 
-  .package-head,
-  .order-head,
+  .hero-card {
+    gap: 14px;
+  }
+
+  .hero-title {
+    font-size: clamp(28px, 9vw, 34px);
+  }
+
+  .hero-desc {
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  .hero-badge {
+    gap: 8px;
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .hero-badge strong {
+    font-size: clamp(20px, 6.6vw, 24px);
+  }
+
+  .panel-body {
+    margin-top: 14px;
+  }
+
+  .config-panel,
+  .summary-panel,
+  .board-panel,
+  .board-loading,
+  .board-list-panel {
+    gap: 14px;
+  }
+
+  .panel-title-row,
+  .board-toolbar,
+  .board-list-head,
+  .orders-toolbar {
+    gap: 10px;
+  }
+
   .panel-title-row {
     flex-direction: column;
   }
 
-  .board-summary-grid,
-  .active-service-grid {
-    grid-template-columns: 1fr;
+  .panel-title {
+    font-size: 20px;
   }
 
+  .panel-subtitle,
+  .field-hint,
+  .package-desc,
+  .summary-intro p,
+  .summary-point-copy p,
+  .board-summary-copy,
+  .category-quota-copy,
+  .package-empty-state p,
+  .current-top-card p,
+  .notice-card li {
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .field-block {
+    gap: 6px;
+  }
+
+  .field-label {
+    font-size: 13px;
+  }
+
+  .package-grid {
+    gap: 10px;
+  }
+
+  .package-card,
+  .summary-card,
+  .notice-card,
+  .current-top-card,
+  .order-card,
+  .board-summary-card,
+  .category-quota-card,
+  .active-service-card {
+    border-radius: 18px;
+  }
+
+  .package-card,
+  .summary-card,
+  .notice-card,
+  .current-top-card,
+  .order-card,
+  .board-summary-card,
+  .active-service-card {
+    padding: 14px;
+  }
+
+  .category-quota-card {
+    padding: 14px;
+  }
+
+  .package-head,
+  .order-head,
+  .category-quota-head,
   .active-service-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .package-title,
+  .active-service-title,
+  .board-list-title {
+    font-size: 16px;
+  }
+
+  .quota-pill,
+  .order-status,
+  .board-generated-at,
+  .board-summary-meta span,
+  .category-quota-meta span,
+  .active-service-type,
+  .active-service-source,
+  .active-service-category {
+    padding: 6px 9px;
+    font-size: 11px;
+  }
+
+  .duration-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .duration-btn {
+    min-height: 72px;
     flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 12px;
   }
 
-  .active-service-remaining {
-    min-width: 0;
-    text-align: left;
+  .duration-days {
+    font-size: 14px;
   }
 
-  .order-meta-grid {
-    grid-template-columns: 1fr;
+  .duration-price {
+    font-size: 12px;
   }
 
-  .order-actions {
-    flex-direction: column;
+  .submit-btn {
+    padding: 14px 18px;
+  }
+
+  .ghost-btn,
+  .action-btn {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .summary-intro {
+    gap: 6px;
+    padding-bottom: 14px;
+  }
+
+  .summary-intro strong {
+    font-size: 16px;
+  }
+
+  .summary-kicker {
+    padding: 5px 10px;
+    font-size: 10px;
+  }
+
+  .summary-points {
+    margin-top: 10px;
   }
 
   .summary-point {
     grid-template-columns: 30px minmax(0, 1fr);
     gap: 10px;
+    padding: 10px 0;
   }
 
   .summary-point-index {
     width: 30px;
     height: 30px;
     border-radius: 10px;
+  }
+
+  .summary-point-copy strong {
+    font-size: 13px;
+  }
+
+  .summary-line {
+    display: grid;
+    grid-template-columns: 70px minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
+    padding: 8px 0;
+  }
+
+  .summary-line strong {
+    text-align: right;
+    font-size: 13px;
+  }
+
+  .notice-card ul {
+    gap: 8px;
+    padding-left: 16px;
+  }
+
+  .current-top-card p {
+    margin-top: 8px;
+  }
+
+  .board-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .board-filter-select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .board-summary-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .board-summary-value {
+    font-size: clamp(24px, 8vw, 30px);
+  }
+
+  .category-quota-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .category-quota-title {
+    gap: 6px;
+    font-size: 14px;
+  }
+
+  .category-quota-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+  }
+
+  .board-records {
+    gap: 10px;
+  }
+
+  .active-service-main {
+    display: grid;
+    gap: 8px;
+  }
+
+  .active-service-badges {
+    gap: 6px;
+    margin-bottom: 0;
+  }
+
+  .active-service-remaining {
+    min-width: 0;
+    gap: 4px;
+    text-align: right;
+  }
+
+  .active-service-remaining strong {
+    font-size: 16px;
+  }
+
+  .active-service-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .active-service-grid strong {
+    margin-top: 4px;
+    font-size: 13px;
+  }
+
+  .order-head h3 {
+    font-size: 16px;
+  }
+
+  .order-head p {
+    margin-top: 4px;
+    font-size: 11px;
+  }
+
+  .order-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .order-meta-grid strong {
+    margin-top: 4px;
+    font-size: 13px;
+  }
+
+  .order-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+}
+
+@media (max-width: 420px) {
+  .merchant-services-page {
+    padding-bottom: 56px;
+  }
+
+  .page-shell {
+    width: min(100% - 12px, 1120px);
+  }
+
+  .hero-card,
+  .content-card {
+    border-radius: 18px;
+    padding: 12px;
+  }
+
+  .package-card,
+  .summary-card,
+  .notice-card,
+  .current-top-card,
+  .order-card,
+  .board-summary-card,
+  .category-quota-card,
+  .active-service-card {
+    border-radius: 16px;
+  }
+
+  .package-card,
+  .summary-card,
+  .notice-card,
+  .current-top-card,
+  .order-card,
+  .board-summary-card,
+  .category-quota-card,
+  .active-service-card {
+    padding: 12px;
+  }
+
+  .package-head,
+  .order-head,
+  .category-quota-head,
+  .active-service-head,
+  .summary-line {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-line strong,
+  .active-service-remaining {
+    text-align: left;
+  }
+
+  .duration-list,
+  .category-quota-grid,
+  .active-service-grid,
+  .order-meta-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

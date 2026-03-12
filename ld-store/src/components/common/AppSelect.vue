@@ -148,9 +148,9 @@ onUnmounted(() => {
   min-width: 168px;
   max-width: 100%;
   min-height: 48px;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--app-select-trigger-border, var(--glass-border));
   border-radius: 16px;
-  background: var(--glass-bg-medium);
+  background: var(--app-select-trigger-bg, var(--glass-bg-medium));
   color: var(--text-primary);
   display: flex;
   align-items: center;
@@ -158,8 +158,8 @@ onUnmounted(() => {
   gap: 0;
   padding: 12px 42px 12px 14px;
   text-align: left;
-  box-shadow: 0 8px 20px var(--glass-shadow-light);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  box-shadow: var(--app-select-trigger-shadow, 0 8px 20px var(--glass-shadow-light));
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
 }
 
 .app-select.full-width .select-trigger {
@@ -169,8 +169,8 @@ onUnmounted(() => {
 
 .select-trigger:hover:not(:disabled),
 .app-select.open .select-trigger {
-  border-color: var(--color-primary);
-  box-shadow: 0 12px 24px var(--glass-shadow);
+  border-color: var(--app-select-trigger-hover-border, var(--color-primary));
+  box-shadow: var(--app-select-trigger-hover-shadow, 0 12px 24px var(--glass-shadow));
 }
 
 .select-trigger:disabled {
@@ -222,10 +222,10 @@ onUnmounted(() => {
   width: max-content;
   max-width: min(420px, calc(100vw - 32px));
   z-index: 30;
-  border: 1px solid var(--glass-border-light);
+  border: 1px solid var(--app-select-panel-border, var(--glass-border-light));
   border-radius: 18px;
-  background: var(--bg-primary);
-  box-shadow: 0 20px 40px var(--glass-shadow);
+  background: var(--app-select-panel-bg, var(--bg-primary));
+  box-shadow: var(--app-select-panel-shadow, 0 20px 40px var(--glass-shadow));
   overflow: hidden;
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
@@ -240,16 +240,16 @@ onUnmounted(() => {
 .app-select.variant-toolbar .select-trigger {
   min-height: 40px;
   border-radius: 10px;
-  border-color: var(--border-color);
-  background: var(--bg-card);
+  border-color: var(--app-select-toolbar-trigger-border, var(--border-color));
+  background: var(--app-select-toolbar-trigger-bg, var(--bg-card));
   box-shadow: none;
   padding: 9px 38px 9px 12px;
 }
 
 .app-select.variant-toolbar .select-trigger:hover:not(:disabled),
 .app-select.variant-toolbar.open .select-trigger {
-  border-color: rgba(16, 185, 129, 0.4);
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.08);
+  border-color: var(--app-select-toolbar-trigger-hover-border, rgba(16, 185, 129, 0.4));
+  box-shadow: var(--app-select-toolbar-trigger-hover-shadow, 0 0 0 3px rgba(16, 185, 129, 0.08));
 }
 
 .app-select.variant-toolbar .select-arrow {
@@ -259,9 +259,9 @@ onUnmounted(() => {
 .app-select.variant-toolbar .select-panel {
   top: calc(100% + 8px);
   border-radius: 12px;
-  border-color: var(--border-light);
-  background: var(--bg-card);
-  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+  border-color: var(--app-select-toolbar-panel-border, var(--border-light));
+  background: var(--app-select-toolbar-panel-bg, var(--bg-card));
+  box-shadow: var(--app-select-toolbar-panel-shadow, 0 16px 32px rgba(15, 23, 42, 0.12));
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -272,7 +272,7 @@ onUnmounted(() => {
 
 .app-select.variant-toolbar .select-option:hover:not(:disabled),
 .app-select.variant-toolbar .select-option.active {
-  background: var(--color-success-bg);
+  background: var(--app-select-toolbar-option-hover-bg, var(--color-success-bg));
 }
 
 .app-select.variant-toolbar .option-main {
@@ -294,12 +294,12 @@ onUnmounted(() => {
 }
 
 .select-option + .select-option {
-  border-top: 1px solid var(--glass-border-light);
+  border-top: 1px solid var(--app-select-option-divider, var(--glass-border-light));
 }
 
 .select-option:hover:not(:disabled),
 .select-option.active {
-  background: rgba(196, 145, 26, 0.12);
+  background: var(--app-select-option-hover-bg, rgba(196, 145, 26, 0.12));
 }
 
 .select-option.disabled {

@@ -295,9 +295,84 @@ watch(
   width: 190px;
   height: 190px;
   z-index: 120;
+  --corner-action-bg: var(--glass-bg-light);
+  --corner-action-border: var(--glass-border-light);
+  --corner-action-shadow: 0 8px 16px var(--glass-shadow), inset 0 1px 0 var(--glass-shine);
+  --corner-action-hover-shadow: 0 12px 24px var(--glass-shadow), inset 0 1px 0 var(--glass-shine);
+  --corner-label-bg: var(--glass-bg-heavy);
+  --corner-label-border: var(--glass-border);
+  --corner-label-shadow: 0 6px 16px var(--glass-shadow);
+  --corner-backtop-bg: var(--glass-bg-light);
+  --corner-backtop-border: var(--glass-border-light);
+  --corner-backtop-shadow: 0 10px 22px var(--glass-shadow), inset 0 1px 0 var(--glass-shine);
+  --corner-backtop-hover-shadow: 0 14px 28px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  --corner-fab-bg: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--color-primary) 75%, #ffffff) 0%,
+    color-mix(in srgb, var(--color-primary) 85%, #7e6e5f) 100%
+  );
+  --corner-fab-shadow: var(--shadow-primary), 0 12px 26px rgba(159, 143, 125, 0.28);
+  --corner-fab-border: rgba(255, 255, 255, 0.55);
+  --corner-fab-hover-shadow: 0 10px 24px rgba(159, 143, 125, 0.35), 0 0 0 6px rgba(181, 168, 152, 0.08);
+  --corner-fab-open-shadow: 0 12px 26px rgba(159, 143, 125, 0.35), 0 0 0 8px rgba(181, 168, 152, 0.12);
+  --corner-fab-sparkle:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.45) 0 2px, transparent 3px),
+    radial-gradient(circle at 70% 40%, rgba(255, 255, 255, 0.35) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 45% 70%, rgba(255, 255, 255, 0.3) 0 1.8px, transparent 3px);
+  --corner-fab-dash: rgba(255, 255, 255, 0.35);
+  --corner-fab-glow: radial-gradient(circle, rgba(255, 255, 255, 0.4), transparent 60%);
+  --corner-doodle-bg: linear-gradient(135deg, rgba(181, 168, 152, 0.2), rgba(255, 255, 255, 0.9));
+  --corner-doodle-active-bg: var(--color-primary-light);
+  --corner-support-color: #ef7a7a;
+  --corner-support-border: color-mix(in srgb, #ef7a7a 40%, transparent);
+  --corner-support-bg: linear-gradient(135deg, rgba(239, 122, 122, 0.2), rgba(255, 255, 255, 0.9));
+  --corner-support-hover-color: #e65a5a;
+  --corner-support-hover-shadow: 0 12px 24px rgba(239, 122, 122, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  --corner-merchant-color: #9b6a11;
+  --corner-merchant-border: color-mix(in srgb, #c48a22 45%, transparent);
+  --corner-merchant-bg: linear-gradient(135deg, rgba(196, 138, 34, 0.22), rgba(255, 248, 230, 0.95));
+  --corner-merchant-hover-color: #7a4f08;
+  --corner-merchant-hover-shadow: 0 12px 24px rgba(196, 138, 34, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.45);
   opacity: 0;
   transform: translateY(18px) scale(0.96);
   transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+:global(html.dark .corner-menu) {
+  --corner-action-bg: rgba(40, 34, 29, 0.94);
+  --corner-action-border: rgba(255, 232, 205, 0.12);
+  --corner-action-shadow: 0 12px 22px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 240, 214, 0.06);
+  --corner-action-hover-shadow: 0 16px 28px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 240, 214, 0.1);
+  --corner-label-bg: rgba(36, 30, 26, 0.98);
+  --corner-label-border: rgba(255, 232, 205, 0.12);
+  --corner-label-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
+  --corner-backtop-bg: rgba(40, 34, 29, 0.96);
+  --corner-backtop-border: rgba(255, 232, 205, 0.12);
+  --corner-backtop-shadow: 0 12px 24px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 240, 214, 0.08);
+  --corner-backtop-hover-shadow: 0 16px 30px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 240, 214, 0.1);
+  --corner-fab-bg: linear-gradient(145deg, #e0b55f 0%, #8d641b 52%, #5c3c0f 100%);
+  --corner-fab-shadow: 0 14px 30px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(255, 240, 214, 0.1) inset;
+  --corner-fab-border: rgba(255, 240, 214, 0.18);
+  --corner-fab-hover-shadow: 0 16px 30px rgba(0, 0, 0, 0.38), 0 0 0 6px rgba(244, 201, 109, 0.12);
+  --corner-fab-open-shadow: 0 18px 34px rgba(0, 0, 0, 0.42), 0 0 0 8px rgba(244, 201, 109, 0.16);
+  --corner-fab-sparkle:
+    radial-gradient(circle at 30% 30%, rgba(255, 244, 224, 0.4) 0 2px, transparent 3px),
+    radial-gradient(circle at 70% 40%, rgba(255, 232, 205, 0.28) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 45% 70%, rgba(255, 216, 150, 0.26) 0 1.8px, transparent 3px);
+  --corner-fab-dash: rgba(255, 240, 214, 0.26);
+  --corner-fab-glow: radial-gradient(circle, rgba(255, 221, 145, 0.28), transparent 60%);
+  --corner-doodle-bg: linear-gradient(135deg, rgba(197, 184, 168, 0.22), rgba(58, 48, 40, 0.96));
+  --corner-doodle-active-bg: rgba(74, 64, 55, 0.96);
+  --corner-support-color: #ff9aa6;
+  --corner-support-border: rgba(248, 113, 113, 0.28);
+  --corner-support-bg: linear-gradient(135deg, rgba(248, 113, 113, 0.2), rgba(64, 35, 37, 0.96));
+  --corner-support-hover-color: #ffc2ca;
+  --corner-support-hover-shadow: 0 14px 26px rgba(127, 29, 29, 0.28), inset 0 1px 0 rgba(255, 226, 231, 0.08);
+  --corner-merchant-color: #f0c978;
+  --corner-merchant-border: rgba(244, 201, 109, 0.26);
+  --corner-merchant-bg: linear-gradient(135deg, rgba(216, 163, 60, 0.24), rgba(78, 56, 22, 0.96));
+  --corner-merchant-hover-color: #ffe7b6;
+  --corner-merchant-hover-shadow: 0 14px 26px rgba(104, 66, 10, 0.28), inset 0 1px 0 rgba(255, 240, 214, 0.1);
 }
 
 .corner-menu.is-visible {
@@ -313,13 +388,13 @@ watch(
   height: 46px;
   --label-shift-y: -55%;
   border-radius: 50%;
-  background: var(--glass-bg-light);
-  border: 1px solid var(--glass-border-light);
+  background: var(--corner-action-bg);
+  border: 1px solid var(--corner-action-border);
   color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 16px var(--glass-shadow), inset 0 1px 0 var(--glass-shine);
+  box-shadow: var(--corner-action-shadow);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   transition: transform 0.36s ease, opacity 0.22s ease, box-shadow 0.25s ease, color 0.25s ease, filter 0.2s ease;
@@ -332,7 +407,7 @@ watch(
 
 .corner-action:hover {
   color: var(--color-primary);
-  box-shadow: 0 12px 24px var(--glass-shadow), inset 0 1px 0 var(--glass-shine);
+  box-shadow: var(--corner-action-hover-shadow);
 }
 
 .corner-action:active {
@@ -342,37 +417,37 @@ watch(
 .corner-action.is-active {
   color: var(--color-primary);
   border-color: var(--color-primary);
-  background: var(--color-primary-light);
+  background: var(--corner-doodle-active-bg);
 }
 
 .action-doodle {
   --label-shift-y: -90%;
-  background: linear-gradient(135deg, rgba(181, 168, 152, 0.2), rgba(255, 255, 255, 0.9));
+  background: var(--corner-doodle-bg);
   color: var(--text-secondary);
 }
 
 .action-support {
   --label-shift-y: -20%;
-  color: #ef7a7a;
-  border-color: color-mix(in srgb, #ef7a7a 40%, transparent);
-  background: linear-gradient(135deg, rgba(239, 122, 122, 0.2), rgba(255, 255, 255, 0.9));
+  color: var(--corner-support-color);
+  border-color: var(--corner-support-border);
+  background: var(--corner-support-bg);
 }
 
 .action-support:hover {
-  color: #e65a5a;
-  box-shadow: 0 12px 24px rgba(239, 122, 122, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  color: var(--corner-support-hover-color);
+  box-shadow: var(--corner-support-hover-shadow);
 }
 
 .action-merchant {
   --label-shift-y: 45%;
-  color: #9b6a11;
-  border-color: color-mix(in srgb, #c48a22 45%, transparent);
-  background: linear-gradient(135deg, rgba(196, 138, 34, 0.22), rgba(255, 248, 230, 0.95));
+  color: var(--corner-merchant-color);
+  border-color: var(--corner-merchant-border);
+  background: var(--corner-merchant-bg);
 }
 
 .action-merchant:hover {
-  color: #7a4f08;
-  box-shadow: 0 12px 24px rgba(196, 138, 34, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  color: var(--corner-merchant-hover-color);
+  box-shadow: var(--corner-merchant-hover-shadow);
 }
 
 .action-label {
@@ -383,12 +458,12 @@ watch(
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 12px;
-  background: var(--glass-bg-heavy);
-  border: 1px solid var(--glass-border);
+  background: var(--corner-label-bg);
+  border: 1px solid var(--corner-label-border);
   color: var(--text-secondary);
   opacity: 0;
   white-space: nowrap;
-  box-shadow: 0 6px 16px var(--glass-shadow);
+  box-shadow: var(--corner-label-shadow);
   transition: opacity 0.2s ease, transform 0.2s ease;
   pointer-events: none;
 }
@@ -406,17 +481,13 @@ watch(
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--color-primary) 75%, #ffffff) 0%,
-    color-mix(in srgb, var(--color-primary) 85%, #7e6e5f) 100%
-  );
+  background: var(--corner-fab-bg);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-primary), 0 12px 26px rgba(159, 143, 125, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: var(--corner-fab-shadow);
+  border: 1px solid var(--corner-fab-border);
   overflow: hidden;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
@@ -428,13 +499,13 @@ watch(
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  border: 1px solid var(--glass-border-light);
-  background: var(--glass-bg-light);
+  border: 1px solid var(--corner-backtop-border);
+  background: var(--corner-backtop-bg);
   color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 10px 22px var(--glass-shadow), inset 0 1px 0 var(--glass-shine);
+  box-shadow: var(--corner-backtop-shadow);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   transition: transform 0.28s ease, opacity 0.24s ease, box-shadow 0.24s ease, color 0.24s ease;
@@ -443,7 +514,7 @@ watch(
 .backtop-button:hover {
   color: var(--color-primary);
   transform: translateY(-2px);
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  box-shadow: var(--corner-backtop-hover-shadow);
 }
 
 .backtop-button.is-shifted {
@@ -478,12 +549,12 @@ watch(
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 12px;
-  background: var(--glass-bg-heavy);
-  border: 1px solid var(--glass-border);
+  background: var(--corner-label-bg);
+  border: 1px solid var(--corner-label-border);
   color: var(--text-secondary);
   opacity: 0;
   white-space: nowrap;
-  box-shadow: 0 6px 16px var(--glass-shadow);
+  box-shadow: var(--corner-label-shadow);
   transition: opacity 0.2s ease, transform 0.2s ease;
   pointer-events: none;
 }
@@ -504,27 +575,24 @@ watch(
 }
 
 .corner-fab::before {
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.45) 0 2px, transparent 3px),
-    radial-gradient(circle at 70% 40%, rgba(255, 255, 255, 0.35) 0 1.5px, transparent 3px),
-    radial-gradient(circle at 45% 70%, rgba(255, 255, 255, 0.3) 0 1.8px, transparent 3px);
+  background: var(--corner-fab-sparkle);
   opacity: 0.8;
 }
 
 .corner-fab::after {
   inset: 8px;
-  border: 1px dashed rgba(255, 255, 255, 0.35);
+  border: 1px dashed var(--corner-fab-dash);
   opacity: 0.7;
 }
 
 .corner-fab:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(159, 143, 125, 0.35), 0 0 0 6px rgba(181, 168, 152, 0.08);
+  box-shadow: var(--corner-fab-hover-shadow);
 }
 
 .corner-menu.is-open .corner-fab {
   transform: translateY(-1px) scale(1.02);
-  box-shadow: 0 12px 26px rgba(159, 143, 125, 0.35), 0 0 0 8px rgba(181, 168, 152, 0.12);
+  box-shadow: var(--corner-fab-open-shadow);
 }
 
 .corner-fab:active {
@@ -534,7 +602,7 @@ watch(
 .fab-glow {
   position: absolute;
   inset: -20%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.4), transparent 60%);
+  background: var(--corner-fab-glow);
   opacity: 0.8;
   animation: fab-pulse 3.2s ease-in-out infinite;
 }

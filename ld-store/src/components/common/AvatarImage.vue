@@ -406,7 +406,7 @@ onUnmounted(() => {
   flex-shrink: 0;
   overflow: hidden;
   border-radius: inherit;
-  background: rgba(148, 163, 184, 0.16);
+  background: var(--avatar-surface-bg, color-mix(in srgb, var(--border-medium) 58%, transparent));
   vertical-align: middle;
   line-height: 0;
   isolation: isolate;
@@ -419,15 +419,17 @@ onUnmounted(() => {
 }
 
 .avatar-image__placeholder {
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0)),
-    rgba(15, 23, 42, 0.04);
+  background: var(
+    --avatar-placeholder-bg,
+    linear-gradient(135deg, var(--glass-shine-strong), rgba(255, 255, 255, 0)),
+    color-mix(in srgb, var(--bg-tertiary) 72%, transparent)
+  );
 }
 
 .avatar-image__shimmer {
   position: absolute;
   inset: 0;
-  background: linear-gradient(100deg, transparent 18%, rgba(255, 255, 255, 0.52) 50%, transparent 82%);
+  background: var(--avatar-shimmer-bg, linear-gradient(100deg, transparent 18%, var(--skeleton-shine) 50%, transparent 82%));
   transform: translateX(-100%);
   animation: avatar-shimmer 1.6s ease-in-out infinite;
 }

@@ -126,15 +126,17 @@ onUnmounted(() => {
   display: inline-flex;
   gap: 2px;
   padding: 5px;
-  background: var(--glass-bg-medium);
+  background: var(--liquid-tabs-shell-bg, var(--glass-bg-medium));
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-radius: 16px;
-  box-shadow: 
+  box-shadow: var(
+    --liquid-tabs-shell-shadow,
     0 4px 20px var(--glass-shadow),
     0 1px 3px var(--glass-shadow-light),
-    inset 0 1px 0 var(--glass-shine-strong);
-  border: 1px solid var(--glass-border);
+    inset 0 1px 0 var(--glass-shine-strong)
+  );
+  border: 1px solid var(--liquid-tabs-shell-border, var(--glass-border));
 }
 
 /* 液态指示器 */
@@ -157,13 +159,15 @@ onUnmounted(() => {
 .liquid-glass {
   position: absolute;
   inset: 0;
-  background: var(--glass-bg-heavy);
+  background: var(--liquid-indicator-bg, var(--glass-bg-heavy));
   border-radius: inherit;
-  box-shadow:
+  box-shadow: var(
+    --liquid-indicator-shadow,
     0 4px 16px var(--glass-shadow),
     0 2px 8px var(--glass-shadow-light),
-    inset 0 1px 2px var(--glass-shine-strong);
-  border: 1px solid var(--glass-border-light);
+    inset 0 1px 2px var(--glass-shine-strong)
+  );
+  border: 1px solid var(--liquid-indicator-border, var(--glass-border-light));
 }
 
 /* 高光层 - 模拟玻璃反光 */
@@ -173,24 +177,17 @@ onUnmounted(() => {
   left: 10%;
   right: 10%;
   height: 45%;
-  background: linear-gradient(
-    180deg,
-    var(--glass-shine) 0%,
-    rgba(255, 255, 255, 0.12) 50%,
-    transparent 100%
+  background: var(
+    --liquid-shine-bg,
+    linear-gradient(
+      180deg,
+      var(--glass-shine) 0%,
+      rgba(255, 255, 255, 0.12) 50%,
+      transparent 100%
+    )
   );
   border-radius: 10px 10px 50% 50%;
   pointer-events: none;
-}
-
-/* 深色模式下的高光 */
-:global(html.dark) .liquid-shine {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.08) 0%,
-    rgba(255, 255, 255, 0.03) 50%,
-    transparent 100%
-  );
 }
 
 /* Tab 按钮 */
@@ -251,10 +248,13 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.08) 0%,
-    transparent 50%
+  background: var(
+    --liquid-tab-hover-overlay,
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      transparent 50%
+    )
   );
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -263,15 +263,6 @@ onUnmounted(() => {
 .liquid-tab:hover:not(.active)::after {
   opacity: 1;
 }
-
-:global(html.dark) .liquid-tab::after {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.04) 0%,
-    transparent 50%
-  );
-}
-
 /* 移动端适配 */
 @media (max-width: 640px) {
   .liquid-tabs {
