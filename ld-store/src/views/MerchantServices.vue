@@ -6,7 +6,7 @@
           <p class="hero-eyebrow">Merchant Services</p>
           <h1 class="hero-title">商家服务</h1>
           <p class="hero-desc">
-            士多服务支持自助购买全站置顶与分类置顶。支付成功后立即生效，到期自动释放位置，并同步发送系统提醒。
+            士多服务支持自助购买士多甄选与士多优选。支付成功后立即生效，到期自动释放位置，并同步发送系统提醒。
           </p>
         </div>
         <div class="hero-badge">
@@ -25,7 +25,7 @@
               <div class="panel-title-row">
                 <div>
                   <h2 class="panel-title">选择服务</h2>
-                  <p class="panel-subtitle">先选商品，再选套餐与天数。每个子分类最多 4 个付费分类置顶名额，“全部”分类最多 4 个付费全站置顶名额；管理员手动设置的非有偿置顶不占用这些名额。全站置顶会同步展示在所属分类，但不占用分类置顶名额；其中入站、卡券分类由于不会出现在“全部”里，开通士多甄选也不占用这 4 个全站名额。</p>
+                  <p class="panel-subtitle">先选商品，再选套餐与天数。士多甄选按池管理：进入“全部”的分类共享 4 个甄选名额，入站与卡券各自拥有独立的 6 个甄选名额；士多优选按分类独立管理，入站与卡券为 6 个，其余分类为 4 个。管理员手动设置的非有偿置顶不占用这些付费名额。</p>
                 </div>
                 <button class="ghost-btn" :disabled="optionsLoading" @click="loadOptions">
                   {{ optionsLoading ? '刷新中...' : '刷新额度' }}
@@ -77,7 +77,16 @@
                         <h3 class="package-title">{{ group.name }}</h3>
                         <p class="package-desc">{{ getPackageDescription(group.type) }}</p>
                       </div>
-                      <span class="quota-pill">剩余额度：{{ formatRemaining(group.type) }}</span>
+                      <span class="quota-pill">{{ formatRemaining(group.type) }}</span>
+                    </div>
+                    <div class="package-quota-list">
+                      <div
+                        v-for="line in getPackageQuotaLines(group.type)"
+                        :key="`${group.type}-${line}`"
+                        class="package-quota-line"
+                      >
+                        {{ line }}
+                      </div>
                     </div>
 
                     <div class="duration-list">
@@ -128,7 +137,7 @@
                     <span class="summary-point-index">02</span>
                     <div class="summary-point-copy">
                       <strong>专属铭牌，提升辨识度</strong>
-                      <p>付费全站置顶显示“士多甄选”，付费分类置顶显示“士多优选”，并附带额外的物品卡片效果；管理员非有偿置顶仅保留排序能力，不附带专属样式。</p>
+                      <p>付费士多甄选显示“士多甄选”，付费士多优选显示“士多优选”，并附带额外的物品卡片效果；管理员非有偿置顶仅保留排序能力，不附带专属样式。</p>
                     </div>
                   </div>
                   <div class="summary-point">
@@ -163,13 +172,14 @@
                 <h3>购买须知</h3>
                 <ul>
                   <li>为保证服务质量，付费置顶套餐名额有限。</li>
-                  <li>全站付费置顶最多同时 4 个，且同步出现在所属分类，但不占用该分类的 4 个付费分类置顶名额。</li>
-                  <li>入站、卡券分类的物品不会显示在“全部”分类，因此开通「士多甄选」时不会占用这 4 个全站名额。</li>
+                  <li>士多甄选会优先展示在对应甄选位中；进入“全部”的分类共用 4 个共享甄选名额，入站与卡券各自拥有 6 个独立甄选名额。</li>
+                  <li>士多优选只在所属分类顶部展示，入站与卡券各自有 6 个优选名额，其余分类各有 4 个优选名额。</li>
                   <li>订单支付成功时间即为置顶服务生效时间。</li>
+                  <li>待支付订单在支付超时前也会临时占用名额；页面展示的剩余名额已经包含这部分占位。</li>
                   <li>同一物品同一时间只能有一条生效中或待支付的置顶服务。</li>
                   <li>置顶到期时会自动失效，并通过系统消息提醒你。</li>
                   <li>管理员手动设置的非有偿置顶不占用付费名额，会排在付费置顶之后、普通物品之前。</li>
-                  <li class="notice-card-highlight">「分类置顶」支持包年服务，如有需要请联系管理员。</li>
+                  <li class="notice-card-highlight">「士多优选」支持包年服务，如有需要请联系管理员。</li>
                 </ul>
               </div>
 
@@ -179,7 +189,7 @@
                 <p>状态：{{ getOrderStatusText(selectedProduct.currentTopOrder.status) }}</p>
                 <p>到期：{{ selectedProduct.currentTopOrder.expiredAt || '永久置顶' }}</p>
                 <p v-if="!selectedProduct.currentTopOrder.isPaidService">说明：这是管理员手动设置的非有偿置顶，不占用付费名额。</p>
-                <p v-else-if="selectedProduct.currentTopOrder.packageType === 'global' && selectedProduct?.quota?.globalQuotaExempt">说明：当前分类不会展示在“全部”分类，因此这条士多甄选不会占用全站 4 个付费名额。</p>
+                <p v-else-if="selectedProduct.currentTopOrder.packageType === 'global' && !selectedProduct?.quota?.usesSharedGlobalPool">说明：当前分类的士多甄选占用「{{ selectedProduct?.quota?.globalPoolName || '独立甄选池' }}」，不会占用“全部分类共享甄选池”。</p>
               </div>
             </aside>
           </div>
@@ -190,7 +200,7 @@
             <div class="board-toolbar">
               <div>
                 <h2 class="panel-title">名额看板</h2>
-                <p class="panel-subtitle">查看付费全站置顶与付费分类置顶剩余名额，并按分类浏览当前生效中的服务，提前判断什么时候会空出新额度。</p>
+                <p class="panel-subtitle">查看各个甄选池与优选池的真实剩余名额。上方名额已包含待支付占位，下方列表仅展示当前已经生效中的服务，方便判断何时会释放新额度。</p>
               </div>
               <div class="board-actions">
                 <div class="board-filter-select">
@@ -210,7 +220,7 @@
 
             <div v-if="showQuotaBoardLoading" class="board-loading">
               <div class="board-summary-grid">
-                <article v-for="index in 2" :key="`board-summary-loading-${index}`" class="board-summary-card board-summary-card--loading">
+                <article v-for="index in 4" :key="`board-summary-loading-${index}`" class="board-summary-card board-summary-card--loading">
                   <div class="loading-shimmer board-skeleton board-skeleton-kicker"></div>
                   <div class="loading-shimmer board-skeleton board-skeleton-value"></div>
                   <div class="loading-shimmer board-skeleton board-skeleton-copy"></div>
@@ -259,36 +269,42 @@
 
             <template v-else>
               <div class="board-summary-grid">
-                <article class="board-summary-card board-summary-card--global">
-                  <span class="board-summary-kicker">全站置顶</span>
-                  <strong class="board-summary-value">{{ globalQuota.globalRemaining }} / {{ globalQuota.globalLimit }}</strong>
-                  <p class="board-summary-copy">{{ globalQuotaSummaryText }}</p>
+                <article
+                  v-for="pool in quotaBoardGlobalPools"
+                  :key="pool.key"
+                  class="board-summary-card"
+                  :class="pool.usesSharedGlobalPool ? 'board-summary-card--global' : 'board-summary-card--special'"
+                >
+                  <span class="board-summary-kicker">{{ pool.usesSharedGlobalPool ? '共享甄选池' : '独立甄选池' }}</span>
+                  <strong class="board-summary-value">{{ pool.remaining }} / {{ pool.limit }}</strong>
+                  <p class="board-summary-copy">{{ formatGlobalPoolSummary(pool) }}</p>
                   <div class="board-summary-meta">
-                    <span>占用中 {{ globalQuota.globalUsed }} 个</span>
-                    <span v-if="globalQuota.exemptUsed > 0">豁免中 {{ globalQuota.exemptUsed }} 个</span>
-                    <span>{{ formatQuotaReleaseHint(globalQuota.nextGlobalReleaseAt, globalQuota.hasPermanentGlobalTop, globalQuota.globalUsed, 'global') }}</span>
+                    <span>占用中 {{ pool.used }} 个</span>
+                    <span v-if="pool.pendingUsed > 0">待支付占位 {{ pool.pendingUsed }} 个</span>
+                    <span>{{ formatQuotaReleaseHint(pool.nextReleaseAt, pool.hasPermanentTop, pool.used, 'global', pool.name) }}</span>
                   </div>
                 </article>
 
                 <article class="board-summary-card board-summary-card--focus">
-                  <span class="board-summary-kicker">{{ selectedQuotaCategory ? '当前分类' : '当前筛选' }}</span>
+                  <span class="board-summary-kicker">{{ selectedQuotaCategory ? '当前分类优选池' : '优选池说明' }}</span>
                   <strong class="board-summary-value">
-                    {{ selectedQuotaCategory ? `${selectedQuotaCategory.categoryRemaining} / ${selectedQuotaCategory.categoryLimit}` : `${filteredQuotaRecords.length} 条` }}
+                    {{ selectedQuotaCategory ? `${selectedQuotaCategory.categoryRemaining} / ${selectedQuotaCategory.categoryLimit}` : `${quotaBoardCategories.length} 个` }}
                   </strong>
                   <p class="board-summary-copy">
                     {{ selectedQuotaCategory
-                      ? `${selectedQuotaCategory.categoryName} 当前付费分类置顶剩余名额；本分类可见 ${selectedQuotaCategory.visibleTotal} 个置顶项（含管理员非有偿置顶与全站置顶）${selectedQuotaCategory.globalQuotaExempt ? '。本分类的士多甄选不会占用全站 4 个付费名额。' : '。'}`
-                      : `当前正在展示全部分类的 ${filteredQuotaRecords.length} 条生效服务，可通过下方分类卡片或右上角筛选器查看具体分类。` }}
+                      ? `${selectedQuotaCategory.categoryName} 当前优选池剩余名额；本分类的士多甄选走「${selectedQuotaCategory.globalPoolName}」，当前可见 ${selectedQuotaCategory.visibleTotal} 个置顶项（含管理员无偿置顶）。`
+                      : '请选择下方分类卡片或右上角筛选器，查看某个分类的优选池与甄选池占用情况。' }}
                   </p>
                   <div class="board-summary-meta">
                     <template v-if="selectedQuotaCategory">
-                      <span>分类付费置顶生效 {{ selectedQuotaCategory.categoryUsed }} 个</span>
-                      <span>可见全站 {{ selectedQuotaCategory.globalVisibleCount }} 个</span>
-                      <span v-if="selectedQuotaCategory.globalExemptVisibleCount > 0">全站豁免 {{ selectedQuotaCategory.globalExemptVisibleCount }} 个</span>
+                      <span>优选占用 {{ selectedQuotaCategory.categoryUsed }} 个</span>
+                      <span v-if="selectedQuotaCategory.categoryPendingUsed > 0">优选待支付 {{ selectedQuotaCategory.categoryPendingUsed }} 个</span>
+                      <span>甄选池 {{ selectedQuotaCategory.globalRemaining }} / {{ selectedQuotaCategory.globalLimit }}</span>
                       <span>{{ formatQuotaReleaseHint(selectedQuotaCategory.nextCategoryReleaseAt, selectedQuotaCategory.hasPermanentCategoryTop, selectedQuotaCategory.categoryUsed, 'category') }}</span>
                     </template>
                     <template v-else>
                       <span>分类总数 {{ quotaBoardCategories.length }} 个</span>
+                      <span>共享甄选池 {{ sharedGlobalQuota.remaining }} / {{ sharedGlobalQuota.limit }}</span>
                       <span>更新时间 {{ quotaBoard.generatedAt || '-' }}</span>
                     </template>
                   </div>
@@ -309,10 +325,10 @@
                     </span>
                     <span class="category-quota-pill">{{ quotaBoard.activeRecords?.length || 0 }} 条</span>
                   </div>
-                  <p class="category-quota-copy">查看全部分类下正在展示的置顶服务，快速判断付费名额与管理员非有偿置顶的总体分布。</p>
+                  <p class="category-quota-copy">查看全部分类当前已生效的置顶服务。共享甄选池与独立甄选池的真实剩余名额请以上方总览卡片为准。</p>
                   <div class="category-quota-meta">
                     <span>分类总数 {{ quotaBoardCategories.length }} 个</span>
-                    <span>全站生效 {{ globalQuota.globalUsed }} 个</span>
+                    <span>共享甄选占用 {{ sharedGlobalQuota.used }} 个</span>
                   </div>
                 </button>
 
@@ -329,13 +345,29 @@
                       <span class="category-quota-icon">{{ category.categoryIcon || '📦' }}</span>
                       {{ category.categoryName }}
                     </span>
-                    <span class="category-quota-pill">{{ category.categoryRemaining }} / {{ category.categoryLimit }}</span>
+                    <span class="category-quota-pill">优选 {{ category.categoryRemaining }} / {{ category.categoryLimit }}</span>
+                  </div>
+                  <div class="category-quota-stats">
+                    <div class="category-quota-stat">
+                      <span class="category-quota-stat-label">优选池</span>
+                      <strong class="category-quota-stat-value">{{ category.categoryRemaining }} / {{ category.categoryLimit }}</strong>
+                      <p class="category-quota-stat-copy">{{ category.categoryName }} 分类独立优选池</p>
+                    </div>
+                    <div class="category-quota-stat">
+                      <span class="category-quota-stat-label">甄选池</span>
+                      <strong class="category-quota-stat-value">{{ category.globalRemaining }} / {{ category.globalLimit }}</strong>
+                      <p class="category-quota-stat-copy">{{ category.globalPoolName }}</p>
+                    </div>
                   </div>
                   <p class="category-quota-copy">{{ formatCategoryQuotaCopy(category) }}</p>
                   <div class="category-quota-meta">
+                    <span>优选占用 {{ category.categoryUsed }} 个</span>
+                    <span v-if="category.categoryPendingUsed > 0">优选待支付 {{ category.categoryPendingUsed }} 个</span>
+                    <span>甄选展示 {{ category.globalVisibleCount }} 个</span>
+                    <span v-if="category.globalPendingUsed > 0">甄选待支付 {{ category.globalPendingUsed }} 个</span>
                     <span>当前可见 {{ category.visibleTotal }} 个置顶项</span>
-                    <span v-if="category.globalExemptVisibleCount > 0">豁免全站 {{ category.globalExemptVisibleCount }} 个</span>
                     <span>{{ formatQuotaReleaseHint(category.nextCategoryReleaseAt, category.hasPermanentCategoryTop, category.categoryUsed, 'category') }}</span>
+                    <span>{{ formatQuotaReleaseHint(category.nextGlobalReleaseAt, category.hasPermanentGlobalTop, category.globalUsed, 'global', category.globalPoolName) }}</span>
                   </div>
                 </button>
               </div>
@@ -346,8 +378,8 @@
                     <h3 class="board-list-title">生效服务</h3>
                     <p class="panel-subtitle">
                       {{ selectedQuotaCategory
-                        ? `当前展示 ${selectedQuotaCategory.categoryName} 分类下的全站置顶与分类置顶生效服务。`
-                        : '当前展示全部分类下的全站置顶与分类置顶生效服务。' }}
+                        ? `当前展示 ${selectedQuotaCategory.categoryName} 分类下已生效的士多甄选、士多优选与管理员无偿置顶。待支付占位已计入上方名额，不在此列表中展示。`
+                        : '当前展示全部分类下已生效的士多甄选、士多优选与管理员无偿置顶。待支付占位已计入上方名额，不在此列表中展示。' }}
                     </p>
                   </div>
                   <span class="board-generated-at">更新时间：{{ quotaBoard.generatedAt || '-' }}</span>
@@ -364,8 +396,8 @@
                           <span v-if="!record.isPaidService" class="active-service-source">
                             管理员非有偿
                           </span>
-                          <span v-else-if="record.packageType === 'global' && !record.occupiesGlobalQuota" class="active-service-source active-service-source--exempt">
-                            名额豁免
+                          <span v-else-if="record.packageType === 'global' && !record.usesSharedGlobalPool" class="active-service-source active-service-source--exempt">
+                            {{ record.globalPoolName }}
                           </span>
                           <span class="active-service-category">
                             {{ record.categoryIcon || '📦' }} {{ record.categoryName || '未分类' }}
@@ -509,6 +541,7 @@ const quotaBoardLoaded = ref(false)
 const quotaBoard = ref({
   generatedAt: '',
   globalQuota: null,
+  globalPools: [],
   categories: [],
   activeRecords: []
 })
@@ -531,34 +564,66 @@ function unwrap(result) {
 }
 
 const selectedProduct = computed(() => products.value.find(item => String(item.id) === String(selectedProductId.value)) || null)
-const selectedProductGlobalQuotaExempt = computed(() => Boolean(selectedProduct.value?.quota?.globalQuotaExempt))
+
+function formatQuotaValue(remaining = 0, limit = 0) {
+  return `${Number(remaining || 0)} / ${Number(limit || 0)}`
+}
+
+function getGlobalPoolLabel(poolName = '') {
+  return poolName || '甄选池'
+}
+
+function normalizeGlobalPool(pool = {}) {
+  return {
+    ...pool,
+    key: pool?.key || 'shared_all',
+    name: pool?.name || pool?.globalPoolName || '甄选池',
+    categoryName: pool?.categoryName || '',
+    limit: Number(pool?.limit ?? pool?.globalLimit ?? 0),
+    used: Number(pool?.used ?? pool?.globalUsed ?? 0),
+    pendingUsed: Number(pool?.pendingUsed ?? 0),
+    remaining: Number(pool?.remaining ?? pool?.globalRemaining ?? 0),
+    nextReleaseAt: pool?.nextReleaseAt || pool?.nextGlobalReleaseAt || '',
+    hasPermanentTop: Boolean(pool?.hasPermanentTop ?? pool?.hasPermanentGlobalTop),
+    usesSharedGlobalPool: pool?.usesSharedGlobalPool !== false
+  }
+}
+
+function getProductOptionDescription(item = {}) {
+  if (item.currentTopOrder) {
+    return `当前存在${item.currentTopOrder.isPaidService ? '' : '管理员非有偿'} ${item.currentTopOrder.packageName} 订单`
+  }
+  return `${item.categoryName || '未分类'} · 优选 ${formatQuotaValue(item.quota?.categoryRemaining, item.quota?.categoryLimit)} · ${getGlobalPoolLabel(item.quota?.globalPoolName)} ${formatQuotaValue(item.quota?.globalRemaining, item.quota?.globalLimit)}`
+}
 
 const productOptions = computed(() => products.value.map((item) => ({
   value: String(item.id),
   label: item.name,
-  description: item.currentTopOrder
-    ? `当前存在${item.currentTopOrder.isPaidService ? '' : '管理员非有偿'} ${item.currentTopOrder.packageName} 订单`
-    : item.quota?.globalQuotaExempt
-      ? `${item.categoryName || '未分类'} · 分类置顶余量 ${item.quota?.categoryRemaining ?? '-'} · 士多甄选不占全站 4 名额`
-      : `${item.categoryName || '未分类'} · 分类置顶余量 ${item.quota?.categoryRemaining ?? '-'} · 全站置顶余量 ${item.quota?.globalRemaining ?? '-'}`,
+  description: getProductOptionDescription(item),
   icon: item.categoryIcon || '📦',
   disabled: false
 })))
 const showPackageLoading = computed(() => optionsLoading.value && packages.value.length === 0)
 const showQuotaBoardLoading = computed(() => quotaBoardLoading.value && !quotaBoardLoaded.value)
 const quotaBoardCategories = computed(() => Array.isArray(quotaBoard.value.categories) ? quotaBoard.value.categories : [])
-const globalQuota = computed(() => quotaBoard.value.globalQuota || {
-  globalLimit: 4,
-  globalUsed: 0,
-  globalRemaining: 4,
-  exemptUsed: 0,
-  nextGlobalReleaseAt: '',
-  hasPermanentGlobalTop: false
+const quotaBoardGlobalPools = computed(() => {
+  if (Array.isArray(quotaBoard.value.globalPools) && quotaBoard.value.globalPools.length > 0) {
+    return quotaBoard.value.globalPools.map((item) => normalizeGlobalPool(item))
+  }
+  return quotaBoard.value.globalQuota ? [normalizeGlobalPool(quotaBoard.value.globalQuota)] : []
 })
-const globalQuotaSummaryText = computed(() => (
-  globalQuota.value.exemptUsed > 0
-    ? `当前剩余付费全站置顶名额。另有 ${globalQuota.value.exemptUsed} 个入站/卡券分类的士多甄选正在展示，但不占用这 4 个名额。`
-    : '当前剩余付费全站置顶名额。全站置顶会同步展示在所属分类，但不会占用付费分类置顶名额。'
+const sharedGlobalQuota = computed(() => (
+  quotaBoardGlobalPools.value.find((item) => item.usesSharedGlobalPool)
+  || normalizeGlobalPool(quotaBoard.value.globalQuota || {
+    key: 'shared_all',
+    name: '全部分类共享甄选池',
+    limit: 4,
+    used: 0,
+    pendingUsed: 0,
+    remaining: 4,
+    nextReleaseAt: '',
+    hasPermanentTop: false
+  })
 ))
 const quotaBoardCategoryOptions = computed(() => [
   {
@@ -570,9 +635,7 @@ const quotaBoardCategoryOptions = computed(() => [
   ...quotaBoardCategories.value.map((item) => ({
     value: String(item.categoryId),
     label: item.categoryName || '未分类',
-    description: item.globalQuotaExempt
-      ? `分类剩余 ${item.categoryRemaining}/${item.categoryLimit} · 本类士多甄选不占全站 4 名额`
-      : `分类剩余 ${item.categoryRemaining}/${item.categoryLimit} · 可见全站 ${item.globalVisibleCount}`,
+    description: `优选 ${formatQuotaValue(item.categoryRemaining, item.categoryLimit)} · ${getGlobalPoolLabel(item.globalPoolName)} ${formatQuotaValue(item.globalRemaining, item.globalLimit)}`,
     icon: item.categoryIcon || '📦'
   }))
 ])
@@ -600,7 +663,6 @@ const selectedConfig = computed(() => {
 const canSubmit = computed(() => {
   if (!selectedProduct.value || !selectedConfig.value) return false
   if (selectedProduct.value.currentTopOrder) return false
-  if (selectedConfig.value.packageType === 'global' && selectedProductGlobalQuotaExempt.value) return true
   const remaining = selectedConfig.value.packageType === 'global'
     ? selectedProduct.value.quota?.globalRemaining
     : selectedProduct.value.quota?.categoryRemaining
@@ -635,27 +697,59 @@ function handleProductChange() {
 }
 
 function getPackageDescription(type) {
+  const quota = selectedProduct.value?.quota || null
   if (type !== 'global') {
-    return '【士多优选】仅在所属分类顶部展示，占用该分类置顶名额'
+    return '【士多优选】仅在所属分类顶部展示，占用当前分类独立优选池，不会占用任何甄选池名额。'
   }
-  if (selectedProductGlobalQuotaExempt.value) {
-    return `【士多甄选】在 ${selectedProduct.value?.categoryName || '当前分类'} 中展示甄选样式与优先排序；由于该分类不会出现在“全部”中，因此不占用“全部”分类的 4 个名额`
+  if (!quota) {
+    return '【士多甄选】按甄选池管理：进入“全部”的分类共享 4 个名额，入站与卡券分别拥有独立的 6 个甄选名额。'
   }
-  return '【士多甄选】同步展示在所属分类和“全部”分类，且不占用分类置顶名额；入站、卡券分类因不会显示在“全部”中，不占用“全部”分类的 4 个名额'
+  if (quota.usesSharedGlobalPool) {
+    return `【士多甄选】会同步展示在所属分类和“全部”分类，占用「${getGlobalPoolLabel(quota.globalPoolName)}」名额，但不占用当前分类优选池。`
+  }
+  return `【士多甄选】仅在 ${selectedProduct.value?.categoryName || '当前分类'} 的甄选位展示，占用「${getGlobalPoolLabel(quota.globalPoolName)}」名额，不占用“全部分类共享甄选池”。`
 }
 
 function formatRemaining(type) {
-  if (!selectedProduct.value) return '请选择物品'
-  if (type === 'global' && selectedProductGlobalQuotaExempt.value) return '本类豁免'
+  if (!selectedProduct.value) return '先选物品'
   const remaining = type === 'global'
     ? selectedProduct.value.quota?.globalRemaining
     : selectedProduct.value.quota?.categoryRemaining
-  return String(Number(remaining || 0))
+  const limit = type === 'global'
+    ? selectedProduct.value.quota?.globalLimit
+    : selectedProduct.value.quota?.categoryLimit
+  return `${type === 'global' ? '甄选余量' : '优选余量'} ${formatQuotaValue(remaining, limit)}`
+}
+
+function getPackageQuotaLines(type) {
+  if (!selectedProduct.value) return ['请选择物品后查看对应名额池']
+
+  if (type === 'global') {
+    const lines = [
+      `当前池：${getGlobalPoolLabel(selectedProduct.value.quota?.globalPoolName)}`,
+      `剩余：${formatQuotaValue(selectedProduct.value.quota?.globalRemaining, selectedProduct.value.quota?.globalLimit)}`
+    ]
+    if (Number(selectedProduct.value.quota?.globalPendingUsed || 0) > 0) {
+      lines.push(`待支付占位：${Number(selectedProduct.value.quota?.globalPendingUsed || 0)} 个`)
+    }
+    if (!selectedProduct.value.quota?.usesSharedGlobalPool) {
+      lines.push('该池不占用“全部分类共享甄选池”')
+    }
+    return lines
+  }
+
+  const lines = [
+    `当前池：${selectedProduct.value.categoryName || '当前分类'} 优选池`,
+    `剩余：${formatQuotaValue(selectedProduct.value.quota?.categoryRemaining, selectedProduct.value.quota?.categoryLimit)}`
+  ]
+  if (Number(selectedProduct.value.quota?.categoryPendingUsed || 0) > 0) {
+    lines.push(`待支付占位：${Number(selectedProduct.value.quota?.categoryPendingUsed || 0)} 个`)
+  }
+  return lines
 }
 
 function isPackageDisabled(type) {
   if (!selectedProduct.value) return true
-  if (type === 'global' && selectedProductGlobalQuotaExempt.value) return false
   const remaining = type === 'global'
     ? selectedProduct.value.quota?.globalRemaining
     : selectedProduct.value.quota?.categoryRemaining
@@ -677,9 +771,11 @@ function getOrderStatusText(status = '') {
   }[status] || status
 }
 
-function formatQuotaReleaseHint(nextReleaseAt = '', hasPermanent = false, used = 0, scope = 'category') {
+function formatQuotaReleaseHint(nextReleaseAt = '', hasPermanent = false, used = 0, scope = 'category', poolName = '') {
   if (used <= 0) {
-    return scope === 'global' ? '当前全站名额充足' : '当前分类名额充足'
+    return scope === 'global'
+      ? `${poolName || '甄选池'} 当前名额充足`
+      : '当前分类优选池名额充足'
   }
   if (nextReleaseAt) {
     return `最早释放：${nextReleaseAt}`
@@ -691,11 +787,18 @@ function formatQuotaReleaseHint(nextReleaseAt = '', hasPermanent = false, used =
 }
 
 function formatCategoryQuotaCopy(category = {}) {
-  const globalVisibleCount = Number(category.globalVisibleCount || 0)
-  if (category.globalQuotaExempt) {
-    return `分类付费置顶生效 ${category.categoryUsed} 个，可见士多甄选 ${globalVisibleCount} 个；这些士多甄选不占用全站 4 个名额。`
+  const globalPoolText = `${getGlobalPoolLabel(category.globalPoolName)} ${formatQuotaValue(category.globalRemaining, category.globalLimit)}`
+  if (category.usesSharedGlobalPool) {
+    return `优选池剩余 ${formatQuotaValue(category.categoryRemaining, category.categoryLimit)}；甄选走共享池，当前池余量 ${globalPoolText}。`
   }
-  return `分类付费置顶生效 ${category.categoryUsed} 个，可见全站置顶 ${globalVisibleCount} 个。`
+  return `优选池剩余 ${formatQuotaValue(category.categoryRemaining, category.categoryLimit)}；甄选走独立池，当前池余量 ${globalPoolText}，不占用“全部”共享池。`
+}
+
+function formatGlobalPoolSummary(pool = {}) {
+  if (pool.usesSharedGlobalPool) {
+    return `所有会进入“全部”分类的商品共用这 ${Number(pool.limit || 0)} 个士多甄选名额。`
+  }
+  return `${pool.categoryName || '当前分类'} 专属士多甄选池，不占用“全部分类共享甄选池”。`
 }
 
 async function loadOptions() {
@@ -737,6 +840,7 @@ async function loadQuotaBoard() {
     quotaBoard.value = {
       generatedAt: result?.generatedAt || '',
       globalQuota: result?.globalQuota || null,
+      globalPools: Array.isArray(result?.globalPools) ? result.globalPools : [],
       categories: Array.isArray(result?.categories) ? result.categories : [],
       activeRecords: Array.isArray(result?.activeRecords) ? result.activeRecords : []
     }
@@ -1203,6 +1307,22 @@ onMounted(async () => {
   font-weight: 700;
 }
 
+.package-quota-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.package-quota-line {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--services-panel-bg);
+  border: 1px solid var(--services-accent-border-soft);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--services-copy);
+}
+
 .duration-list {
   display: grid;
   gap: 10px;
@@ -1502,6 +1622,11 @@ onMounted(async () => {
   background: var(--services-highlight-bg);
 }
 
+.board-summary-card--special {
+  background: linear-gradient(180deg, rgba(249, 237, 214, 0.72) 0%, var(--services-card-bg) 100%);
+  border-color: rgba(198, 146, 68, 0.22);
+}
+
 .board-summary-card--focus {
   background: var(--services-panel-bg);
 }
@@ -1614,6 +1739,44 @@ onMounted(async () => {
   font-size: 12px;
   font-weight: 800;
   color: var(--services-accent);
+}
+
+.category-quota-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.category-quota-stat {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--services-accent-border-soft);
+  background: var(--services-card-bg-strong);
+  display: grid;
+  gap: 6px;
+}
+
+.category-quota-stat-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--services-accent);
+}
+
+.category-quota-stat-value {
+  font-size: 18px;
+  line-height: 1.1;
+  color: var(--services-title);
+}
+
+.category-quota-stat-copy {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
 }
 
 .category-quota-copy {
@@ -2238,6 +2401,10 @@ onMounted(async () => {
   .category-quota-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+  }
+
+  .category-quota-stats {
+    grid-template-columns: 1fr;
   }
 
   .category-quota-title {
