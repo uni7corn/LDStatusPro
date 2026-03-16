@@ -48,7 +48,7 @@
         </div>
         
         <!-- 主内容区 -->
-        <div class="detail-main">
+        <div :class="['detail-main', { 'detail-main--landscape': isLandscapeDetailLayout }]">
           <!-- 左侧：图片 -->
           <div class="detail-media">
             <div class="media-wrapper" :style="coverStyle" @click="openImagePreview">
@@ -57,6 +57,7 @@
                 :src="product.image_url"
                 :alt="product.name"
                 class="media-image"
+                @load="handleCoverImageLoad"
                 @error="handleImageError"
               />
               <span v-else class="media-placeholder">{{ categoryIcon }}</span>
@@ -81,7 +82,7 @@
             </div>
             
             <!-- 测试模式提示 -->
-            <div v-if="isTestMode" class="test-mode-banner">
+            <div v-if="isTestMode" class="test-mode-banner detail-test-banner">
               <span class="test-badge">🧪 测试模式</span>
               <span class="test-desc">{{ isSeller ? '只有您可以购买此物品' : '该物品为测试模式，仅卖家可购买' }}</span>
             </div>
@@ -111,7 +112,13 @@
                 <span class="status-text">{{ updateTime }}</span>
               </div>
             </div>
-            
+
+            <div class="detail-side-panel">
+              <div v-if="isTestMode" class="test-mode-banner detail-test-banner-landscape">
+                <span class="test-badge">🧪 测试模式</span>
+                <span class="test-desc">{{ isSeller ? '只有您可以购买此物品' : '该物品为测试模式，仅卖家可购买' }}</span>
+              </div>
+
             <div
               v-if="isPlatformOrder && !isOutOfStock && canPurchase && (!isTestMode || isSeller)"
               class="quantity-section"
@@ -229,6 +236,8 @@
         </div>
 
         <!-- 物品描述区域 -->
+        </div>
+
         <div class="detail-description">
           <h2 class="section-title">📝 物品详情</h2>
           <div class="description-content">{{ product.description || '暂无描述' }}</div>
@@ -785,6 +794,7 @@ const selectedQuantity = ref(1)
 const restockSubscribed = ref(false)
 const restockStatusLoading = ref(false)
 const restockSubscribeLoading = ref(false)
+const coverAspectRatio = ref(null)
 const commentLoading = ref(false)
 const commentList = ref([])
 const commentEnabled = ref(false)
@@ -842,6 +852,10 @@ const isStore = computed(() => isStoreProduct(product.value))
 const isLegacyLink = computed(() => isLegacyLinkProduct(product.value))
 const isPlatformOrder = computed(() => isPlatformOrderProduct(product.value))
 const supportsComments = computed(() => isPlatformOrder.value)
+const isLandscapeDetailLayout = computed(() => {
+  const ratio = Number(coverAspectRatio.value)
+  return Number.isFinite(ratio) && ratio > 1
+})
 
 // 测试模式相关
 const isTestMode = computed(() => !!product.value?.is_test_mode || !!product.value?.isTestMode)
@@ -1057,6 +1071,55 @@ const coverStyle = computed(() => {
 })
 
 let latestRestockStatusRequestId = 0
+let latestCoverProbeRequestId = 0
+
+function setCoverAspectRatio(width, height) {
+  const naturalWidth = Number(width)
+  const naturalHeight = Number(height)
+
+  if (!Number.isFinite(naturalWidth) || !Number.isFinite(naturalHeight) || naturalWidth <= 0 || naturalHeight <= 0) {
+    coverAspectRatio.value = null
+    return
+  }
+
+  coverAspectRatio.value = naturalWidth / naturalHeight
+}
+
+async function syncCoverAspectRatio(imageUrl) {
+  const requestId = ++latestCoverProbeRequestId
+  coverAspectRatio.value = null
+
+  if (!imageUrl || typeof window === 'undefined') {
+    return
+  }
+
+  const image = new window.Image()
+  image.decoding = 'async'
+  image.src = imageUrl
+
+  if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
+    if (requestId === latestCoverProbeRequestId) {
+      setCoverAspectRatio(image.naturalWidth, image.naturalHeight)
+    }
+    return
+  }
+
+  await new Promise((resolve) => {
+    image.onload = () => {
+      if (requestId === latestCoverProbeRequestId) {
+        setCoverAspectRatio(image.naturalWidth, image.naturalHeight)
+      }
+      resolve()
+    }
+
+    image.onerror = () => {
+      if (requestId === latestCoverProbeRequestId) {
+        coverAspectRatio.value = null
+      }
+      resolve()
+    }
+  })
+}
 
 async function refreshRestockSubscriptionStatus() {
   const requestId = ++latestRestockStatusRequestId
@@ -1175,8 +1238,20 @@ watch(
 )
 
 // 方法
+watch(
+  () => product.value?.image_url || '',
+  (imageUrl) => {
+    void syncCoverAspectRatio(imageUrl)
+  },
+  { immediate: true }
+)
+
 function goLogin() {
   router.push({ name: 'Login', query: { redirect: route.fullPath } })
+}
+
+function handleCoverImageLoad(event) {
+  setCoverAspectRatio(event?.target?.naturalWidth, event?.target?.naturalHeight)
 }
 
 function formatCommentTime(timestamp) {
@@ -1805,6 +1880,7 @@ async function toggleFavorite() {
 }
 
 function handleImageError(e) {
+  coverAspectRatio.value = null
   e.target.style.display = 'none'
 }
 
@@ -2263,10 +2339,29 @@ async function handleOpenStore() {
   margin-bottom: 20px;
 }
 
+.detail-main--landscape {
+  grid-template-areas:
+    'name'
+    'price'
+    'status'
+    'media'
+    'side';
+}
+
 @media (min-width: 768px) {
   .detail-main {
     grid-template-columns: 1fr 1fr;
     padding: 32px;
+  }
+
+  .detail-main--landscape {
+    grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.9fr);
+    grid-template-areas:
+      'name name'
+      'price price'
+      'status status'
+      'media side';
+    align-items: start;
   }
 }
 
@@ -2275,6 +2370,13 @@ async function handleOpenStore() {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.detail-main--landscape .detail-media {
+  grid-area: media;
+  align-self: start;
+  justify-content: flex-start;
+  align-items: flex-start;
 }
 
 .media-wrapper {
@@ -2291,6 +2393,10 @@ async function handleOpenStore() {
   background: var(--bg-secondary);
   cursor: pointer;
   transition: all 0.3s;
+}
+
+.detail-main--landscape .media-wrapper {
+  max-width: 100%;
 }
 
 .media-wrapper:hover {
@@ -2554,12 +2660,26 @@ async function handleOpenStore() {
   gap: 20px;
 }
 
+.detail-side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.detail-main--landscape .detail-info-panel {
+  display: contents;
+}
+
 .detail-name {
   font-size: 24px;
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
   line-height: 1.4;
+}
+
+.detail-main--landscape .detail-name {
+  grid-area: name;
 }
 
 @media (min-width: 768px) {
@@ -2576,6 +2696,13 @@ async function handleOpenStore() {
   padding: 16px 20px;
   background: linear-gradient(135deg, #fef9f3 0%, #fdf6ee 100%);
   border-radius: 14px;
+}
+
+.detail-main--landscape .price-section {
+  grid-area: price;
+  justify-self: stretch;
+  width: 100%;
+  max-width: none;
 }
 
 .price-main {
@@ -2604,6 +2731,10 @@ async function handleOpenStore() {
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
+}
+
+.detail-main--landscape .status-row {
+  grid-area: status;
 }
 
 .status-item {
@@ -2762,6 +2893,12 @@ async function handleOpenStore() {
 .action-section {
   margin-top: auto;
   padding-top: 10px;
+}
+
+.detail-main--landscape .detail-side-panel {
+  grid-area: side;
+  min-width: 0;
+  gap: 16px;
 }
 
 .buy-action-row {
@@ -3602,7 +3739,19 @@ async function handleOpenStore() {
   background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);
   border: 1px solid #a5f3fc;
   border-radius: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
+}
+
+.detail-test-banner-landscape {
+  display: none;
+}
+
+.detail-main--landscape .detail-test-banner {
+  display: none;
+}
+
+.detail-main--landscape .detail-test-banner-landscape {
+  display: flex;
 }
 
 .test-badge {
