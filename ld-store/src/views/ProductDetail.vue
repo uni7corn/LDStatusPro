@@ -92,11 +92,11 @@
                 <span class="status-icon">👁</span>
                 <span class="status-text">{{ product.view_count || 0 }} 浏览</span>
               </div>
-              <div v-if="isCdk" class="status-item">
+              <div v-if="isPlatformOrder" class="status-item">
                 <span class="status-icon">📦</span>
                 <span :class="['status-text', { low: isOutOfStock }]">库存 {{ stockDisplay }}</span>
               </div>
-              <div v-if="isCdk && soldCount > 0" class="status-item hot">
+              <div v-if="isPlatformOrder && soldCount > 0" class="status-item hot">
                 <span class="status-icon">🔥</span>
                 <span class="status-text">已售 {{ soldCount }}</span>
               </div>
@@ -113,7 +113,7 @@
             </div>
             
             <div
-              v-if="isCdk && !isOutOfStock && canPurchase && (!isTestMode || isSeller)"
+              v-if="isPlatformOrder && !isOutOfStock && canPurchase && (!isTestMode || isSeller)"
               class="quantity-section"
             >
               <div class="quantity-title">购买数量</div>
@@ -131,6 +131,10 @@
               </div>
               <div class="quantity-summary">预计支付 {{ totalPrice }} LDC</div>
               <div v-if="quantityHint" class="quantity-hint">{{ quantityHint }}</div>
+            </div>
+
+            <div v-if="isNormal" class="manual-delivery-notice">
+              支付完成后请主动联系卖家获取服务，订单会保留在平台内，卖家需手动履约。
             </div>
 
             <div
@@ -162,15 +166,16 @@
                                               🏪 立即前往
                                             </button>
                                           </template>
-                                          <template v-else-if="isCdk">
-                                            <div v-if="isOutOfStock" class="buy-action-row">
-                                              <button
-                                                class="buy-btn disabled"
+                  <template v-else-if="isPlatformOrder">
+                    <div v-if="isOutOfStock" class="buy-action-row">
+                      <button
+                        class="buy-btn disabled"
                                                 disabled
                                               >
                                                 😢 已售罄
                                               </button>
                                               <button
+                                                v-if="isCdk"
                                                 class="buy-btn restock"
                                                 :class="{ subscribed: restockSubscribed }"
                                                 :disabled="restockStatusLoading || restockSubscribeLoading || restockSubscribed"
@@ -179,11 +184,11 @@
                                                 {{ restockButtonText }}
                                               </button>
                                             </div>
-                                            <button
-                                              v-else-if="isTestMode && !isSeller"
-                                              class="buy-btn disabled test-only"
-                                              disabled
-                                            >
+                      <button
+                        v-else-if="isCdk && isTestMode && !isSeller"
+                        class="buy-btn disabled test-only"
+                        disabled
+                      >
                                               🧪 测试物品
                                             </button>
                                             <button
@@ -195,22 +200,30 @@
                                             </button>
                                             <button
                                               v-else
-                                              class="buy-btn"
-                                              :class="{ test: isTestMode && isSeller }"
-                                              :disabled="purchasing"
-                                              @click="handleBuyCdk"
-                                            >
-                                              {{ purchasing ? '创建订单中...' : buyButtonText }}
-                                            </button>
-                                          </template>
-                                          <template v-else>
-                                            <button
-                                              class="buy-btn"
-                                              @click="handleBuyLink"
-                                            >
-                                              🛒 立即兑换
-                                            </button>
-                                          </template>
+                        class="buy-btn"
+                        :class="{ test: isTestMode && isSeller }"
+                        :disabled="purchasing"
+                        @click="handleBuyProduct"
+                      >
+                        {{ purchasing ? '创建订单中...' : buyButtonText }}
+                      </button>
+                    </template>
+                  <template v-else-if="isLegacyLink">
+                    <button
+                      class="buy-btn disabled"
+                      disabled
+                    >
+                      外链已停用
+                    </button>
+                  </template>
+                  <template v-else>
+                    <button
+                      class="buy-btn"
+                      @click="handleOpenStore"
+                    >
+                      🏪 立即前往
+                    </button>
+                  </template>
             </div>
           </div>
         </div>
@@ -222,7 +235,7 @@
         </div>
 
         <div
-          v-if="isCdk"
+          v-if="supportsComments"
           class="detail-comment-summary"
         >
           <div class="comment-summary-main">
@@ -250,7 +263,7 @@
           </div>
         </div>
 
-        <div id="comments" v-if="isCdk" class="detail-comments">
+        <div id="comments" v-if="supportsComments" class="detail-comments">
           <div class="comment-header">
             <div class="comment-header-title">
               <h2 class="section-title">💬 物品评论</h2>
@@ -286,6 +299,7 @@
                     />
                     <span class="comment-name">{{ item.user?.nickname || item.user?.username || '匿名用户' }}</span>
                     <span class="comment-username">@{{ item.user?.username || 'unknown' }}</span>
+                    <span v-if="item.is_seller" class="comment-seller-tag">卖家</span>
                     <span v-if="item.is_purchased" class="comment-purchased-tag">已购</span>
                     <span
                       v-if="item.is_purchased && item.rating_value !== null"
@@ -395,6 +409,7 @@
                           <div class="comment-reply-meta">
                             <span class="comment-reply-name">{{ reply.user?.nickname || reply.user?.username || '匿名用户' }}</span>
                             <span class="comment-reply-username">@{{ reply.user?.username || 'unknown' }}</span>
+                            <span v-if="reply.is_seller" class="comment-seller-tag comment-seller-tag--reply">卖家</span>
                             <time class="comment-reply-time">{{ formatCommentTime(reply.created_at) }}</time>
                           </div>
                           <div class="comment-reply-content">
@@ -538,7 +553,7 @@
                                   🏪 立即前往
                                 </button>
                               </template>
-                              <template v-else-if="isCdk">
+                              <template v-else-if="isPlatformOrder">
                                 <div v-if="isOutOfStock" class="buy-action-row">
                                   <button
                                     class="buy-btn disabled"
@@ -547,6 +562,7 @@
                                     😢 已售罄
                                   </button>
                                   <button
+                                    v-if="isCdk"
                                     class="buy-btn restock"
                                     :class="{ subscribed: restockSubscribed }"
                                     :disabled="restockStatusLoading || restockSubscribeLoading || restockSubscribed"
@@ -556,7 +572,7 @@
                                   </button>
                                 </div>
                                 <button
-                                  v-else-if="isTestMode && !isSeller"
+                                  v-else-if="isCdk && isTestMode && !isSeller"
                                   class="buy-btn disabled test-only"
                                   disabled
                                 >
@@ -574,17 +590,25 @@
                                   class="buy-btn"
                                   :class="{ test: isTestMode && isSeller }"
                                   :disabled="purchasing"
-                                  @click="handleBuyCdk"
+                                  @click="handleBuyProduct"
                                 >
                                   {{ purchasing ? '创建订单中...' : buyButtonText }}
+                                </button>
+                              </template>
+                              <template v-else-if="isLegacyLink">
+                                <button
+                                  class="buy-btn disabled"
+                                  disabled
+                                >
+                                  外链已停用
                                 </button>
                               </template>
                               <template v-else>
                                 <button
                                   class="buy-btn"
-                                  @click="handleBuyLink"
+                                  @click="handleOpenStore"
                                 >
-                                  🛒 立即兑换
+                                  🏪 立即前往
                                 </button>
                               </template>
         </div>
@@ -724,6 +748,18 @@ import StarRatingDisplay from '@/components/common/StarRatingDisplay.vue'
 import StarRatingInput from '@/components/common/StarRatingInput.vue'
 import { buildAvatarCandidates } from '@/utils/avatar'
 import { api } from '@/utils/api'
+import {
+  getAvailableStock,
+  getStockDisplay,
+  isCdkProduct,
+  isLegacyLinkProduct,
+  isNormalProduct,
+  isOutOfStock as isProductOutOfStock,
+  isPlatformOrderProduct,
+  isStoreProduct,
+  isUnlimitedStock,
+  requiresBuyerContact
+} from '@/utils/shopProduct'
 import Skeleton from '@/components/common/Skeleton.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 
@@ -794,15 +830,18 @@ const COMMENT_PUBLIC_STATUS_SET = new Set(['ai_approved', 'manual_approved'])
 const quickReportReasons = [
   '收款配置缺失，无法生成支付链接',
   '商品仍处于测试模式，无法正常购买',
-  '支付链接无效或跳转异常',
+  '平台支付配置异常，无法创建订单',
   '价格或描述与实际不符',
   '疑似无法交付或存在欺诈风险'
 ]
 
 // 物品类型
-const productType = computed(() => product.value?.product_type || 'link')
-const isCdk = computed(() => productType.value === 'cdk')
-const isStore = computed(() => productType.value === 'store')
+const isCdk = computed(() => isCdkProduct(product.value))
+const isNormal = computed(() => isNormalProduct(product.value))
+const isStore = computed(() => isStoreProduct(product.value))
+const isLegacyLink = computed(() => isLegacyLinkProduct(product.value))
+const isPlatformOrder = computed(() => isPlatformOrderProduct(product.value))
+const supportsComments = computed(() => isPlatformOrder.value)
 
 // 测试模式相关
 const isTestMode = computed(() => !!product.value?.is_test_mode || !!product.value?.isTestMode)
@@ -827,54 +866,11 @@ const discountPercent = computed(() => Math.round((1 - discount.value) * 100))
 const finalPrice = computed(() => formatPrice(price.value * discount.value))
 const originalPrice = computed(() => formatPrice(price.value))
 
-function toSafeInt(value, fallback = 0) {
-  const parsed = Number.parseInt(value, 10)
-  return Number.isFinite(parsed) ? parsed : fallback
-}
-
 // 库存
-const stock = computed(() => toSafeInt(product.value?.stock, 0))
-const cdkAvailableStock = computed(() => {
-  if (product.value?.availableStock !== undefined && product.value?.availableStock !== null && product.value?.availableStock !== '') {
-    return Math.max(0, toSafeInt(product.value.availableStock, 0))
-  }
-  if (product.value?.cdkStats?.available !== undefined && product.value?.cdkStats?.available !== null) {
-    return Math.max(0, toSafeInt(product.value.cdkStats.available, 0))
-  }
-  return null
-})
-const cdkTotalStock = computed(() => {
-  if (product.value?.cdkStats?.total !== undefined && product.value?.cdkStats?.total !== null) {
-    return Math.max(0, toSafeInt(product.value.cdkStats.total, 0))
-  }
-  return null
-})
-const isUnlimitedStock = computed(() => {
-  if (isCdk.value && (cdkAvailableStock.value !== null || cdkTotalStock.value !== null)) {
-    // CDK 商品如果返回了库存统计，优先以统计为准，避免 0 库存误显示为无限
-    return false
-  }
-  return stock.value === -1
-})
-const availableStock = computed(() => {
-  if (isCdk.value && cdkAvailableStock.value !== null) return cdkAvailableStock.value
-  if (isUnlimitedStock.value) return -1
-  return Math.max(0, stock.value)
-})
-const totalStock = computed(() => {
-  if (isCdk.value && cdkTotalStock.value !== null) return cdkTotalStock.value
-  if (availableStock.value === -1) return -1
-  return Math.max(0, stock.value)
-})
-const isOutOfStock = computed(() => 
-  isCdk.value && !isUnlimitedStock.value && availableStock.value <= 0
-)
-const stockClass = computed(() => isOutOfStock.value ? 'low' : '')
-const stockDisplay = computed(() => {
-  if (isUnlimitedStock.value) return '∞'
-  if (totalStock.value <= 0) return `${Math.max(0, availableStock.value)}`
-  return `${availableStock.value}/${totalStock.value}`
-})
+const availableStock = computed(() => getAvailableStock(product.value))
+const hasUnlimitedStock = computed(() => isUnlimitedStock(product.value))
+const isOutOfStock = computed(() => isProductOutOfStock(product.value))
+const stockDisplay = computed(() => getStockDisplay(product.value))
 const restockButtonText = computed(() => {
   if (restockStatusLoading.value) return '加载中...'
   if (restockSubscribeLoading.value) return '订阅中...'
@@ -914,7 +910,7 @@ const maxSelectableQuantity = computed(() => {
     limits.push(maxPurchaseQuantity.value)
   }
 
-  if (!isUnlimitedStock.value) {
+  if (!hasUnlimitedStock.value) {
     limits.push(Math.max(0, Number(availableStock.value) || 0))
   } else {
     const available = Number(availableStock.value)
@@ -932,10 +928,11 @@ const totalPrice = computed(() =>
 )
 
 const buyButtonText = computed(() => {
+  const actionText = isNormal.value ? '立即下单' : '立即兑换'
   if (selectedQuantity.value > 1) {
-    return `🛒 立即兑换 ${selectedQuantity.value} 个 (${totalPrice.value} LDC)`
+    return `🛒 ${actionText} ${selectedQuantity.value} 个 (${totalPrice.value} LDC)`
   }
-  return `🛒 立即兑换 (${totalPrice.value} LDC)`
+  return `🛒 ${actionText} (${totalPrice.value} LDC)`
 })
 
 const detailErrorContent = computed(() => {
@@ -973,9 +970,13 @@ const quantityHint = computed(() => {
     hints.push(`兑换需信任等级 TL${purchaseTrustLevel.value}`)
   }
 
-  if (!isUnlimitedStock.value) {
+  if (!hasUnlimitedStock.value) {
     const canBuyNow = Math.max(0, Number(availableStock.value) || 0)
     hints.push(`当前可购买 ${canBuyNow} 个`)
+  }
+
+  if (requiresBuyerContact(product.value)) {
+    hints.push('支付后需主动联系卖家')
   }
 
   return hints.join('，')
@@ -1121,7 +1122,7 @@ onMounted(async () => {
     detailErrorMessage.value = ''
     // 更新页面标题
     document.title = `${product.value.name} - LD士多`
-    if (product.value.product_type === 'cdk') {
+    if (isPlatformOrderProduct(product.value)) {
       await loadComments(1)
     }
   } else {
@@ -1146,12 +1147,12 @@ watch(
   () => [
     product.value?.id,
     maxSelectableQuantity.value,
-    isCdk.value,
+    isPlatformOrder.value,
     isOutOfStock.value,
     canPurchase.value
   ],
   () => {
-    if (!isCdk.value || isOutOfStock.value || !canPurchase.value) {
+    if (!isPlatformOrder.value || isOutOfStock.value || !canPurchase.value) {
       selectedQuantity.value = 1
       return
     }
@@ -1361,6 +1362,7 @@ async function loadComments(page = 1) {
     commentList.value = list.map((item) => ({
       ...item,
       status: String(item?.status || '').trim(),
+      is_seller: !!(item?.is_seller ?? item?.isSeller),
       rating_value: normalizeCommentRatingValue(item?.rating_value ?? item?.ratingValue, { allowNull: true }),
       upvote_count: Number(item?.upvote_count || item?.upvoteCount || 0),
       downvote_count: Number(item?.downvote_count || item?.downvoteCount || 0),
@@ -1499,6 +1501,7 @@ async function loadCommentReplies(commentId, page = 1, options = {}) {
     const list = Array.isArray(data.replies) ? data.replies : []
     const normalizedList = list.map((item) => ({
       ...item,
+      is_seller: !!(item?.is_seller ?? item?.isSeller),
       status: String(item?.status || '').trim()
     }))
     const currentList = commentReplyMap.value[safeCommentId] || []
@@ -2016,7 +2019,7 @@ async function openExternalProductLink() {
   }
 }
 
-async function handleBuyCdk() {
+async function handleBuyProduct() {
   // 检查登录
   if (!userStore.isLoggedIn) {
     if (purchaseTrustLevel.value > 0) {
@@ -2047,11 +2050,15 @@ async function handleBuyCdk() {
   const quantity = clampQuantity(selectedQuantity.value)
   selectedQuantity.value = quantity
   const totalAmount = formatPrice(price.value * discount.value * quantity)
+  const confirmMessage = isNormal.value
+    ? `确认购买「${escapeHtml(product.value.name)}」？<br><br>📦 数量：<strong>${quantity}</strong><br>💰 总价：<strong>${totalAmount} LDC</strong><br><br>支付完成后请主动联系卖家获取服务，订单会保留在平台内等待卖家履约。`
+    : `确认兑换「${escapeHtml(product.value.name)}」？<br><br>📦 数量：<strong>${quantity}</strong><br>💰 总价：<strong>${totalAmount} LDC</strong><br><br>支付后系统将自动发放 CDK 到您的订单中。`
+  const dialogTitle = isNormal.value ? '确认下单' : '确认兑换'
 
   // 确认兑换
   const confirmed = await dialog.confirm(
-    `确认兑换「${escapeHtml(product.value.name)}」？<br><br>📦 数量：<strong>${quantity}</strong><br>💰 总价：<strong>${totalAmount} LDC</strong><br><br>支付后系统将自动发放 CDK 到您的订单中。`,
-    { title: '确认兑换', icon: '🛒' }
+    confirmMessage,
+    { title: dialogTitle, icon: '🛒' }
   )
   
   if (!confirmed) return
@@ -2073,8 +2080,11 @@ async function handleBuyCdk() {
       }
       
       // 提示用户
+      const orderCreatedMessage = isNormal.value
+        ? `订单已创建：<strong>${result.data.orderNo}</strong><br><br>📝 请在新窗口中完成支付<br>⏰ 订单有效期 <strong>5分钟</strong>，请尽快完成支付<br>📨 支付成功后请主动联系卖家获取服务<br>📋 可在「我的订单」中查看状态`
+        : `订单已创建：<strong>${result.data.orderNo}</strong><br><br>📝 请在新窗口中完成支付<br>⏰ 订单有效期 <strong>5分钟</strong>，请尽快完成支付<br>✅ 支付完成后 CDK 将自动发放<br>📋 可在「我的订单」中查看状态`
       await dialog.alert(
-        `订单已创建：<strong>${result.data.orderNo}</strong><br><br>📝 请在新窗口中完成支付<br>⏰ 订单有效期 <strong>5分钟</strong>，请尽快完成支付<br>✅ 支付完成后 CDK 将自动发放<br>📋 可在「我的订单」中查看状态`,
+        orderCreatedMessage,
         { title: '订单创建成功', icon: '🎉' }
       )
     } else {
@@ -2090,37 +2100,6 @@ async function handleBuyCdk() {
     toast.error('创建订单失败：' + e.message)
   } finally {
     purchasing.value = false
-  }
-}
-
-// 外链物品兑换
-async function handleBuyLink() {
-  if (!canPurchaseByTrustLevel.value) {
-    await handleBlockedPurchaseByTrustLevel()
-    return
-  }
-
-  const confirmed = await dialog.confirm(
-    `<div style="text-align: left; line-height: 1.8;">
-      <p>⚠️ <strong>外链物品提示</strong></p>
-      <p style="margin-top: 12px;">此物品为外链物品，点击「继续兑换」后将跳转到卖家设置的支付链接。</p>
-      <ul style="margin: 12px 0; padding-left: 20px; color: var(--text-secondary);">
-        <li>您将直接向卖家支付 LDC</li>
-        <li>交易不会在平台留下支付记录</li>
-        <li>兑换后请联系卖家获取服务</li>
-      </ul>
-      <p style="color: var(--text-tertiary); font-size: 13px;">💡 建议：交易前可先与卖家沟通确认</p>
-    </div>`,
-    { 
-      title: '外链物品提示', 
-      icon: '🔗',
-      confirmText: '继续兑换',
-      cancelText: '取消'
-    }
-  )
-  
-  if (confirmed) {
-    await openExternalProductLink()
   }
 }
 
@@ -2715,6 +2694,16 @@ async function handleOpenStore() {
   color: var(--text-tertiary);
 }
 
+.manual-delivery-notice {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 /* 卖家卡片 */
 .seller-card {
   display: flex;
@@ -3015,6 +3004,22 @@ async function handleOpenStore() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.comment-seller-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #ffe1ea;
+  color: #d85d7f;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.comment-seller-tag--reply {
+  font-size: 10px;
 }
 
 .comment-purchased-tag {
