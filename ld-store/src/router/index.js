@@ -1,6 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { MAINTENANCE_MODE, MAINTENANCE_TITLE } from '@/config/maintenance'
+import {
+  MAINTENANCE_STATE,
+  ensureMaintenanceStatusLoaded,
+  isFullMaintenanceMode,
+  isRestrictedMaintenanceMode,
+} from '@/config/maintenance'
 import { storage } from '@/utils/storage'
 import HomeView from '@/views/Home.vue'
 
@@ -183,6 +188,16 @@ const routes = [
 
 // 需要保持滚动位置的页面
 const keepScrollRoutes = ['Home', 'Category']
+const fullMaintenanceAllowedRoutes = new Set(['Maintenance', 'Login', 'AuthCallback'])
+const restrictedMaintenanceAllowedRoutes = new Set([
+  'Home',
+  'Login',
+  'AuthCallback',
+  'Orders',
+  'MyProducts',
+  'OrderDetail',
+  'BuyOrderDetail',
+])
 
 // 创建路由实例
 const router = createRouter({
@@ -210,19 +225,28 @@ const router = createRouter({
 
 // 路由守卫
 router.beforeEach(async (to, from, next) => {
-  if (MAINTENANCE_MODE) {
-    if (to.name !== 'Maintenance') {
+  await ensureMaintenanceStatusLoaded()
+
+  const routeName = String(to.name || '')
+
+  if (isFullMaintenanceMode()) {
+    if (!fullMaintenanceAllowedRoutes.has(routeName)) {
       next({ name: 'Maintenance', replace: true })
       return
     }
-  } else if (to.name === 'Maintenance') {
+  } else if (isRestrictedMaintenanceMode()) {
+    if (!restrictedMaintenanceAllowedRoutes.has(routeName)) {
+      next({ name: 'Home', replace: true })
+      return
+    }
+  } else if (routeName === 'Maintenance') {
     next({ name: 'Home', replace: true })
     return
   }
 
   // 更新页面标题
-  if (to.name === 'Maintenance') {
-    document.title = MAINTENANCE_TITLE
+  if (routeName === 'Maintenance') {
+    document.title = MAINTENANCE_STATE.title
   } else if (to.meta.title) {
     document.title = to.meta.title
   }

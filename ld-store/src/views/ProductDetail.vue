@@ -160,6 +160,10 @@
               <div class="quantity-summary">预计支付 {{ totalPrice }} LDC</div>
               <div v-if="quantityHint" class="quantity-hint">{{ quantityHint }}</div>
             </div>
+
+            <div v-if="maintenancePurchaseHint" class="maintenance-order-notice">
+              {{ maintenancePurchaseHint }}
+            </div>
             
             
             
@@ -197,6 +201,13 @@
                         disabled
                       >
                                               🧪 测试物品
+                                            </button>
+                                            <button
+                                              v-else-if="isOrderCreationMaintenanceBlocked"
+                                              class="buy-btn disabled"
+                                              disabled
+                                            >
+                                              维护中暂不可下单
                                             </button>
                                             <button
                                               v-else-if="!canPurchase"
@@ -588,6 +599,13 @@
                                   🧪 测试物品
                                 </button>
                                 <button
+                                  v-else-if="isOrderCreationMaintenanceBlocked"
+                                  class="buy-btn disabled"
+                                  disabled
+                                >
+                                  维护中暂不可下单
+                                </button>
+                                <button
                                   v-else-if="!canPurchase"
                                   class="buy-btn disabled"
                                   disabled
@@ -747,6 +765,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useShopStore } from '@/stores/shop'
 import { useUserStore } from '@/stores/user'
+import { isMaintenanceFeatureEnabled, isRestrictedMaintenanceMode } from '@/config/maintenance'
 import { useToast } from '@/composables/useToast'
 import { useDialog } from '@/composables/useDialog'
 import { formatRelativeTime, formatPrice } from '@/utils/format'
@@ -939,6 +958,16 @@ const maxSelectableQuantity = computed(() => {
 
 const totalPrice = computed(() =>
   formatPrice(price.value * discount.value * selectedQuantity.value)
+)
+
+const isOrderCreationMaintenanceBlocked = computed(() =>
+  isRestrictedMaintenanceMode() && !isMaintenanceFeatureEnabled('orderCreate')
+)
+
+const maintenancePurchaseHint = computed(() =>
+  isOrderCreationMaintenanceBlocked.value
+    ? '因 LinuxDo Credit 积分服务维护中，当前暂不支持创建新订单。'
+    : ''
 )
 
 const buyButtonText = computed(() => {
@@ -2096,6 +2125,11 @@ async function openExternalProductLink() {
 }
 
 async function handleBuyProduct() {
+  if (isOrderCreationMaintenanceBlocked.value) {
+    toast.warning(maintenancePurchaseHint.value || '当前暂不支持创建新订单')
+    return
+  }
+
   // 检查登录
   if (!userStore.isLoggedIn) {
     if (purchaseTrustLevel.value > 0) {
@@ -2823,6 +2857,16 @@ async function handleOpenStore() {
 .quantity-hint {
   font-size: 12px;
   color: var(--text-tertiary);
+}
+
+.maintenance-order-notice {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  color: #b45309;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .manual-delivery-notice {

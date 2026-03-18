@@ -1,5 +1,5 @@
 import { storage } from './storage'
-import { MAINTENANCE_MODE } from '@/config/maintenance'
+import { getMaintenanceRequestBlock } from '@/config/maintenance'
 import { emitAuthExpired, isAuthErrorCode, isTokenExpired } from './auth'
 
 // API 基础地址
@@ -84,14 +84,10 @@ async function parseResponseBody(response) {
   return response.text().catch(() => '')
 }
 
-function isWriteMethod(method) {
-  return !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase())
-}
-
-function maintenanceBlockedResponse() {
+function maintenanceBlockedResponse(message = '站点维护中，当前操作暂不可用') {
   return {
     success: false,
-    error: '站点维护中，暂时关闭新增和修改操作',
+    error: message,
     status: 503
   }
 }
@@ -105,8 +101,9 @@ function hasAuthFailure(status, payload) {
  */
 async function request(url, options = {}) {
   const method = (options.method || 'GET').toUpperCase()
-  if (MAINTENANCE_MODE && isWriteMethod(method)) {
-    return maintenanceBlockedResponse()
+  const maintenanceBlock = getMaintenanceRequestBlock(method, url)
+  if (maintenanceBlock) {
+    return maintenanceBlockedResponse(maintenanceBlock.message)
   }
 
   const base = url.startsWith('/api/image')
@@ -226,8 +223,9 @@ function del(url, options = {}) {
  * 上传文件（FormData 请求）
  */
 async function upload(url, formData, options = {}) {
-  if (MAINTENANCE_MODE) {
-    return maintenanceBlockedResponse()
+  const maintenanceBlock = getMaintenanceRequestBlock('POST', url)
+  if (maintenanceBlock) {
+    return maintenanceBlockedResponse(maintenanceBlock.message)
   }
 
   const base = url.startsWith('/api/image') ? IMAGE_API_BASE : API_BASE

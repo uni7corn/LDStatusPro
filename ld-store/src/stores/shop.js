@@ -79,6 +79,27 @@ function createEmptyListState(page, pageSize) {
   }
 }
 
+function normalizePriceFilterValue(value) {
+  if (value === null || value === undefined || value === '') return null
+  const parsed = Number.parseFloat(String(value).trim())
+  if (!Number.isFinite(parsed)) return null
+  return Math.max(0, Math.round(parsed * 100) / 100)
+}
+
+function normalizePriceRange(priceMin, priceMax) {
+  let normalizedMin = normalizePriceFilterValue(priceMin)
+  let normalizedMax = normalizePriceFilterValue(priceMax)
+
+  if (normalizedMin !== null && normalizedMax !== null && normalizedMin > normalizedMax) {
+    ;[normalizedMin, normalizedMax] = [normalizedMax, normalizedMin]
+  }
+
+  return {
+    priceMin: normalizedMin,
+    priceMax: normalizedMax
+  }
+}
+
 export const useShopStore = defineStore('shop', () => {
   // 状态
   const categories = ref([])
@@ -140,6 +161,8 @@ export const useShopStore = defineStore('shop', () => {
 
   // 筛选：只看有库存
   const inStockOnly = ref(storage.get(IN_STOCK_ONLY_STORAGE_KEY, false) === true)
+  const currentPriceMin = ref(null)
+  const currentPriceMax = ref(null)
 
   // 计算属性
   const currentCategoryName = computed(() => {
@@ -189,21 +212,38 @@ export const useShopStore = defineStore('shop', () => {
     let categoryId = categoryInput
     let requestedSort = sort
     let requestedPage = null
+    let requestedPriceMin = currentPriceMin.value
+    let requestedPriceMax = currentPriceMax.value
 
-    // 兼容旧调用风格：fetchProducts({ category, page, sort })
+    // 兼容旧调用风格：fetchProducts({ category, page, sort, priceMin, priceMax })
     if (categoryInput && typeof categoryInput === 'object' && !Array.isArray(categoryInput)) {
       categoryId = categoryInput.categoryId ?? categoryInput.category ?? ''
       requestedSort = categoryInput.sort || ''
       requestedPage = Number.parseInt(categoryInput.page, 10)
       forceRefresh = categoryInput.forceRefresh ?? forceRefresh
+
+      const hasExplicitPriceMin = Object.prototype.hasOwnProperty.call(categoryInput, 'priceMin')
+      const hasExplicitPriceMax = Object.prototype.hasOwnProperty.call(categoryInput, 'priceMax')
+      requestedPriceMin = hasExplicitPriceMin ? categoryInput.priceMin : null
+      requestedPriceMax = hasExplicitPriceMax ? categoryInput.priceMax : null
     }
 
     if (!Number.isFinite(requestedPage) || requestedPage <= 0) {
       requestedPage = null
     }
 
+    const normalizedPriceRange = normalizePriceRange(requestedPriceMin, requestedPriceMax)
+    requestedPriceMin = normalizedPriceRange.priceMin
+    requestedPriceMax = normalizedPriceRange.priceMax
+
     const sortChanged = requestedSort && requestedSort !== currentSort.value
-    const shouldReset = categoryId !== currentCategory.value || forceRefresh || sortChanged || requestedPage === 1
+    const priceFilterChanged = requestedPriceMin !== currentPriceMin.value || requestedPriceMax !== currentPriceMax.value
+    const shouldReset =
+      categoryId !== currentCategory.value
+      || forceRefresh
+      || sortChanged
+      || priceFilterChanged
+      || requestedPage === 1
 
     if (loading.value && !shouldReset && requestedPage === null) {
       return { success: false, cancelled: true, error: '请求进行中，请稍后重试' }
@@ -212,6 +252,8 @@ export const useShopStore = defineStore('shop', () => {
     if (shouldReset) {
       currentCategory.value = categoryId
       if (requestedSort) currentSort.value = requestedSort
+      currentPriceMin.value = requestedPriceMin
+      currentPriceMax.value = requestedPriceMax
       page.value = requestedPage || 1
       hasMore.value = true
       products.value = []
@@ -223,6 +265,8 @@ export const useShopStore = defineStore('shop', () => {
     const requestCategory = currentCategory.value
     const requestSort = currentSort.value
     const requestInStockOnly = inStockOnly.value
+    const requestPriceMin = currentPriceMin.value
+    const requestPriceMax = currentPriceMax.value
     const requestId = ++latestProductsRequestId
     loading.value = true
 
@@ -232,7 +276,9 @@ export const useShopStore = defineStore('shop', () => {
         pageSize,
         categoryId: requestCategory,
         sort: requestSort,
-        inStockOnly: requestInStockOnly
+        inStockOnly: requestInStockOnly,
+        priceMin: requestPriceMin,
+        priceMax: requestPriceMax
       })
 
       if (requestId !== latestProductsRequestId) {
@@ -285,14 +331,22 @@ export const useShopStore = defineStore('shop', () => {
   }
 
   // 从缓存恢复分类状态（前端缓存用）
-  function restoreFromCache(categoryId, cachedProducts, cachedTotal, cachedHasMore, cachedPage, cachedSort = 'default') {
-    currentCategory.value = categoryId
-    const restoredProducts = toSafeArray(cachedProducts)
+  function restoreFromCache(snapshot = {}) {
+    const restoredProducts = toSafeArray(snapshot.products)
+    const normalizedPriceRange = normalizePriceRange(snapshot.priceMin, snapshot.priceMax)
+
+    currentCategory.value = snapshot.categoryId ?? ''
     products.value = restoredProducts
-    total.value = Number.isFinite(Number(cachedTotal)) ? Number(cachedTotal) : restoredProducts.length
-    hasMore.value = typeof cachedHasMore === 'boolean' ? cachedHasMore : false
-    page.value = Number.isFinite(Number(cachedPage)) ? Number(cachedPage) : 1
-    currentSort.value = cachedSort
+    total.value = Number.isFinite(Number(snapshot.total)) ? Number(snapshot.total) : restoredProducts.length
+    hasMore.value = typeof snapshot.hasMore === 'boolean' ? snapshot.hasMore : false
+    page.value = Number.isFinite(Number(snapshot.page)) ? Number(snapshot.page) : 1
+    currentSort.value = snapshot.sort || 'default'
+    currentPriceMin.value = normalizedPriceRange.priceMin
+    currentPriceMax.value = normalizedPriceRange.priceMax
+
+    if (typeof snapshot.inStockOnly === 'boolean') {
+      setInStockOnly(snapshot.inStockOnly)
+    }
   }
 
   // 加载更多商品
@@ -806,6 +860,8 @@ export const useShopStore = defineStore('shop', () => {
     currentCategory,
     currentSort,
     inStockOnly,
+    currentPriceMin,
+    currentPriceMax,
     loading,
     hasMore,
     page,

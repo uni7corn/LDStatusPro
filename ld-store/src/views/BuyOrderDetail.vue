@@ -73,6 +73,9 @@
               {{ refreshing ? '刷新中...' : '刷新状态' }}
             </button>
           </div>
+          <p v-if="isPaymentMaintenanceBlocked" class="action-hint">
+            因 LinuxDo Credit 积分服务维护中，当前仅开放订单查看，支付与补查已暂时关闭。
+          </p>
           <p v-if="!order.counterpartyContactLink" class="action-hint">
             联系方式将在订单完成后自动开放
           </p>
@@ -86,6 +89,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useShopStore } from '@/stores/shop'
+import { isMaintenanceFeatureEnabled, isRestrictedMaintenanceMode } from '@/config/maintenance'
 import { useToast } from '@/composables/useToast'
 import { formatPrice } from '@/utils/format'
 import { isValidLdcPaymentUrl } from '@/utils/security'
@@ -100,14 +104,19 @@ const loading = ref(true)
 const order = ref(null)
 const paying = ref(false)
 const refreshing = ref(false)
+const isPaymentMaintenanceBlocked = computed(() =>
+  isRestrictedMaintenanceMode() && !isMaintenanceFeatureEnabled('orderPayment')
+)
 
 const orderNo = computed(() => String(route.params.orderNo || '').trim())
 const canRepay = computed(() => {
-  return order.value?.status === 'pending' && order.value?.myRole === 'requester'
+  return !isPaymentMaintenanceBlocked.value
+    && order.value?.status === 'pending'
+    && order.value?.myRole === 'requester'
 })
 const canRefresh = computed(() => {
   const status = String(order.value?.status || '')
-  return status === 'pending' || status === 'paid'
+  return !isPaymentMaintenanceBlocked.value && (status === 'pending' || status === 'paid')
 })
 
 function goBack() {
@@ -115,6 +124,11 @@ function goBack() {
 }
 
 function goChat() {
+  if (isRestrictedMaintenanceMode()) {
+    toast.info('受限维护中，当前不开放求购会话页面')
+    return
+  }
+
   const path = String(order.value?.chatPath || '')
   if (path) {
     router.push(path)
@@ -189,6 +203,11 @@ async function loadOrderDetail() {
 }
 
 async function handleRepay() {
+  if (isPaymentMaintenanceBlocked.value) {
+    toast.warning('因 LinuxDo Credit 积分服务维护中，当前暂不支持支付或补查')
+    return
+  }
+
   if (!orderNo.value || paying.value) return
   paying.value = true
 
@@ -224,6 +243,11 @@ async function handleRepay() {
 }
 
 async function handleRefresh() {
+  if (isPaymentMaintenanceBlocked.value) {
+    toast.warning('因 LinuxDo Credit 积分服务维护中，当前暂不支持支付或补查')
+    return
+  }
+
   if (!orderNo.value || refreshing.value) return
   refreshing.value = true
   try {

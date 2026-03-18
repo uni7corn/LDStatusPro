@@ -226,6 +226,9 @@
               {{ cancelling ? '取消中...' : '取消订单' }}
             </button>
           </div>
+          <p v-if="isPaymentMaintenanceBlocked" class="maintenance-action-hint">
+            因 LinuxDo Credit 积分服务维护中，当前仅保留订单查看，支付与补查已暂时关闭。
+          </p>
         </div>
       </template>
     </div>
@@ -238,6 +241,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useShopStore } from '@/stores/shop'
 import { useToast } from '@/composables/useToast'
 import { useDialog } from '@/composables/useDialog'
+import { isMaintenanceFeatureEnabled, isRestrictedMaintenanceMode } from '@/config/maintenance'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { isValidLdcPaymentUrl } from '@/utils/security'
 import { prepareNewTab, openInNewTab, cleanupPreparedTab } from '@/utils/newTab'
@@ -262,6 +266,9 @@ const cancelling = ref(false)
 const paying = ref(false)
 const checkingPayment = ref(false)
 let pendingOrderAutoRefreshTimer = null
+const isPaymentMaintenanceBlocked = computed(() =>
+  isRestrictedMaintenanceMode() && !isMaintenanceFeatureEnabled('orderPayment')
+)
 
 // 当前用户角色（买家/卖家）
 const currentRole = computed(() => route.query.role || 'buyer')
@@ -272,11 +279,17 @@ const showActions = computed(() => {
 })
 
 const canRepay = computed(() => {
-  return currentRole.value === 'buyer' && order.value?.status === 'pending' && isPlatformOrder(order.value)
+  return !isPaymentMaintenanceBlocked.value
+    && currentRole.value === 'buyer'
+    && order.value?.status === 'pending'
+    && isPlatformOrder(order.value)
 })
 
 const canRefreshPaymentStatus = computed(() => {
-  return currentRole.value === 'buyer' && order.value?.status === 'pending' && isPlatformOrder(order.value)
+  return !isPaymentMaintenanceBlocked.value
+    && currentRole.value === 'buyer'
+    && order.value?.status === 'pending'
+    && isPlatformOrder(order.value)
 })
 
 const categoryNameMap = computed(() => {
@@ -1007,6 +1020,14 @@ onUnmounted(() => {
   gap: 12px;
   max-width: 568px;
   margin: 0 auto;
+}
+
+.maintenance-action-hint {
+  max-width: 568px;
+  margin: 12px auto 0;
+  color: #b45309;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .pay-btn {

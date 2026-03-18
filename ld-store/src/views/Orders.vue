@@ -176,7 +176,7 @@
               </template>
               <template v-else-if="isBuyRequestOrder(order)">
                 <button
-                  v-if="order.status === 'pending' && order.myRole === 'requester'"
+                  v-if="order.status === 'pending' && order.myRole === 'requester' && !isPaymentMaintenanceBlocked"
                   class="action-btn pay-btn"
                   @click.stop="handleRepay(order)"
                   :disabled="payingOrderId === getOrderKey(order)"
@@ -184,7 +184,7 @@
                   {{ payingOrderId === getOrderKey(order) ? '跳转中...' : '立即支付' }}
                 </button>
                 <button
-                  v-if="order.status === 'pending' || order.status === 'paid'"
+                  v-if="(order.status === 'pending' || order.status === 'paid') && !isPaymentMaintenanceBlocked"
                   class="action-btn ghost-btn"
                   @click.stop="handleRefreshBuyOrder(order)"
                   :disabled="refreshingBuyOrderId === getOrderKey(order)"
@@ -198,7 +198,7 @@
               <!-- CDK 待支付订单操作按钮（买家和卖家都可以取消） -->
               <template v-else-if="order.status === 'pending'">
                 <button
-                  v-if="canRepay(order)"
+                  v-if="canRepay(order) && !isPaymentMaintenanceBlocked"
                   class="action-btn pay-btn"
                   @click.stop="handleRepay(order)"
                   :disabled="payingOrderId === getOrderKey(order)"
@@ -206,7 +206,7 @@
                   {{ payingOrderId === getOrderKey(order) ? '跳转中...' : '立即支付' }}
                 </button>
                 <button
-                  v-if="currentRole === 'buyer' && isPlatformOrder(order)"
+                  v-if="currentRole === 'buyer' && isPlatformOrder(order) && !isPaymentMaintenanceBlocked"
                   class="action-btn ghost-btn"
                   @click.stop="handleRefreshOrder(order)"
                   :disabled="refreshingOrderId === getOrderKey(order) || payingOrderId === getOrderKey(order)"
@@ -240,6 +240,9 @@
                 </button>
                 <span class="order-action" @click="viewOrderDetail(order)">查看详情 →</span>
               </template>
+            </div>
+            <div v-if="order.status === 'pending' && isPaymentMaintenanceBlocked" class="maintenance-order-hint">
+              因 LinuxDo Credit 积分服务维护中，当前仅保留订单查看，支付与补查已暂时关闭。
             </div>
           </div>
           
@@ -281,6 +284,7 @@
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useShopStore } from '@/stores/shop'
+import { isMaintenanceFeatureEnabled, isRestrictedMaintenanceMode } from '@/config/maintenance'
 import { useToast } from '@/composables/useToast'
 import { useDialog } from '@/composables/useDialog'
 import AppSelect from '@/components/common/AppSelect.vue'
@@ -326,6 +330,9 @@ const refreshingOrderId = ref(null)
 const refreshingBuyOrderId = ref(null)
 const nowTs = ref(Date.now())
 let countdownTimer = null
+const isPaymentMaintenanceBlocked = computed(() =>
+  isRestrictedMaintenanceMode() && !isMaintenanceFeatureEnabled('orderPayment')
+)
 
 const hasDirectFilters = computed(() =>
   currentRole.value !== 'buy' && (activeCategoryId.value > 0 || onlyDealOrders.value)
@@ -731,6 +738,11 @@ function getDeliverHint(order) {
 }
 
 async function handleRepay(order) {
+  if (isPaymentMaintenanceBlocked.value) {
+    toast.warning('因 LinuxDo Credit 积分服务维护中，当前暂不支持支付或补查')
+    return
+  }
+
   const orderNo = getOrderKey(order)
   if (!orderNo || payingOrderId.value === orderNo) return
 
@@ -771,6 +783,11 @@ async function handleRepay(order) {
 }
 
 async function handleRefreshOrder(order) {
+  if (isPaymentMaintenanceBlocked.value) {
+    toast.warning('因 LinuxDo Credit 积分服务维护中，当前暂不支持支付或补查')
+    return
+  }
+
   const orderNo = getOrderKey(order)
   if (!orderNo || refreshingOrderId.value === orderNo) return
 
@@ -802,6 +819,11 @@ async function handleRefreshOrder(order) {
 }
 
 async function handleRefreshBuyOrder(order) {
+  if (isPaymentMaintenanceBlocked.value) {
+    toast.warning('因 LinuxDo Credit 积分服务维护中，当前暂不支持支付或补查')
+    return
+  }
+
   const orderNo = getOrderKey(order)
   if (!orderNo || refreshingBuyOrderId.value === orderNo) return
 
@@ -1356,6 +1378,14 @@ onUnmounted(() => {
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.maintenance-order-hint {
+  margin-top: 10px;
+  color: #b45309;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: right;
 }
 
 .action-btn {

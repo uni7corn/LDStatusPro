@@ -125,19 +125,56 @@
               {{ tab.label }}
             </button>
           </div>
-          <label class="stock-filter" @click="handleToggleInStock">
-            <span class="checkbox" :class="{ checked: inStockOnly }">
-              <span class="checkmark" v-if="inStockOnly">✓</span>
-            </span>
-            <span class="filter-label">只看有货</span>
-          </label>
+          <div class="catalog-filters">
+            <div class="price-filter">
+              <input
+                v-model="priceMinInput"
+                type="number"
+                min="0"
+                step="0.01"
+                class="price-filter-input"
+                placeholder="最低折后价"
+                @keyup.enter="applyPriceFilter"
+              />
+              <span class="price-filter-separator">-</span>
+              <input
+                v-model="priceMaxInput"
+                type="number"
+                min="0"
+                step="0.01"
+                class="price-filter-input"
+                placeholder="最高折后价"
+                @keyup.enter="applyPriceFilter"
+              />
+              <button class="price-filter-btn" @click="applyPriceFilter">筛选</button>
+              <button
+                v-if="hasDraftPriceFilter || hasActivePriceFilter"
+                class="price-filter-btn secondary"
+                @click="clearPriceFilter"
+              >
+                清空
+              </button>
+            </div>
+            <label class="stock-filter" @click="handleToggleInStock">
+              <span class="checkbox" :class="{ checked: inStockOnly }">
+                <span class="checkmark" v-if="inStockOnly">✓</span>
+              </span>
+              <span class="filter-label">只看有货</span>
+            </label>
+          </div>
         </div>
         
         <!-- 物品统计 -->
         <div class="products-header">
           <span class="products-count">
-            {{ currentCategoryName }} 共 <strong>{{ total }}</strong> 件物品
+            <template v-if="isProductListHiddenByMaintenance">
+              {{ maintenanceTitle }}
+            </template>
+            <template v-else>
+              {{ currentCategoryName }} 共 <strong>{{ total }}</strong> 件物品
+            </template>
             <span v-if="inStockOnly" class="filter-tag">有库存</span>
+            <span v-if="hasActivePriceFilter" class="filter-tag price-tag">{{ activePriceFilterLabel }}</span>
           </span>
         </div>
         
@@ -168,11 +205,11 @@
         <!-- 空状态 -->
         <EmptyState
           v-else
-          icon="🛒"
-          text="暂无物品"
-          hint="快来发布第一个物品吧~"
+          :icon="isProductListHiddenByMaintenance ? '🚧' : '🛒'"
+          :text="isProductListHiddenByMaintenance ? maintenanceTitle : '暂无物品'"
+          :hint="isProductListHiddenByMaintenance ? maintenanceCatalogHint : '快来发布第一个物品吧~'"
         >
-          <template #action>
+          <template v-if="!isProductListHiddenByMaintenance" #action>
             <router-link to="/publish" class="btn btn-primary mt-4">
               ➕ 发布物品
             </router-link>
@@ -332,6 +369,7 @@ import CategoryFilter from '@/components/product/CategoryFilter.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import Skeleton from '@/components/common/Skeleton.vue'
 import LiquidTabs from '@/components/common/LiquidTabs.vue'
+import { MAINTENANCE_STATE, isMaintenanceFeatureEnabled, isRestrictedMaintenanceMode } from '@/config/maintenance'
 
 defineOptions({ name: 'Home' })
 
@@ -351,6 +389,13 @@ const stepCompleted = ref({
 
 const completedStepsCount = computed(() => Object.values(stepCompleted.value).filter(Boolean).length)
 const allStepsCompleted = computed(() => completedStepsCount.value === 3)
+const isProductListHiddenByMaintenance = computed(() => (
+  isRestrictedMaintenanceMode() && !isMaintenanceFeatureEnabled('productListRead')
+))
+const maintenanceTitle = computed(() => MAINTENANCE_STATE.title || 'LD士多受限维护中')
+const maintenanceCatalogHint = computed(() => (
+  MAINTENANCE_STATE.message || '因 LinuxDo 暂时下线 Credit 积分服务，物品列表已临时隐藏。'
+))
 
 function shouldShowMigrationNotice() {
   try {
@@ -406,6 +451,8 @@ const sortTabs = [
   { value: 'price_desc', label: '价格↓' },
   { value: 'sales', label: '销量' }
 ]
+const priceMinInput = ref('')
+const priceMaxInput = ref('')
 
 const shops = ref([])
 const shopsLoading = ref(false)
@@ -445,8 +492,6 @@ let latestCatalogActionId = 0
 const categoryCache = ref(new Map())
 const CATEGORY_CACHE_TTL = 5 * 60 * 1000
 
-const getCacheKey = (categoryId, sortKey) => `${categoryId || 'all'}_${sortKey || 'default'}`
-
 function consumeStoreError(fallback = '') {
   return shopStore.consumeLastError?.() || fallback
 }
@@ -455,27 +500,93 @@ function toSafeArray(value) {
   return Array.isArray(value) ? value : []
 }
 
-function tryRestoreFromCache(categoryId, sortKey) {
-  const cacheKey = getCacheKey(categoryId, sortKey)
+function formatPriceFilterInput(value) {
+  return value === null || value === undefined || value === '' ? '' : String(value)
+}
+
+function normalizePriceFilterInput(value) {
+  const text = String(value ?? '').trim()
+  if (!text) return null
+  const parsed = Number.parseFloat(text)
+  if (!Number.isFinite(parsed)) return null
+  return Math.max(0, Math.round(parsed * 100) / 100)
+}
+
+function normalizePriceFilterRange(priceMin, priceMax) {
+  let normalizedMin = normalizePriceFilterInput(priceMin)
+  let normalizedMax = normalizePriceFilterInput(priceMax)
+
+  if (normalizedMin !== null && normalizedMax !== null && normalizedMin > normalizedMax) {
+    ;[normalizedMin, normalizedMax] = [normalizedMax, normalizedMin]
+  }
+
+  return {
+    priceMin: normalizedMin,
+    priceMax: normalizedMax
+  }
+}
+
+function syncPriceFilterInputs(priceMin, priceMax) {
+  priceMinInput.value = formatPriceFilterInput(priceMin)
+  priceMaxInput.value = formatPriceFilterInput(priceMax)
+}
+
+function buildCatalogFilters(overrides = {}) {
+  const hasOwn = (key) => Object.prototype.hasOwnProperty.call(overrides, key)
+  const priceRange = normalizePriceFilterRange(
+    hasOwn('priceMin') ? overrides.priceMin : shopStore.currentPriceMin,
+    hasOwn('priceMax') ? overrides.priceMax : shopStore.currentPriceMax
+  )
+
+  return {
+    inStockOnly: hasOwn('inStockOnly') ? !!overrides.inStockOnly : !!shopStore.inStockOnly,
+    priceMin: priceRange.priceMin,
+    priceMax: priceRange.priceMax
+  }
+}
+
+const getCacheKey = (categoryId, sortKey, filters = buildCatalogFilters()) => [
+  categoryId || 'all',
+  sortKey || 'default',
+  filters.inStockOnly ? 'stock' : 'all-stock',
+  filters.priceMin ?? 'min-any',
+  filters.priceMax ?? 'max-any'
+].join('_')
+
+function isSameCatalogState(categoryId, sortKey, filters = buildCatalogFilters()) {
+  return String(shopStore.currentCategory) === String(categoryId || '')
+    && (shopStore.currentSort || 'default') === (sortKey || 'default')
+    && !!shopStore.inStockOnly === !!filters.inStockOnly
+    && shopStore.currentPriceMin === (filters.priceMin ?? null)
+    && shopStore.currentPriceMax === (filters.priceMax ?? null)
+}
+
+function tryRestoreFromCache(categoryId, sortKey, filters = buildCatalogFilters()) {
+  const cacheKey = getCacheKey(categoryId, sortKey, filters)
   const cached = categoryCache.value.get(cacheKey)
   const now = Date.now()
   if (cached && Array.isArray(cached.products) && (now - cached.timestamp < CATEGORY_CACHE_TTL)) {
-    shopStore.restoreFromCache(categoryId, cached.products, cached.total, cached.hasMore, cached.page, cached.sort)
+    shopStore.restoreFromCache(cached)
+    syncPriceFilterInputs(cached.priceMin, cached.priceMax)
     initialLoading.value = false
     return true
   }
   return false
 }
 
-function saveCache(categoryId, sortKey) {
-  const cacheKey = getCacheKey(categoryId, sortKey)
+function saveCache(categoryId, sortKey, filters = buildCatalogFilters()) {
+  const cacheKey = getCacheKey(categoryId, sortKey, filters)
   const productsToCache = toSafeArray(shopStore.products)
   categoryCache.value.set(cacheKey, {
+    categoryId,
     products: [...productsToCache],
     total: Number.isFinite(Number(shopStore.total)) ? Number(shopStore.total) : productsToCache.length,
     hasMore: !!shopStore.hasMore,
     page: Number.isFinite(Number(shopStore.page)) ? Number(shopStore.page) : 1,
-    sort: sortKey,
+    sort: sortKey || 'default',
+    inStockOnly: !!filters.inStockOnly,
+    priceMin: filters.priceMin ?? null,
+    priceMax: filters.priceMax ?? null,
     timestamp: Date.now()
   })
 }
@@ -492,6 +603,25 @@ const inStockOnly = computed(() => shopStore.inStockOnly)
 const loading = computed(() => shopStore.loading)
 const hasMore = computed(() => shopStore.hasMore)
 const total = computed(() => shopStore.total)
+const hasActivePriceFilter = computed(() => shopStore.currentPriceMin !== null || shopStore.currentPriceMax !== null)
+const hasDraftPriceFilter = computed(() => (
+  normalizePriceFilterInput(priceMinInput.value) !== null || normalizePriceFilterInput(priceMaxInput.value) !== null
+))
+const activePriceFilterLabel = computed(() => {
+  const { priceMin, priceMax } = buildCatalogFilters()
+  if (priceMin !== null && priceMax !== null) return `价格 ${priceMin} - ${priceMax} LDC`
+  if (priceMin !== null) return `价格 ≥ ${priceMin} LDC`
+  if (priceMax !== null) return `价格 ≤ ${priceMax} LDC`
+  return ''
+})
+
+watch(
+  () => [shopStore.currentPriceMin, shopStore.currentPriceMax],
+  ([priceMin, priceMax]) => {
+    syncPriceFilterInputs(priceMin, priceMax)
+  },
+  { immediate: true }
+)
 
 const marketCategories = computed(() => categories.value.filter((c) => {
   const name = String(c?.name || '')
@@ -640,70 +770,77 @@ function goBuyRequestDetail(id) {
   router.push(`/buy-request/${id}`)
 }
 
-async function handleCategorySelect(categoryId) {
-  const actionId = ++latestCatalogActionId
-  const sortKey = shopStore.currentSort || 'default'
+async function loadCatalogState({
+  categoryId = shopStore.currentCategory,
+  sortKey = shopStore.currentSort || 'default',
+  filters = buildCatalogFilters(),
+  actionId = null,
+  useCache = true
+} = {}) {
+  if (useCache && tryRestoreFromCache(categoryId, sortKey, filters)) {
+    if (actionId !== null && actionId !== latestCatalogActionId) {
+      return { success: false, cancelled: true, error: '' }
+    }
 
-  if (tryRestoreFromCache(categoryId, sortKey)) {
-    if (actionId !== latestCatalogActionId) return
     await nextTick()
-    if (actionId !== latestCatalogActionId) return
+    if (actionId !== null && actionId !== latestCatalogActionId) {
+      return { success: false, cancelled: true, error: '' }
+    }
+
     setupInfiniteScroll()
-    return
+    return { success: true, restored: true }
   }
 
   initialLoading.value = true
-  const result = await shopStore.fetchProducts(categoryId, true)
-  if (actionId !== latestCatalogActionId) return
+  const result = await shopStore.fetchProducts({
+    categoryId,
+    forceRefresh: true,
+    sort: sortKey,
+    priceMin: filters.priceMin,
+    priceMax: filters.priceMax
+  })
+
+  if (actionId !== null && actionId !== latestCatalogActionId) {
+    return { success: false, cancelled: true, error: '' }
+  }
+
   initialLoading.value = false
   if (!result?.success) {
-    toast.error(result?.error || consumeStoreError('加载物品失败，请稍后重试'))
-    return
+    return result
   }
 
-  const shouldCache =
-    String(shopStore.currentCategory) === String(categoryId) &&
-    (shopStore.currentSort || 'default') === sortKey
-  if (shouldCache) {
-    saveCache(categoryId, sortKey)
+  if (isSameCatalogState(categoryId, sortKey, filters)) {
+    saveCache(categoryId, sortKey, filters)
   }
+  syncPriceFilterInputs(filters.priceMin, filters.priceMax)
 
   await nextTick()
-  if (actionId !== latestCatalogActionId) return
+  if (actionId !== null && actionId !== latestCatalogActionId) {
+    return { success: false, cancelled: true, error: '' }
+  }
+
   setupInfiniteScroll()
+  return result
+}
+
+async function handleCategorySelect(categoryId) {
+  const actionId = ++latestCatalogActionId
+  const sortKey = shopStore.currentSort || 'default'
+  const filters = buildCatalogFilters()
+  const result = await loadCatalogState({ categoryId, sortKey, filters, actionId })
+  if (!result?.success && !result?.cancelled) {
+    toast.error(result?.error || consumeStoreError('加载物品失败，请稍后重试'))
+  }
 }
 
 async function handleSortChange(sort) {
   const actionId = ++latestCatalogActionId
   const categoryId = shopStore.currentCategory
-
-  if (tryRestoreFromCache(categoryId, sort)) {
-    if (actionId !== latestCatalogActionId) return
-    await nextTick()
-    if (actionId !== latestCatalogActionId) return
-    setupInfiniteScroll()
-    return
-  }
-
-  initialLoading.value = true
-  const result = await shopStore.fetchProducts(categoryId, true, sort)
-  if (actionId !== latestCatalogActionId) return
-  initialLoading.value = false
-  if (!result?.success) {
+  const filters = buildCatalogFilters()
+  const result = await loadCatalogState({ categoryId, sortKey: sort, filters, actionId })
+  if (!result?.success && !result?.cancelled) {
     toast.error(result?.error || consumeStoreError('加载物品失败，请稍后重试'))
-    return
   }
-
-  const shouldCache =
-    String(shopStore.currentCategory) === String(categoryId) &&
-    (shopStore.currentSort || 'default') === (sort || 'default')
-  if (shouldCache) {
-    saveCache(categoryId, sort)
-  }
-
-  await nextTick()
-  if (actionId !== latestCatalogActionId) return
-  setupInfiniteScroll()
 }
 
 async function handleToggleInStock() {
@@ -715,8 +852,37 @@ async function handleToggleInStock() {
     toast.error(result?.error || consumeStoreError('加载物品失败，请稍后重试'))
     return
   }
+  saveCache(shopStore.currentCategory, shopStore.currentSort || 'default', buildCatalogFilters())
   await nextTick()
   setupInfiniteScroll()
+}
+
+async function applyPriceFilter() {
+  const actionId = ++latestCatalogActionId
+  const categoryId = shopStore.currentCategory
+  const sortKey = shopStore.currentSort || 'default'
+  const filters = buildCatalogFilters(normalizePriceFilterRange(priceMinInput.value, priceMaxInput.value))
+  syncPriceFilterInputs(filters.priceMin, filters.priceMax)
+
+  const result = await loadCatalogState({ categoryId, sortKey, filters, actionId })
+  if (!result?.success && !result?.cancelled) {
+    toast.error(result?.error || consumeStoreError('加载物品失败，请稍后重试'))
+  }
+}
+
+async function clearPriceFilter() {
+  if (!hasDraftPriceFilter.value && !hasActivePriceFilter.value) return
+  priceMinInput.value = ''
+  priceMaxInput.value = ''
+
+  const actionId = ++latestCatalogActionId
+  const categoryId = shopStore.currentCategory
+  const sortKey = shopStore.currentSort || 'default'
+  const filters = buildCatalogFilters({ priceMin: null, priceMax: null })
+  const result = await loadCatalogState({ categoryId, sortKey, filters, actionId })
+  if (!result?.success && !result?.cancelled) {
+    toast.error(result?.error || consumeStoreError('加载物品失败，请稍后重试'))
+  }
 }
 
 async function recoverProductsIfNeeded() {
@@ -725,16 +891,15 @@ async function recoverProductsIfNeeded() {
 
   const categoryId = shopStore.currentCategory
   const sortKey = shopStore.currentSort || 'default'
-  const restored = tryRestoreFromCache(categoryId, sortKey)
-  if (!restored) {
-    initialLoading.value = true
-    const result = await shopStore.fetchProducts(categoryId, true, sortKey)
-    initialLoading.value = false
-    if (!result?.success) {
-      toast.error(result?.error || consumeStoreError('加载物品失败，请稍后重试'))
-      return
-    }
-    saveCache(categoryId, sortKey)
+  const filters = buildCatalogFilters()
+  const restored = tryRestoreFromCache(categoryId, sortKey, filters)
+  if (restored) {
+    return
+  }
+
+  const result = await loadCatalogState({ categoryId, sortKey, filters, useCache: false })
+  if (!result?.success && !result?.cancelled) {
+    toast.error(result?.error || consumeStoreError('加载物品失败，请稍后重试'))
   }
 }
 
@@ -757,11 +922,15 @@ onMounted(async () => {
     toast.warning(categoryError)
   }
 
-  const productResult = await shopStore.fetchProducts('', true)
+  const productResult = await loadCatalogState({
+    categoryId: '',
+    sortKey: shopStore.currentSort || 'default',
+    filters: buildCatalogFilters(),
+    useCache: false
+  })
   if (!productResult?.success) {
     toast.error(productResult?.error || consumeStoreError('加载物品失败，请稍后重试'))
   }
-  saveCache(shopStore.currentCategory, shopStore.currentSort)
 
   initialLoading.value = false
   hasInitialized.value = true
@@ -828,7 +997,9 @@ function setupInfiniteScroll() {
         const result = await shopStore.loadMore()
         if (result && result.success === false && !result.cancelled) {
           toast.error(result.error || consumeStoreError('加载更多失败，请稍后重试'))
+          return
         }
+        saveCache(shopStore.currentCategory, shopStore.currentSort || 'default', buildCatalogFilters())
       }
     },
     { rootMargin: '100px' }
@@ -1210,6 +1381,15 @@ function setupInfiniteScroll() {
   flex-wrap: wrap;
 }
 
+.catalog-filters {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex: 1 1 360px;
+  flex-wrap: wrap;
+}
+
 .sort-btn {
   padding: 4px 10px;
   font-size: 12px;
@@ -1231,6 +1411,56 @@ function setupInfiniteScroll() {
   color: var(--color-primary);
   background: var(--color-primary-bg);
   font-weight: 500;
+}
+
+.price-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.price-filter-input {
+  width: 112px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.price-filter-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
+}
+
+.price-filter-separator {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.price-filter-btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.price-filter-btn:hover {
+  opacity: 0.92;
+}
+
+.price-filter-btn.secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
 }
 
 /* 库存筛选 */
@@ -1298,6 +1528,11 @@ function setupInfiniteScroll() {
   color: var(--color-success);
   background: var(--color-success-bg);
   border-radius: 10px;
+}
+
+.products-count .filter-tag.price-tag {
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 /* 小店集市头部 */
@@ -1637,6 +1872,21 @@ function setupInfiniteScroll() {
     flex-direction: column;
     gap: 4px;
   }
+
+  .catalog-filters {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .price-filter {
+    width: 100%;
+  }
+
+  .price-filter-input {
+    flex: 1 1 120px;
+    width: auto;
+    min-width: 0;
+  }
   
   .tab-icon {
     font-size: 24px;
@@ -1671,6 +1921,15 @@ function setupInfiniteScroll() {
   
   .stat-item {
     min-width: 42px;
+  }
+
+  .catalog-filters {
+    gap: 10px;
+  }
+
+  .price-filter-btn {
+    flex: 1 1 auto;
+    justify-content: center;
   }
   
   .stat-value {

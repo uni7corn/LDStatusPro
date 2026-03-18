@@ -101,7 +101,7 @@
           
           <!-- 操作按钮 -->
           <div class="product-actions">
-            <button class="action-btn edit" @click.stop="editProduct(product)" :disabled="isProductBusy(product)">
+            <button class="action-btn edit" @click.stop="editProduct(product)" :disabled="isProductBusy(product) || isRestrictedProductManagement">
               ✏️ 编辑
             </button>
               <button
@@ -117,11 +117,11 @@
                 class="action-btn"
                 :class="isProductActive(product) ? 'offline' : 'online'"
                 @click.stop="toggleStatus(product)"
-              :disabled="isProductBusy(product)"
+              :disabled="isProductBusy(product) || isRestrictedProductManagement"
             >
               {{ getToggleLabel(product) }}
             </button>
-            <button class="action-btn delete" @click.stop="deleteProduct(product)" :disabled="isProductBusy(product)">
+            <button class="action-btn delete" @click.stop="deleteProduct(product)" :disabled="isProductBusy(product) || isRestrictedProductManagement">
               {{ getDeleteLabel(product) }}
             </button>
           </div>
@@ -241,6 +241,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useShopStore } from '@/stores/shop'
+import { isMaintenanceFeatureEnabled, isRestrictedMaintenanceMode } from '@/config/maintenance'
 import { useToast } from '@/composables/useToast'
 import { useDialog } from '@/composables/useDialog'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -278,6 +279,9 @@ const cdkStatusFilter = ref('')
 const deletingCdkId = ref(null)
 const clearingAllCdks = ref(false)
 const productAction = ref({ id: null, type: '' })
+const isRestrictedProductManagement = computed(() =>
+  isRestrictedMaintenanceMode() && !isMaintenanceFeatureEnabled('productManage')
+)
 
 // 计算即将添加的 CDK 数量
 const newCdkCount = computed(() => {
@@ -372,6 +376,10 @@ function viewProduct(product) {
 
 // 编辑物品
 function editProduct(product) {
+  if (isRestrictedProductManagement.value) {
+    toast.warning('受限维护中，当前仅开放商品 CDK 管理')
+    return
+  }
   router.push(`/edit/${product.id}`)
 }
 
@@ -384,6 +392,10 @@ function isProductActive(product) {
 // 切换状态
 
 async function toggleStatus(product) {
+  if (isRestrictedProductManagement.value) {
+    toast.warning('受限维护中，当前仅开放商品 CDK 管理')
+    return
+  }
   if (isProductBusy(product)) return
   if (isLegacyLinkProduct(product)) {
     toast.error('外链物品已停用，请重新发布普通物品')
@@ -444,6 +456,10 @@ async function toggleStatus(product) {
 // 删除物品
 
 async function deleteProduct(product) {
+  if (isRestrictedProductManagement.value) {
+    toast.warning('受限维护中，当前仅开放商品 CDK 管理')
+    return
+  }
   if (isProductBusy(product)) return
   const isActive = isProductActive(product)
   const confirmMsg = isActive 

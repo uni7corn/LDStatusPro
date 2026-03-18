@@ -3,8 +3,8 @@ import { api } from '@/utils/api'
 export const productSortMapping = {
   default: { sortBy: 'updated_at', sortOrder: 'DESC' },
   newest: { sortBy: 'created_at', sortOrder: 'DESC' },
-  price_asc: { sortBy: 'price', sortOrder: 'ASC' },
-  price_desc: { sortBy: 'price', sortOrder: 'DESC' },
+  price_asc: { sortBy: 'final_price', sortOrder: 'ASC' },
+  price_desc: { sortBy: 'final_price', sortOrder: 'DESC' },
   sales: { sortBy: 'sold_count', sortOrder: 'DESC' }
 }
 
@@ -30,6 +30,8 @@ export async function fetchProductsRequest(options = {}) {
     categoryId = '',
     sort = 'default',
     inStockOnly = false,
+    priceMin = null,
+    priceMax = null,
     search = ''
   } = options
 
@@ -52,6 +54,14 @@ export async function fetchProductsRequest(options = {}) {
 
   if (inStockOnly) {
     params.set('inStock', 'true')
+  }
+
+  if (priceMin !== null && priceMin !== undefined && String(priceMin).trim() !== '') {
+    params.set('priceMin', String(priceMin))
+  }
+
+  if (priceMax !== null && priceMax !== undefined && String(priceMax).trim() !== '') {
+    params.set('priceMax', String(priceMax))
   }
 
   return api.get(`/api/shop/products?${params.toString()}`)
