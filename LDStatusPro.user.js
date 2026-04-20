@@ -1,7 +1,7 @@
  // ==UserScript==
     // @name         LDStatus Pro
     // @namespace    http://tampermonkey.net/
-    // @version      3.9.0.0
+    // @version      3.9.0.1
     // @description  在 Linux.do 和 IDCFlare 页面显示信任级别进度，支持历史趋势、里程碑通知、阅读时间统计、排行榜系统、我的活动查看。两站点均支持排行榜和云同步功能
     // @author       JackLiii
     // @license      MIT
@@ -468,8 +468,8 @@
             READING_LEVELS_REFRESH: 24 * 60 * 60 * 1000,
             // 名称替换映射
             NAME_MAP: new Map([
-                ['已读帖子（所有时间）', '已读帖子'],
-                ['浏览的话题（所有时间）', '浏览话题'],
+                ['已读帖子（所有时间）', '已读帖子(所有时间)'],
+                ['浏览的话题（所有时间）', '浏览话题(所有时间)'],
                 ['浏览的话题', '浏览话题'],
                 ['回复的话题', '回复'],
                 ['访问次数', '访问天数'],
@@ -477,8 +477,8 @@
                 ['获赞：单日最高数量', '获赞天数'],
                 ['被举报的帖子', '被举报帖子'],
                 ['发起举报的用户', '发起举报'],
-                ['被禁言（过去 6 个月）', '禁言'],
-                ['被封禁（过去 6 个月）', '封禁'],
+                ['被禁言（过去 6 个月）', '被禁言(近6个月)'],
+                ['被封禁（过去 6 个月）', '被封禁(近6个月)'],
                 ['发帖数量', '发帖'],
                 ['回复数量', '回复'],
                 ['被举报的帖子（过去 6 个月）', '被举报帖子'],
@@ -948,53 +948,70 @@
                     (now - this._cacheTime) < CONFIG.CACHE.SCREEN_TTL) {
                     return this._cache;
                 }
-                const isMobile = vw < 500 || vh < 700;
+                const shortEdge = Math.min(vw, vh);
+                const longEdge = Math.max(vw, vh);
                 const isVerySmall = vw < 360 || vh < 500;
-                
-                // 面板宽度：移动设备使用更小的基础宽度
-                // 桌面: 视口宽度的18%，限制在260-360px
-                // 移动: 视口宽度的65%，限制在220-280px
+                const isPhone = shortEdge < 600;
+                const isTablet = !isPhone && shortEdge < 900;
+                const isLandscapeCompact = vw > vh && vh < 700;
+                const isMobile = isPhone || isLandscapeCompact;
+
                 let width;
                 if (isVerySmall) {
-                    width = Math.max(200, Math.min(240, Math.round(vw * 0.7)));
+                    width = Math.max(188, Math.min(240, Math.round(vw * 0.74)));
                 } else if (isMobile) {
-                    width = Math.max(220, Math.min(280, Math.round(vw * 0.65)));
+                    width = Math.max(212, Math.min(300, Math.round(vw * 0.66)));
+                } else if (isTablet) {
+                    width = Math.max(260, Math.min(360, Math.round(vw * 0.32)));
                 } else {
-                    width = Math.max(260, Math.min(360, Math.round(vw * 0.18)));
+                    width = Math.max(260, Math.min(360, Math.round(vw * 0.19)));
                 }
-                
-                // 面板最大高度：视口高度减去边距
-                // 移动设备预留更小的边距以获得更多显示空间
-                const topMargin = isMobile 
-                    ? Math.max(15, Math.round(vh * 0.03))
-                    : Math.max(30, Math.round(vh * 0.06));
-                const bottomMargin = isMobile ? 10 : 20;
+
+                const topMargin = isMobile
+                    ? Math.max(10, Math.round(vh * 0.02))
+                    : isTablet
+                        ? Math.max(18, Math.round(vh * 0.035))
+                        : Math.max(30, Math.round(vh * 0.06));
+                const bottomMargin = isMobile ? 8 : isTablet ? 14 : 20;
                 const maxHeight = vh - topMargin - bottomMargin;
-                
-                // 字体大小：移动设备使用较小字号
-                // 桌面: 10-13px，移动: 9-11px
-                const fontSize = isMobile
-                    ? Math.max(9, Math.min(11, Math.round(vh / 70)))
-                    : Math.max(10, Math.min(13, Math.round(vh / 70)));
-                
-                // 内边距：根据宽度缩放
-                // 桌面: 10-14px，移动: 6-10px
-                const padding = isMobile
-                    ? Math.max(6, Math.min(10, Math.round(width / 28)))
-                    : Math.max(10, Math.min(14, Math.round(width / 24)));
-                
-                // 头像大小：移动设备使用较小头像
-                // 桌面: 40-52px，移动: 32-42px
-                const avatarSize = isMobile
-                    ? Math.max(32, Math.min(42, Math.round(width / 7)))
-                    : Math.max(40, Math.min(52, Math.round(width / 6.5)));
-                
-                // 环形图大小：根据高度缩放
-                // 桌面: 65-85px，移动: 50-65px
-                const ringSize = isMobile
-                    ? Math.max(50, Math.min(65, Math.round(vh / 12)))
-                    : Math.max(65, Math.min(85, Math.round(vh / 11)));
-                
+
+                const fontSize = isVerySmall
+                    ? Math.max(8, Math.min(10, Math.round(vh / 72)))
+                    : isMobile
+                        ? Math.max(9, Math.min(11, Math.round(vh / 68)))
+                        : isTablet
+                            ? Math.max(10, Math.min(12, Math.round(longEdge / 90)))
+                            : Math.max(10, Math.min(13, Math.round(vh / 70)));
+
+                const padding = isVerySmall
+                    ? Math.max(5, Math.min(8, Math.round(width / 30)))
+                    : isMobile
+                        ? Math.max(7, Math.min(10, Math.round(width / 30)))
+                        : isTablet
+                            ? Math.max(10, Math.min(13, Math.round(width / 28)))
+                            : Math.max(10, Math.min(14, Math.round(width / 24)));
+
+                const avatarSize = isVerySmall
+                    ? Math.max(30, Math.min(38, Math.round(width / 7.2)))
+                    : isMobile
+                        ? Math.max(34, Math.min(44, Math.round(width / 7.1)))
+                        : isTablet
+                            ? Math.max(40, Math.min(50, Math.round(width / 7)))
+                            : Math.max(40, Math.min(52, Math.round(width / 6.5)));
+
+                const ringSize = isVerySmall
+                    ? Math.max(46, Math.min(58, Math.round(vh / 12.8)))
+                    : isMobile
+                        ? Math.max(52, Math.min(66, Math.round(vh / 11.8)))
+                        : isTablet
+                            ? Math.max(60, Math.min(78, Math.round(vh / 11.4)))
+                            : Math.max(65, Math.min(85, Math.round(vh / 11)));
+
+                const readingWidth = Math.round(Math.max(
+                    isVerySmall ? 92 : isMobile ? 108 : isTablet ? 120 : 132,
+                    Math.min(width * 0.34, isVerySmall ? 112 : isMobile ? 124 : isTablet ? 136 : 152)
+                ));
+
                 const config = {
                     width,
                     maxHeight,
@@ -1002,12 +1019,16 @@
                     padding,
                     avatarSize,
                     ringSize,
+                    readingWidth,
                     top: topMargin,
                     vw,
                     vh,
                     offsetTop,
                     offsetLeft,
                     isMobile,
+                    isPhone,
+                    isTablet,
+                    isLandscapeCompact,
                     isVerySmall
                 };
                 this._cache = config;
@@ -1997,28 +2018,143 @@
                 this._historyTime = 0;
             }
 
+            _getDayKey(input) {
+                const date = input instanceof Date ? input : new Date(input);
+                if (isNaN(date.getTime())) return null;
+                return date.toDateString();
+            }
+
+            _normalizeRecord(record) {
+                if (!record || typeof record !== 'object') return null;
+                const sourceData = (record.data && typeof record.data === 'object') ? record.data : {};
+                const dayKey = this._getDayKey(record.dayKey || record.date || record.ts || Date.now());
+                if (!dayKey) return null;
+                const ts = Number.isFinite(record.ts) ? record.ts : new Date(dayKey).getTime();
+                const readingTime = Utils.toSafeNumber(record.readingTime, 0);
+                const data = {};
+                Object.entries(sourceData).forEach(([key, value]) => {
+                    if (typeof value === 'number' && Number.isFinite(value)) {
+                        data[key] = value;
+                    }
+                });
+                return {
+                    ts,
+                    dayKey,
+                    data,
+                    readingTime,
+                    baselineData: (record.baselineData && typeof record.baselineData === 'object') ? { ...record.baselineData } : null,
+                    endData: (record.endData && typeof record.endData === 'object') ? { ...record.endData } : { ...data },
+                    startData: (record.startData && typeof record.startData === 'object') ? { ...record.startData } : null,
+                    lastSyncTs: Number.isFinite(record.lastSyncTs) ? record.lastSyncTs : ts
+                };
+            }
+
+            _sortAndTrimHistory(history) {
+                return history
+                    .filter(Boolean)
+                    .sort((a, b) => a.ts - b.ts)
+                    .slice(-CONFIG.CACHE.MAX_HISTORY_DAYS);
+            }
+
+            _buildDailyHistory(history) {
+                const daily = new Map();
+                const sorted = this._sortAndTrimHistory(history.map(record => this._normalizeRecord(record)));
+                let previousEndData = null;
+
+                sorted.forEach(record => {
+                    if (!record) return;
+                    const endData = { ...record.endData, ...record.data };
+                    const baselineData = record.baselineData ? { ...record.baselineData } : (previousEndData ? { ...previousEndData } : {});
+                    const currentData = { ...baselineData };
+                    Object.entries(endData).forEach(([key, value]) => {
+                        if (typeof value === 'number' && Number.isFinite(value)) {
+                            currentData[key] = value;
+                        }
+                    });
+                    const currentReading = Utils.toSafeNumber(record.readingTime, 0);
+                    const previousReading = Utils.toSafeNumber(previousEndData?.['阅读时间(分钟)'], 0);
+                    currentData['阅读时间(分钟)'] = Math.max(currentReading, previousReading);
+                    daily.set(record.dayKey, {
+                        ...record,
+                        ts: new Date(record.dayKey).getTime(),
+                        baselineData,
+                        startData: record.startData ? { ...record.startData } : { ...baselineData },
+                        endData: currentData,
+                        data: currentData,
+                        readingTime: currentData['阅读时间(分钟)'],
+                        lastSyncTs: Math.max(record.lastSyncTs || 0, record.ts || 0)
+                    });
+                    previousEndData = currentData;
+                });
+
+                return daily;
+            }
+
+            _serializeDailyHistory(dailyMap) {
+                return this._sortAndTrimHistory(
+                    [...dailyMap.values()].map(record => ({
+                        ts: record.ts,
+                        dayKey: record.dayKey,
+                        data: { ...record.data },
+                        readingTime: Utils.toSafeNumber(record.readingTime, 0),
+                        baselineData: record.baselineData ? { ...record.baselineData } : null,
+                        endData: record.endData ? { ...record.endData } : { ...record.data },
+                        startData: record.startData ? { ...record.startData } : null,
+                        lastSyncTs: record.lastSyncTs || record.ts
+                    }))
+                );
+            }
+
             getHistory() {
                 const now = Date.now();
                 if (this._history && (now - this._historyTime) < CONFIG.CACHE.HISTORY_TTL) {
                     return this._history;
                 }
-                
-                const history = this.storage.get('history', []);
-                const cutoff = now - CONFIG.CACHE.MAX_HISTORY_DAYS * 86400000;
-                this._history = history.filter(h => h.ts > cutoff);
+
+                const rawHistory = this.storage.get('history', []);
+                const dailyMap = this._buildDailyHistory(Array.isArray(rawHistory) ? rawHistory : []);
+                this._history = this._serializeDailyHistory(dailyMap);
                 this._historyTime = now;
                 return this._history;
             }
 
-            addHistory(data, readingTime = 0) {
-                const history = this.getHistory();
+            addHistory(data, readingTime = 0, meta = {}) {
                 const now = Date.now();
-                const today = new Date().toDateString();
-                const record = { ts: now, data, readingTime };
+                const dayKey = this._getDayKey(meta.dayKey || meta.date || meta.ts || now);
+                if (!dayKey) return this.getHistory();
 
-                const idx = history.findIndex(h => new Date(h.ts).toDateString() === today);
-                idx >= 0 ? history[idx] = record : history.push(record);
+                const dailyMap = this._buildDailyHistory(this.getHistory());
+                const existing = dailyMap.get(dayKey);
+                const previousRecord = existing || dailyMap.get(this._getDayKey(new Date(new Date(dayKey).getTime() - 86400000)));
+                const fallbackBaseline = previousRecord?.endData ? { ...previousRecord.endData } : {};
+                const incomingData = (data && typeof data === 'object') ? data : {};
+                const mergedEndData = existing?.endData ? { ...existing.endData } : { ...fallbackBaseline };
 
+                Object.entries(incomingData).forEach(([key, value]) => {
+                    if (typeof value === 'number' && Number.isFinite(value)) {
+                        mergedEndData[key] = value;
+                    }
+                });
+
+                const safeReadingTime = Utils.toSafeNumber(readingTime, 0);
+                mergedEndData['阅读时间(分钟)'] = Math.max(
+                    safeReadingTime,
+                    Utils.toSafeNumber(mergedEndData['阅读时间(分钟)'], 0),
+                    Utils.toSafeNumber(existing?.readingTime, 0)
+                );
+
+                dailyMap.set(dayKey, {
+                    ts: existing?.ts || new Date(dayKey).getTime(),
+                    dayKey,
+                    baselineData: existing?.baselineData ? { ...existing.baselineData } : { ...fallbackBaseline },
+                    startData: existing?.startData ? { ...existing.startData } : { ...fallbackBaseline },
+                    endData: mergedEndData,
+                    data: mergedEndData,
+                    readingTime: mergedEndData['阅读时间(分钟)'],
+                    lastSyncTs: now
+                });
+
+                const history = this._serializeDailyHistory(dailyMap);
                 this.storage.set('history', history);
                 this._history = history;
                 this._historyTime = now;
@@ -2026,31 +2162,48 @@
                 return history;
             }
 
+            getRecordByDay(dayKey) {
+                if (!dayKey) return null;
+                return this.getHistory().find(record => record.dayKey === dayKey) || null;
+            }
+
+            getDailyDelta(dayKey, reqs = []) {
+                const record = this.getRecordByDay(dayKey);
+                if (!record) return null;
+                const metricNames = reqs.length
+                    ? reqs.map(r => r.name)
+                    : Array.from(new Set([
+                        ...Object.keys(record.endData || {}),
+                        ...Object.keys(record.baselineData || {})
+                    ]));
+                const delta = {};
+                metricNames.forEach(name => {
+                    const currentVal = Utils.getMetricValue(record.endData, name, 0);
+                    const previousVal = Utils.getMetricValue(record.baselineData, name, 0);
+                    delta[name] = currentVal - previousVal;
+                });
+                return {
+                    dayKey,
+                    label: Utils.formatDate(new Date(dayKey).getTime(), 'short'),
+                    currentData: { ...(record.endData || {}) },
+                    baselineData: { ...(record.baselineData || {}) },
+                    delta,
+                    readingTime: Utils.toSafeNumber(record.readingTime, 0)
+                };
+            }
+
             // 聚合每日新增（当日相对前一日的变化）
             aggregateDaily(history, reqs, maxDays) {
-                const cacheKey = `daily_${maxDays}_${history.length}`;
+                const normalizedHistory = Array.isArray(history) && history.length ? history : this.getHistory();
+                const cacheKey = `daily_${maxDays}_${normalizedHistory.length}`;
                 if (this.cache.has(cacheKey)) return this.cache.get(cacheKey);
 
-                const byDay = new Map();
-                history.forEach(h => {
-                    const day = new Date(h.ts).toDateString();
-                    byDay.has(day) ? byDay.get(day).push(h) : byDay.set(day, [h]);
-                });
-
-                const sortedDays = [...byDay.keys()].sort((a, b) => new Date(a) - new Date(b));
+                const sorted = this._sortAndTrimHistory(normalizedHistory.map(record => this._normalizeRecord(record)));
                 const result = new Map();
-                let prevData = null;
-
-                sortedDays.forEach(day => {
-                    const latest = byDay.get(day).at(-1);
-                    const dayData = {};
-                    reqs.forEach(r => {
-                        const currentVal = Utils.getMetricValue(latest.data, r.name, 0);
-                        const prevVal = Utils.getMetricValue(prevData, r.name, 0);
-                        dayData[r.name] = currentVal - prevVal;
-                    });
-                    result.set(day, dayData);
-                    prevData = { ...latest.data };
+                sorted.slice(-maxDays).forEach(record => {
+                    if (!record) return;
+                    const delta = this.getDailyDelta(record.dayKey, reqs);
+                    if (delta) result.set(record.dayKey, delta.delta);
                 });
 
                 this.cache.set(cacheKey, result);
@@ -2059,41 +2212,35 @@
 
             // 聚合每周新增（当周相对前一周的变化）
             aggregateWeekly(history, reqs) {
-                const cacheKey = `weekly_${history.length}`;
+                const normalizedHistory = Array.isArray(history) && history.length ? history : this.getHistory();
+                const cacheKey = `weekly_${normalizedHistory.length}`;
                 if (this.cache.has(cacheKey)) return this.cache.get(cacheKey);
 
+                const sorted = this._sortAndTrimHistory(normalizedHistory.map(record => this._normalizeRecord(record)));
                 const now = new Date();
                 const [year, month] = [now.getFullYear(), now.getMonth()];
                 const weeks = this._getWeeksInMonth(year, month);
                 const result = new Map();
-                const byWeek = new Map(weeks.map((_, i) => [i, []]));
-
-                history.forEach(h => {
-                    const d = new Date(h.ts);
-                    if (d.getFullYear() === year && d.getMonth() === month) {
-                        weeks.forEach((week, i) => {
-                            if (d >= week.start && d <= week.end) byWeek.get(i).push(h);
-                        });
-                    }
-                });
-
-                let prevData = null;
-                const lastMonth = history.filter(h => new Date(h.ts) < new Date(year, month, 1));
-                if (lastMonth.length) prevData = { ...lastMonth.at(-1).data };
+                const dailyMap = new Map(sorted.map(record => [record.dayKey, record]));
+                let prevWeekEndData = null;
 
                 weeks.forEach((week, i) => {
-                    const records = byWeek.get(i);
+                    const weekDays = [];
+                    const cursor = new Date(week.start);
+                    while (cursor <= week.end) {
+                        weekDays.push(cursor.toDateString());
+                        cursor.setDate(cursor.getDate() + 1);
+                    }
+                    const lastDayKey = weekDays.at(-1);
+                    const weekRecord = lastDayKey ? dailyMap.get(lastDayKey) : null;
                     const weekData = {};
-                    if (records.length) {
-                        const latest = records.at(-1);
-                        reqs.forEach(r => {
-                            const currentVal = Utils.getMetricValue(latest.data, r.name, 0);
-                            const prevVal = Utils.getMetricValue(prevData, r.name, 0);
-                            weekData[r.name] = currentVal - prevVal;
-                        });
-                        prevData = { ...latest.data };
-                    } else {
-                        reqs.forEach(r => weekData[r.name] = 0);
+                    reqs.forEach(r => {
+                        const currentVal = Utils.getMetricValue(weekRecord?.endData, r.name, 0);
+                        const prevVal = Utils.getMetricValue(prevWeekEndData, r.name, 0);
+                        weekData[r.name] = currentVal - prevVal;
+                    });
+                    if (weekRecord?.endData) {
+                        prevWeekEndData = { ...weekRecord.endData };
                     }
                     result.set(i, { weekNum: i + 1, start: week.start, end: week.end, label: `第${i + 1}周`, data: weekData });
                 });
@@ -2104,30 +2251,34 @@
 
             // 聚合每月新增（当月相对前一月的变化）
             aggregateMonthly(history, reqs) {
-                const cacheKey = `monthly_${history.length}`;
+                const normalizedHistory = Array.isArray(history) && history.length ? history : this.getHistory();
+                const cacheKey = `monthly_${normalizedHistory.length}`;
                 if (this.cache.has(cacheKey)) return this.cache.get(cacheKey);
 
+                const sorted = this._sortAndTrimHistory(normalizedHistory.map(record => this._normalizeRecord(record)));
                 const byMonth = new Map();
-                history.forEach(h => {
-                    const d = new Date(h.ts);
+                sorted.forEach(record => {
+                    const d = new Date(record.dayKey || record.ts);
                     const key = new Date(d.getFullYear(), d.getMonth(), 1).toDateString();
-                    byMonth.has(key) ? byMonth.get(key).push(h) : byMonth.set(key, [h]);
+                    byMonth.set(key, record);
                 });
 
                 const sortedMonths = [...byMonth.keys()].sort((a, b) => new Date(a) - new Date(b));
                 const result = new Map();
-                let prevData = null;
+                let prevMonthEndData = null;
 
                 sortedMonths.forEach(month => {
-                    const latest = byMonth.get(month).at(-1);
+                    const latest = byMonth.get(month);
                     const monthData = {};
                     reqs.forEach(r => {
-                        const currentVal = Utils.getMetricValue(latest.data, r.name, 0);
-                        const prevVal = Utils.getMetricValue(prevData, r.name, 0);
+                        const currentVal = Utils.getMetricValue(latest?.endData, r.name, 0);
+                        const prevVal = Utils.getMetricValue(prevMonthEndData, r.name, 0);
                         monthData[r.name] = currentVal - prevVal;
                     });
+                    if (latest?.endData) {
+                        prevMonthEndData = { ...latest.endData };
+                    }
                     result.set(month, monthData);
-                    prevData = { ...latest.data };
                 });
 
                 this.cache.set(cacheKey, result);
@@ -3449,6 +3600,34 @@
                 return `${dataStr}|rt:${reading}`;
             }
 
+            _mergeRequirementHistoryRecord(existingRecord, incomingRecord) {
+                const existing = existingRecord && typeof existingRecord === 'object' ? existingRecord : null;
+                const incoming = incomingRecord && typeof incomingRecord === 'object' ? incomingRecord : null;
+                if (!existing) return incoming;
+                if (!incoming) return existing;
+                const mergeData = (base = {}, next = {}) => {
+                    const merged = { ...(base || {}) };
+                    Object.entries(next || {}).forEach(([key, value]) => {
+                        if (typeof value === 'number' && Number.isFinite(value)) {
+                            merged[key] = value;
+                        }
+                    });
+                    return merged;
+                };
+                return {
+                    ...existing,
+                    ...incoming,
+                    dayKey: incoming.dayKey || existing.dayKey,
+                    ts: Math.max(existing.ts || 0, incoming.ts || 0),
+                    lastSyncTs: Math.max(existing.lastSyncTs || 0, incoming.lastSyncTs || 0, incoming.ts || 0),
+                    data: mergeData(existing.data, incoming.data),
+                    endData: mergeData(existing.endData || existing.data, incoming.endData || incoming.data),
+                    baselineData: incoming.baselineData ? mergeData(existing.baselineData, incoming.baselineData) : (existing.baselineData || null),
+                    startData: incoming.startData ? mergeData(existing.startData || existing.baselineData, incoming.startData) : (existing.startData || null),
+                    readingTime: Math.max(existing.readingTime || 0, incoming.readingTime || 0)
+                };
+            }
+
             /**
              * 下载升级要求历史数据
              */
@@ -3482,45 +3661,34 @@
                     let localHistory = this._historyMgr.getHistory();
                     const localByDay = new Map();
                     localHistory.forEach(h => {
-                        const day = new Date(h.ts).toDateString();
+                        const day = h.dayKey || new Date(h.ts).toDateString();
                         localByDay.set(day, h);
                     });
 
                     let merged = 0;
                     cloudHistory.forEach(cloudRecord => {
-                        const day = new Date(cloudRecord.ts).toDateString();
+                        const day = cloudRecord.dayKey || new Date(cloudRecord.ts).toDateString();
                         const localRecord = localByDay.get(day);
-
+                        const mergedRecord = this._mergeRequirementHistoryRecord(localRecord, cloudRecord);
                         if (!localRecord) {
-                            // 本地没有，添加云端数据
-                            localHistory.push(cloudRecord);
+                            localHistory.push(mergedRecord);
+                            localByDay.set(day, mergedRecord);
                             merged++;
-                        } else {
-                            // 本地有，合并数据（取每个字段的较大值）
-                            let changed = false;
-                            for (const [key, cloudValue] of Object.entries(cloudRecord.data)) {
-                                if (typeof cloudValue === 'number') {
-                                    const localValue = localRecord.data[key] || 0;
-                                    if (cloudValue > localValue) {
-                                        localRecord.data[key] = cloudValue;
-                                        changed = true;
-                                    }
-                                }
-                            }
-                            if (cloudRecord.readingTime > (localRecord.readingTime || 0)) {
-                                localRecord.readingTime = cloudRecord.readingTime;
-                                changed = true;
-                            }
-                            if (changed) merged++;
+                            return;
+                        }
+                        if (JSON.stringify(localRecord) !== JSON.stringify(mergedRecord)) {
+                            const idx = localHistory.indexOf(localRecord);
+                            if (idx >= 0) localHistory[idx] = mergedRecord;
+                            localByDay.set(day, mergedRecord);
+                            merged++;
                         }
                     });
 
                     if (merged > 0) {
-                        // 按时间排序
                         localHistory.sort((a, b) => a.ts - b.ts);
                         this.storage.set('history', localHistory);
-                        this._historyMgr._history = localHistory;
-                        this._historyMgr._historyTime = Date.now();
+                        this._historyMgr._history = null;
+                        this._historyMgr._historyTime = 0;
                         this._historyMgr.cache.clear();
                     }
 
@@ -3570,9 +3738,11 @@
                 try {
                     const result = await this.oauth.api('/api/requirements/sync', {
                         method: 'POST',
-                        body: { 
+                        body: {
                             date: today,
                             requirements: todayRecord.data,
+                            baselineData: todayRecord.baselineData || {},
+                            startData: todayRecord.startData || todayRecord.baselineData || {},
                             readingTime: todayRecord.readingTime || 0
                         }
                     });
@@ -3797,7 +3967,7 @@
 
             _css(c) {
                 const css = `
-    #ldsp-panel{--dur-fast:120ms;--dur:200ms;--dur-slow:350ms;--ease:cubic-bezier(.22,1,.36,1);--ease-circ:cubic-bezier(.85,0,.15,1);--ease-spring:cubic-bezier(.175,.885,.32,1.275);--ease-out:cubic-bezier(0,.55,.45,1);--bg:#12131a;--bg-card:rgba(24,26,36,.92);--bg-hover:rgba(38,42,56,.95);--bg-el:rgba(32,35,48,.88);--bg-glass:rgba(255,255,255,.02);--txt:#e4e6ed;--txt-sec:#9499ad;--txt-mut:#5d6275;--accent:#6b8cef;--accent-light:#8aa4f4;--accent2:#5bb5a6;--accent2-light:#7cc9bc;--accent3:#e07a8d;--grad:linear-gradient(135deg,#5a7de0 0%,#4a6bc9 100%);--grad-accent:linear-gradient(135deg,#4a6bc9,#3d5aaa);--grad-warm:linear-gradient(135deg,#e07a8d,#c9606e);--grad-gold:linear-gradient(135deg,#d4a853 0%,#c49339 100%);--ok:#5bb5a6;--ok-light:#7cc9bc;--ok-bg:rgba(91,181,166,.12);--err:#e07a8d;--err-light:#ea9aa8;--err-bg:rgba(224,122,141,.12);--warn:#d4a853;--warn-bg:rgba(212,168,83,.12);--border:rgba(255,255,255,.06);--border2:rgba(255,255,255,.1);--border-accent:rgba(107,140,239,.3);--border-panel:rgba(0,0,0,.25);--shadow:0 1.25rem 3rem rgba(0,0,0,.4);--shadow-lg:0 1.5rem 4rem rgba(0,0,0,.5),0 0 2rem rgba(107,140,239,.06);--shadow-glow:0 0 1.25rem rgba(107,140,239,.15);--glow-accent:0 0 1rem rgba(107,140,239,.2);--scrollbar:rgba(140,150,175,.5);--scrollbar-hover:rgba(140,150,175,.7);--r-xs:0.25em;--r-sm:0.5em;--r-md:0.75em;--r-lg:1em;--r-xl:1.25em;--w:${c.width}px;--h:${c.maxHeight}px;--fs:${c.fontSize}px;--pd:${c.padding}px;--av:${c.avatarSize}px;--ring:${c.ringSize}px;--min-w:220px;--max-w:420px;--min-h:300px;display:flex;flex-direction:column;position:fixed;left:0.5vw;top:${c.top}px;right:auto;width:var(--w);max-height:var(--h);min-width:var(--min-w);max-width:var(--max-w);min-height:var(--min-h);background:var(--bg);border-radius:var(--r-lg);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Noto Sans SC',sans-serif;font-size:var(--fs);color:var(--txt);box-shadow:var(--shadow);z-index:99999;overflow:hidden;border:none;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+    #ldsp-panel{--dur-fast:120ms;--dur:200ms;--dur-slow:350ms;--ease:cubic-bezier(.22,1,.36,1);--ease-circ:cubic-bezier(.85,0,.15,1);--ease-spring:cubic-bezier(.175,.885,.32,1.275);--ease-out:cubic-bezier(0,.55,.45,1);--bg:#12131a;--bg-card:rgba(24,26,36,.92);--bg-hover:rgba(38,42,56,.95);--bg-el:rgba(32,35,48,.88);--bg-glass:rgba(255,255,255,.02);--txt:#e4e6ed;--txt-sec:#9499ad;--txt-mut:#5d6275;--accent:#6b8cef;--accent-light:#8aa4f4;--accent2:#5bb5a6;--accent2-light:#7cc9bc;--accent3:#e07a8d;--grad:linear-gradient(135deg,#5a7de0 0%,#4a6bc9 100%);--grad-accent:linear-gradient(135deg,#4a6bc9,#3d5aaa);--grad-warm:linear-gradient(135deg,#e07a8d,#c9606e);--grad-gold:linear-gradient(135deg,#d4a853 0%,#c49339 100%);--ok:#5bb5a6;--ok-light:#7cc9bc;--ok-bg:rgba(91,181,166,.12);--err:#e07a8d;--err-light:#ea9aa8;--err-bg:rgba(224,122,141,.12);--warn:#d4a853;--warn-bg:rgba(212,168,83,.12);--border:rgba(255,255,255,.06);--border2:rgba(255,255,255,.1);--border-accent:rgba(107,140,239,.3);--border-panel:rgba(0,0,0,.25);--shadow:0 1.25rem 3rem rgba(0,0,0,.4);--shadow-lg:0 1.5rem 4rem rgba(0,0,0,.5),0 0 2rem rgba(107,140,239,.06);--shadow-glow:0 0 1.25rem rgba(107,140,239,.15);--glow-accent:0 0 1rem rgba(107,140,239,.2);--scrollbar:rgba(140,150,175,.5);--scrollbar-hover:rgba(140,150,175,.7);--r-xs:0.25em;--r-sm:0.5em;--r-md:0.75em;--r-lg:1em;--r-xl:1.25em;--w:${c.width}px;--h:${c.maxHeight}px;--fs:${c.fontSize}px;--pd:${c.padding}px;--av:${c.avatarSize}px;--ring:${c.ringSize}px;--min-w:${c.bounds?.minW ?? 220}px;--max-w:${c.bounds?.maxW ?? 420}px;--min-h:${c.bounds?.minH ?? 260}px;display:flex;flex-direction:column;position:fixed;left:0.5vw;top:${c.top}px;right:auto;width:var(--w);max-height:var(--h);min-width:var(--min-w);max-width:var(--max-w);min-height:var(--min-h);background:var(--bg);border-radius:var(--r-lg);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Noto Sans SC',sans-serif;font-size:var(--fs);color:var(--txt);box-shadow:var(--shadow);z-index:99999;overflow:hidden;border:none;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
     #ldsp-panel,#ldsp-panel *{transition:opacity var(--dur) var(--ease),transform var(--dur) var(--ease);user-select:none;-webkit-font-smoothing:antialiased}
     #ldsp-panel{transform:translateZ(0);backface-visibility:hidden}
     #ldsp-panel input,#ldsp-panel textarea{cursor:text;user-select:text}
@@ -3939,10 +4109,10 @@
     .ldsp-announcement.warning .ldsp-announcement-text::before{content:'⚠️'}
     .ldsp-announcement.success .ldsp-announcement-text::before{content:'🎉'}
     @keyframes marquee{0%{transform:translateX(var(--start-x,100%))}100%{transform:translateX(var(--end-x,-100%))}}
-    .ldsp-user{display:flex;align-items:stretch;gap:10px;padding:10px var(--pd) 24px;background:var(--bg-card);border-bottom:1px solid var(--border);position:relative;overflow:hidden;flex-shrink:0}
+    .ldsp-user{display:grid;grid-template-columns:minmax(0,1fr) minmax(72px,var(--reading-w));align-items:stretch;gap:10px;padding:10px var(--pd) 10px;background:var(--bg-card);border-bottom:1px solid var(--border);position:relative;overflow:hidden;flex-shrink:0}
     .ldsp-user::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.3}
     .ldsp-user-left{display:flex;flex-direction:column;flex:1;min-width:0;gap:8px;justify-content:center}
-    .ldsp-user-row{display:flex;align-items:center;gap:10px}
+    .ldsp-user-row{display:flex;align-items:center;gap:10px;min-width:0}
     .ldsp-user-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;position:relative}
     .ldsp-user-actions.collapsed{max-height:24px;overflow:hidden}
     .ldsp-user-actions-wrap{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
@@ -3968,16 +4138,16 @@
     .ldsp-user.not-logged .ldsp-user-display-name{color:var(--warn);-webkit-text-fill-color:var(--warn)}
     .ldsp-login-hint{font-size:9px;color:var(--warn);margin-left:4px;animation:blink 2.5s ease-in-out infinite;background:var(--warn-bg);padding:2px 6px;border-radius:8px;font-weight:500}
     @keyframes blink{0%,100%{opacity:1}50%{opacity:.7}}
-    .ldsp-user-meta{display:flex;align-items:center;gap:8px;margin-top:3px}
+    .ldsp-user-meta{display:flex;align-items:center;gap:8px;margin-top:3px;flex-wrap:wrap}
 
-    .ldsp-reading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;border-radius:var(--r-md);aspect-ratio:0.92/1;min-width:100px;max-width:250px;align-self:stretch;position:relative;overflow:visible;border:1px solid var(--border);transition:background .2s,border-color .2s,box-shadow .3s;flex-shrink:0;box-sizing:border-box}
+    .ldsp-reading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 8px 6px;border-radius:var(--r-md);aspect-ratio:2/1;min-width:84px;width:min(100%,var(--reading-w));max-width:min(100%,calc(var(--w) * .46));align-self:stretch;justify-self:end;position:relative;overflow:hidden;border:1px solid var(--border);transition:background .2s,border-color .2s,box-shadow .3s;flex-shrink:0;box-sizing:border-box}
     .ldsp-reading::before{content:'';position:absolute;inset:0;border-radius:inherit;background:linear-gradient(180deg,rgba(255,255,255,.05) 0%,transparent 100%);pointer-events:none}
-    .ldsp-reading-icon{font-size:20px;margin-bottom:3px;animation:bounce 3s ease-in-out infinite;filter:drop-shadow(0 2px 4px rgba(0,0,0,.2));will-change:transform}
+    .ldsp-reading-icon{font-size:23px;margin-bottom:8px;animation:bounce 3s ease-in-out infinite;filter:drop-shadow(0 3px 6px rgba(0,0,0,.24));will-change:transform;line-height:1}
     @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
-    .ldsp-reading-time{font-size:13px;font-weight:800;letter-spacing:-.02em}
-    .ldsp-reading-label{font-size:9px;opacity:.85;margin-top:2px;font-weight:600;letter-spacing:.02em}
+    .ldsp-reading-time{font-size:15px;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin-bottom:5px}
+    .ldsp-reading-label{display:inline-flex;align-items:center;justify-content:center;min-height:18px;padding:0 8px;border-radius:999px;background:color-mix(in srgb,var(--rc) 16%,rgba(255,255,255,.08));border:1px solid color-mix(in srgb,var(--rc) 24%,rgba(255,255,255,.12));box-shadow:inset 0 1px 0 rgba(255,255,255,.12);font-size:9px;opacity:.95;font-weight:700;letter-spacing:.08em;line-height:1;text-transform:uppercase;margin-bottom:8px}
     .ldsp-reading{--rc:#94a3b8}
-    .ldsp-reading::after{content:'未活动 已停止记录';position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);font-size:8px;color:var(--err);white-space:nowrap;font-weight:600;letter-spacing:.02em;opacity:.8}
+    .ldsp-reading::after{content:'未活动 已停止记录';position:absolute;bottom:4px;left:50%;transform:translateX(-50%);font-size:8px;color:var(--err);white-space:nowrap;font-weight:600;letter-spacing:.02em;opacity:.8}
     .ldsp-reading.tracking{animation:reading-glow 3.5s ease-in-out infinite;will-change:box-shadow}
     .ldsp-reading.tracking::after{content:'阅读时间记录中...';color:var(--rc);opacity:1}
     @keyframes reading-glow{0%,100%{box-shadow:0 0 8px color-mix(in srgb,var(--rc) 40%,transparent),0 0 16px color-mix(in srgb,var(--rc) 20%,transparent),0 0 24px color-mix(in srgb,var(--rc) 10%,transparent)}50%{box-shadow:0 0 16px color-mix(in srgb,var(--rc) 60%,transparent),0 0 32px color-mix(in srgb,var(--rc) 35%,transparent),0 0 48px color-mix(in srgb,var(--rc) 15%,transparent)}}
@@ -4377,16 +4547,20 @@
     .ldsp-content{max-height:calc(var(--h) - 160px)}
     /* --- 高度响应式 --- */
     /* 矮屏优化 (高度<700px): 减小间距 */
-    @media (max-height:700px){.ldsp-user{padding:8px var(--pd) 20px}.ldsp-reading{padding:6px}.ldsp-reading-icon{font-size:18px}.ldsp-reading-time{font-size:12px}.ldsp-reading::after{font-size:7px;bottom:-12px}.ldsp-ring{padding:10px 12px}.ldsp-ring-stat-val{font-size:16px}.ldsp-ring-stat-lbl{font-size:8px}}
+    @media (max-height:700px){.ldsp-user{padding:8px var(--pd) 8px}.ldsp-reading{padding:6px 6px 4px}.ldsp-reading-icon{font-size:18px;margin-bottom:5px}.ldsp-reading-time{font-size:12px;margin-bottom:3px}.ldsp-reading-label{min-height:16px;padding:0 7px;font-size:8px;margin-bottom:5px}.ldsp-reading::after{font-size:7px;bottom:3px}.ldsp-ring{padding:10px 12px}.ldsp-ring-stat-val{font-size:16px}.ldsp-ring-stat-lbl{font-size:8px}}
     /* 矮屏优化 (高度<600px): 进一步压缩 */
-    @media (max-height:600px){.ldsp-hdr{padding:8px 10px;min-height:44px;gap:6px}.ldsp-user{padding:6px var(--pd) 16px;gap:8px}.ldsp-user-actions{gap:4px;margin-top:0}.ldsp-action-btn{padding:4px 6px;font-size:9px}.ldsp-tabs{padding:6px 8px}.ldsp-section{padding:8px}.ldsp-reading{padding:5px}.ldsp-reading-icon{font-size:16px;margin-bottom:2px}.ldsp-reading-time{font-size:11px}.ldsp-reading-label{font-size:8px}.ldsp-reading::after{font-size:6px;bottom:-10px}}
+    @media (max-height:600px){.ldsp-hdr{padding:8px 10px;min-height:44px;gap:6px}.ldsp-user{padding:6px var(--pd) 6px;gap:8px}.ldsp-user-actions{gap:4px;margin-top:0}.ldsp-action-btn{padding:4px 6px;font-size:9px}.ldsp-tabs{padding:6px 8px}.ldsp-section{padding:8px}.ldsp-reading{padding:5px 5px 3px}.ldsp-reading-icon{font-size:16px;margin-bottom:4px}.ldsp-reading-time{font-size:11px;margin-bottom:2px}.ldsp-reading-label{min-height:15px;padding:0 6px;font-size:7px;margin-bottom:4px}.ldsp-reading::after{font-size:6px;bottom:2px}}
     /* 矮屏优化 (高度<500px): 隐藏次要元素 */
-    @media (max-height:500px){.ldsp-user{padding:5px var(--pd) 14px}.ldsp-reading{padding:4px}.ldsp-reading-icon{font-size:14px;margin-bottom:1px}.ldsp-reading-time{font-size:10px}.ldsp-reading-label{font-size:7px}.ldsp-tabs{padding:5px 6px;gap:4px}.ldsp-tab{padding:5px 6px;font-size:9px}.ldsp-section{padding:5px}.ldsp-ring{padding:8px 10px;margin-bottom:8px}.ldsp-ring-wrap{--ring:55px}.ldsp-announcement.active{height:20px;min-height:20px}.ldsp-announcement-text{font-size:9px}}
+    @media (max-height:500px){.ldsp-user{padding:5px var(--pd) 5px}.ldsp-reading{padding:4px 4px 2px}.ldsp-reading-icon{font-size:15px;margin-bottom:4px}.ldsp-reading-time{font-size:10px;margin-bottom:2px}.ldsp-reading-label{min-height:14px;padding:0 5px;font-size:7px;margin-bottom:4px}.ldsp-tabs{padding:5px 6px;gap:4px}.ldsp-tab{padding:5px 6px;font-size:9px}.ldsp-section{padding:5px}.ldsp-ring{padding:8px 10px;margin-bottom:8px}.ldsp-ring-wrap{--ring:55px}.ldsp-announcement.active{height:20px;min-height:20px}.ldsp-announcement-text{font-size:9px}}
     /* 极矮屏 (高度<420px): 隐藏操作按钮 */
-    @media (max-height:420px){.ldsp-user-actions{display:none}.ldsp-reading::after{display:none}}
+    @media (max-height:420px){.ldsp-user-actions{display:none}.ldsp-reading::after{bottom:2px;font-size:6px}}
+    @media (max-width:860px){.ldsp-user{grid-template-columns:minmax(0,1fr) minmax(84px,24%)}.ldsp-settings-menu{width:min(320px,calc(100vw - 20px));max-width:min(320px,calc(100vw - 20px))}}
+    @media (max-width:720px){.ldsp-user{grid-template-columns:minmax(0,1fr)}.ldsp-reading{justify-self:stretch;max-width:none;min-width:0;aspect-ratio:auto;min-height:64px;flex-direction:row;justify-content:flex-start;gap:10px;padding:10px 12px 6px}.ldsp-reading::after{left:12px;bottom:4px;transform:none;text-align:left}.ldsp-reading-ripple{inset:0}.ldsp-user-actions{gap:5px}.ldsp-follow-combined{flex-wrap:wrap}.ldsp-join-days{white-space:nowrap}}
+    @media (max-width:560px){#ldsp-panel{left:max(4px,env(safe-area-inset-left));right:auto;top:max(6px,env(safe-area-inset-top))}#ldsp-panel.expand-left .ldsp-settings-menu,#ldsp-panel.expand-right .ldsp-settings-menu{left:0;right:auto}.ldsp-settings-menu{top:32px;width:min(340px,calc(100vw - 12px - env(safe-area-inset-left) - env(safe-area-inset-right)));max-width:min(340px,calc(100vw - 12px - env(safe-area-inset-left) - env(safe-area-inset-right)));max-height:min(70vh,calc(var(--h) - 28px))}.ldsp-hdr{padding-left:max(10px,calc(10px + env(safe-area-inset-left) * .2));padding-right:max(10px,calc(10px + env(safe-area-inset-right) * .2))}.ldsp-content{padding-bottom:max(0px,env(safe-area-inset-bottom))}}
+    @media (max-width:420px){.ldsp-user-row{align-items:flex-start}.ldsp-user-meta{gap:6px}.ldsp-follow-combined{font-size:9px}.ldsp-reading{gap:8px;min-height:54px}.ldsp-reading-time{font-size:12px}.ldsp-reading-label{font-size:8px}.ldsp-reading::after{bottom:4px;font-size:7px;max-width:calc(100% - 20px);white-space:normal;line-height:1.25}.ldsp-user-actions-toggle{padding:4px 8px}}
     /* --- 宽度响应式 --- */
     /* 窄屏优化 (宽度<380px): 手机竖屏 */
-    @media (max-width:380px){#ldsp-panel{--w:260px}#ldsp-panel.collapsed{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;max-height:42px!important}#ldsp-panel.collapsed .ldsp-toggle-logo{width:20px;height:20px}.ldsp-hdr{padding:8px 10px;gap:6px;min-height:46px}.ldsp-hdr-info{gap:5px}.ldsp-site-icon{width:22px;height:22px}.ldsp-site-ver{font-size:7px}.ldsp-title{font-size:11px}.ldsp-app-name{font-size:9px}.ldsp-hdr-btns{gap:3px}.ldsp-hdr-btns button{width:24px;height:24px;font-size:10px}.ldsp-user{gap:8px}.ldsp-avatar,.ldsp-avatar-ph{width:40px;height:40px;border-radius:10px}.ldsp-user-display-name{font-size:14px}.ldsp-user-handle{font-size:10px}.ldsp-reading{padding:5px;max-width:85px}.ldsp-reading-icon{font-size:16px}.ldsp-reading-time{font-size:11px}.ldsp-reading-label{font-size:8px}.ldsp-user-actions{gap:4px}.ldsp-action-btn{font-size:9px;padding:4px 6px;gap:3px}.ldsp-action-icon{font-size:11px}.ldsp-tabs{padding:6px 8px;gap:4px}.ldsp-tab{font-size:9px;padding:5px 6px}.ldsp-section{padding:8px}.ldsp-ring{padding:10px;gap:8px}.ldsp-ring-stat-val{font-size:14px}.ldsp-ring-stat-lbl{font-size:8px}}
+    @media (max-width:380px){#ldsp-panel{--w:260px}#ldsp-panel.collapsed{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;max-height:42px!important}#ldsp-panel.collapsed .ldsp-toggle-logo{width:20px;height:20px}.ldsp-hdr{padding:8px 10px;gap:6px;min-height:46px}.ldsp-hdr-info{gap:5px}.ldsp-site-icon{width:22px;height:22px}.ldsp-site-ver{font-size:7px}.ldsp-title{font-size:11px}.ldsp-app-name{font-size:9px}.ldsp-hdr-btns{gap:3px}.ldsp-hdr-btns button{width:24px;height:24px;font-size:10px}.ldsp-user{gap:8px}.ldsp-avatar,.ldsp-avatar-ph{width:40px;height:40px;border-radius:10px}.ldsp-user-display-name{font-size:14px}.ldsp-user-handle{font-size:10px}.ldsp-reading{padding:5px 5px 4px;max-width:85px}.ldsp-reading-icon{font-size:16px}.ldsp-reading-time{font-size:11px}.ldsp-reading-label{font-size:8px}.ldsp-reading::after{bottom:2px;font-size:7px}.ldsp-user-actions{gap:4px}.ldsp-action-btn{font-size:9px;padding:4px 6px;gap:3px}.ldsp-action-icon{font-size:11px}.ldsp-tabs{padding:6px 8px;gap:4px}.ldsp-tab{font-size:9px;padding:5px 6px}.ldsp-section{padding:8px}.ldsp-ring{padding:10px;gap:8px}.ldsp-ring-stat-val{font-size:14px}.ldsp-ring-stat-lbl{font-size:8px}}
     .ldsp-action-btn{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:linear-gradient(135deg,rgba(107,140,239,.08),rgba(90,125,224,.12));border:1px solid rgba(107,140,239,.2);border-radius:8px;font-size:10px;color:var(--accent);transition:background .15s,border-color .15s,transform .15s,box-shadow .15s;font-weight:600;white-space:nowrap;flex:1 1 auto;min-width:fit-content;justify-content:center;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     @media (hover:hover){.ldsp-action-btn:hover{background:linear-gradient(135deg,rgba(107,140,239,.15),rgba(90,125,224,.2));border-color:var(--accent);box-shadow:0 4px 12px rgba(107,140,239,.18)}}
     .ldsp-action-btn:active{background:linear-gradient(135deg,rgba(107,140,239,.18),rgba(90,125,224,.24));transform:scale(.97)}
@@ -4394,11 +4568,11 @@
     .ldsp-action-btn .ldsp-action-icon{flex-shrink:0}
     .ldsp-action-btn .ldsp-action-text{overflow:hidden;text-overflow:ellipsis}
     /* 极窄屏优化 (宽度<320px): 小屏手机 */
-    @media (max-width:320px){#ldsp-panel{--w:230px;--min-w:200px}#ldsp-panel.collapsed{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;max-height:36px!important;border-radius:8px}#ldsp-panel.collapsed .ldsp-toggle-logo{width:18px;height:18px}.ldsp-hdr{padding:6px 8px;gap:4px;min-height:38px}.ldsp-hdr-info{gap:4px}.ldsp-site-icon{width:18px;height:18px;border-radius:5px;border-width:1px}.ldsp-site-ver{display:none}.ldsp-title{font-size:10px}.ldsp-app-name{display:none}.ldsp-ver-num{font-size:8px;padding:1px 5px}.ldsp-hdr-btns{gap:2px}.ldsp-hdr-btns button{width:22px;height:22px;font-size:9px;border-radius:5px}.ldsp-user{padding:6px 8px 14px;gap:6px}.ldsp-avatar,.ldsp-avatar-ph{width:36px;height:36px;border-radius:8px;font-size:14px}.ldsp-user-display-name{font-size:13px}.ldsp-user-handle{font-size:9px}.ldsp-reading{padding:4px;max-width:70px}.ldsp-reading-icon{font-size:13px;margin-bottom:1px}.ldsp-reading-time{font-size:9px}.ldsp-reading-label{font-size:6px}.ldsp-user-actions{flex-direction:column;gap:3px}.ldsp-action-btn{flex:1 1 100%;min-width:0;font-size:8px;padding:4px 5px;gap:2px}.ldsp-action-icon{font-size:10px}.ldsp-tabs{padding:4px 6px;gap:3px}.ldsp-tab{font-size:8px;padding:4px 5px;gap:2px}.ldsp-tab .ldsp-tab-icon{display:none}.ldsp-section{padding:6px}.ldsp-ring{padding:8px;gap:6px;margin-bottom:6px}.ldsp-ring-stat{min-width:40px;gap:2px}.ldsp-ring-stat-val{font-size:13px}.ldsp-ring-stat-lbl{font-size:7px}.ldsp-ring-wrap{--ring:50px}}
+    @media (max-width:320px){#ldsp-panel{--w:230px;--min-w:200px}#ldsp-panel.collapsed{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;max-height:36px!important;border-radius:8px}#ldsp-panel.collapsed .ldsp-toggle-logo{width:18px;height:18px}.ldsp-hdr{padding:6px 8px;gap:4px;min-height:38px}.ldsp-hdr-info{gap:4px}.ldsp-site-icon{width:18px;height:18px;border-radius:5px;border-width:1px}.ldsp-site-ver{display:none}.ldsp-title{font-size:10px}.ldsp-app-name{display:none}.ldsp-ver-num{font-size:8px;padding:1px 5px}.ldsp-hdr-btns{gap:2px}.ldsp-hdr-btns button{width:22px;height:22px;font-size:9px;border-radius:5px}.ldsp-user{padding:6px 8px 14px;gap:6px}.ldsp-avatar,.ldsp-avatar-ph{width:36px;height:36px;border-radius:8px;font-size:14px}.ldsp-user-display-name{font-size:13px}.ldsp-user-handle{font-size:9px}.ldsp-reading{padding:4px 4px 3px;max-width:70px}.ldsp-reading-icon{font-size:13px}.ldsp-reading-time{font-size:9px}.ldsp-reading-label{font-size:6px}.ldsp-reading::after{bottom:2px;font-size:6px}.ldsp-user-actions{flex-direction:column;gap:3px}.ldsp-action-btn{flex:1 1 100%;min-width:0;font-size:8px;padding:4px 5px;gap:2px}.ldsp-action-icon{font-size:10px}.ldsp-tabs{padding:4px 6px;gap:3px}.ldsp-tab{font-size:8px;padding:4px 5px;gap:2px}.ldsp-tab .ldsp-tab-icon{display:none}.ldsp-section{padding:6px}.ldsp-ring{padding:8px;gap:6px;margin-bottom:6px}.ldsp-ring-stat{min-width:40px;gap:2px}.ldsp-ring-stat-val{font-size:13px}.ldsp-ring-stat-lbl{font-size:7px}.ldsp-ring-wrap{--ring:50px}}
     /* 小屏手机组合优化 (宽度<380px 且 高度<700px) */
-    @media (max-width:380px) and (max-height:700px){.ldsp-user{padding:5px var(--pd) 12px;gap:6px}.ldsp-avatar,.ldsp-avatar-ph{width:36px;height:36px}.ldsp-reading{padding:4px;max-width:65px}.ldsp-reading-icon{font-size:13px;margin-bottom:1px}.ldsp-reading-time{font-size:9px}.ldsp-reading-label{font-size:6px}.ldsp-reading::after{font-size:6px;bottom:-9px}.ldsp-user-actions{gap:3px}.ldsp-action-btn{padding:3px 5px;font-size:8px}.ldsp-ring{padding:8px;margin-bottom:6px}.ldsp-ring-stat-val{font-size:12px}.ldsp-ring-wrap{--ring:48px}}
+    @media (max-width:380px) and (max-height:700px){.ldsp-user{padding:5px var(--pd) 12px;gap:6px}.ldsp-avatar,.ldsp-avatar-ph{width:36px;height:36px}.ldsp-reading{padding:4px 4px 3px;max-width:65px}.ldsp-reading-icon{font-size:13px}.ldsp-reading-time{font-size:9px}.ldsp-reading-label{font-size:6px}.ldsp-reading::after{font-size:6px;bottom:2px}.ldsp-user-actions{gap:3px}.ldsp-action-btn{padding:3px 5px;font-size:8px}.ldsp-ring{padding:8px;margin-bottom:6px}.ldsp-ring-stat-val{font-size:12px}.ldsp-ring-wrap{--ring:48px}}
     /* 超小屏手机 (宽度<280px) */
-    @media (max-width:280px){#ldsp-panel{--w:210px}.ldsp-hdr{padding:5px 6px;min-height:34px}.ldsp-site-icon{width:16px;height:16px}.ldsp-title{font-size:9px}.ldsp-hdr-btns button{width:20px;height:20px;font-size:8px}.ldsp-user{padding:4px 6px 10px;gap:5px}.ldsp-avatar,.ldsp-avatar-ph{width:32px;height:32px;border-radius:6px}.ldsp-user-display-name{font-size:12px}.ldsp-user-handle{font-size:8px}.ldsp-reading{padding:3px;max-width:55px}.ldsp-reading-icon{font-size:11px;margin-bottom:0}.ldsp-reading-time{font-size:8px}.ldsp-reading-label{font-size:5px;margin-top:1px}.ldsp-reading::after{display:none}.ldsp-action-btn{padding:3px 4px;font-size:7px;gap:2px}.ldsp-tabs{padding:3px 5px;gap:2px}.ldsp-tab{font-size:7px;padding:3px 4px}.ldsp-section{padding:4px}.ldsp-ring{padding:6px;gap:4px}.ldsp-ring-stat-val{font-size:11px}.ldsp-ring-stat-lbl{font-size:6px}.ldsp-ring-wrap{--ring:42px}}
+    @media (max-width:280px){#ldsp-panel{--w:210px}.ldsp-hdr{padding:5px 6px;min-height:34px}.ldsp-site-icon{width:16px;height:16px}.ldsp-title{font-size:9px}.ldsp-hdr-btns button{width:20px;height:20px;font-size:8px}.ldsp-user{padding:4px 6px 10px;gap:5px}.ldsp-avatar,.ldsp-avatar-ph{width:32px;height:32px;border-radius:6px}.ldsp-user-display-name{font-size:12px}.ldsp-user-handle{font-size:8px}.ldsp-reading{padding:3px 3px 2px;max-width:55px}.ldsp-reading-icon{font-size:11px}.ldsp-reading-time{font-size:8px}.ldsp-reading-label{font-size:5px}.ldsp-reading::after{bottom:2px;font-size:5px}.ldsp-action-btn{padding:3px 4px;font-size:7px;gap:2px}.ldsp-tabs{padding:3px 5px;gap:2px}.ldsp-tab{font-size:7px;padding:3px 4px}.ldsp-section{padding:4px}.ldsp-ring{padding:6px;gap:4px}.ldsp-ring-stat-val{font-size:11px}.ldsp-ring-stat-lbl{font-size:6px}.ldsp-ring-wrap{--ring:42px}}
     /* ========== 响应式布局系统结束 ========== */
     .ldsp-logout-btn,.ldsp-ticket-btn,.ldsp-melon-btn,.ldsp-ldc-btn{padding:5px 8px}
     .ldsp-logout-btn{background:linear-gradient(135deg,rgba(239,68,68,.06),rgba(220,38,38,.08));border-color:rgba(239,68,68,.15);color:rgba(239,68,68,.7)}
@@ -4527,6 +4701,8 @@
     .ldsp-export-btn-stop:hover{box-shadow:0 4px 16px rgba(239,68,68,.35);transform:translateY(-2px)}
     .ldsp-export-status{text-align:center;padding:14px;color:var(--txt-sec);font-size:11px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md)}
     .ldsp-export-status-icon{font-size:24px;margin-bottom:8px;display:block}
+    .ldsp-export-status-main{font-weight:600;color:var(--txt);margin-bottom:6px}
+    .ldsp-export-status-sub{font-size:10px;color:var(--txt-sec);line-height:1.6}
     .ldsp-export-not-topic{text-align:center;padding:40px 20px;color:var(--txt-mut)}
     .ldsp-export-not-topic-icon{font-size:36px;margin-bottom:10px}
     .ldsp-export-not-topic-text{font-size:12px;line-height:1.6}
@@ -4972,6 +5148,14 @@
     @media (max-width:320px){.ldsp-ldc-header,.ldsp-ticket-header,.ldsp-melon-header,.ldsp-cdk-header{padding:6px 8px}.ldsp-ldc-title,.ldsp-ticket-title,.ldsp-melon-title,.ldsp-cdk-title{font-size:11px;gap:4px}.ldsp-ldc-header-actions,.ldsp-cdk-header-actions{gap:5px}.ldsp-ldc-link,.ldsp-cdk-link{font-size:9px!important}.ldsp-ldc-refresh,.ldsp-ldc-close,.ldsp-ticket-close,.ldsp-melon-close,.ldsp-cdk-refresh,.ldsp-cdk-close{width:22px;height:22px;font-size:10px}.ldsp-ldc-refresh svg,.ldsp-cdk-refresh svg{width:10px;height:10px}.ldsp-ldc-tab,.ldsp-cdk-tab{padding:6px 4px;font-size:9px}.ldsp-ldc-body,.ldsp-ticket-body,.ldsp-melon-body,.ldsp-cdk-body{padding:8px;gap:6px}.ldsp-ldc-balance-card{padding:10px}.ldsp-ldc-balance-main{flex-direction:column;align-items:stretch;gap:10px}.ldsp-ldc-balance-left{text-align:center}.ldsp-ldc-balance-value{font-size:26px}.ldsp-ldc-balance-right{text-align:center;flex-direction:row;justify-content:center;gap:12px;flex-wrap:wrap;padding-top:8px;border-top:1px dashed rgba(139,92,246,.1)}.ldsp-ldc-balance-sub,.ldsp-ldc-balance-estimate{justify-content:center;font-size:9px}.ldsp-ldc-balance-footer{justify-content:center}.ldsp-ldc-stats-grid{grid-template-columns:1fr;gap:6px}.ldsp-ldc-stat-card{padding:8px;gap:6px;flex-direction:row}.ldsp-ldc-stat-icon{font-size:14px}.ldsp-ldc-stat-label{font-size:9px}.ldsp-ldc-stat-num{font-size:12px}.ldsp-ldc-section-title{font-size:10px}.ldsp-ldc-chart{padding:8px}.ldsp-ldc-chart-bars{height:50px}.ldsp-ldc-chart-label{font-size:8px}.ldsp-ldc-filter-section{gap:5px;padding-bottom:6px}.ldsp-ldc-filter-row{gap:6px}.ldsp-ldc-filter-label{font-size:8px;min-width:20px;padding-top:4px}.ldsp-ldc-filter-chip{padding:3px 6px;font-size:8px}.ldsp-ldc-trans-content{gap:6px}.ldsp-ldc-trans-summary{font-size:9px}.ldsp-ldc-trans-list{gap:4px}.ldsp-ldc-trans-item{padding:6px 8px;gap:6px}.ldsp-ldc-trans-icon{font-size:12px;width:20px;height:20px;border-radius:4px}.ldsp-ldc-trans-name{font-size:10px}.ldsp-ldc-trans-meta{font-size:8px;gap:4px}.ldsp-ldc-trans-type{font-size:8px;padding:1px 4px}.ldsp-ldc-trans-amount{font-size:11px}.ldsp-ldc-detail-amount-value{font-size:22px}.ldsp-ldc-detail-row{padding:8px 10px}.ldsp-ldc-detail-row .label,.ldsp-ldc-detail-row .value{font-size:10px}.ldsp-ticket-tabs{padding:0 6px}.ldsp-ticket-tab,.ldsp-melon-tab{padding:5px 8px;font-size:8px}.ldsp-ticket-item{padding:8px}.ldsp-ticket-item-title{font-size:10px}.ldsp-ticket-item-type,.ldsp-ticket-item-meta{font-size:8px}.ldsp-ldc-support{gap:8px}.ldsp-ldc-support-header{padding:8px 6px}.ldsp-ldc-support-title{font-size:12px;gap:5px}.ldsp-ldc-support-desc{font-size:9px}.ldsp-ldc-support-grid{gap:6px}.ldsp-ldc-support-card{padding:12px 8px}.ldsp-ldc-support-icon{font-size:24px;margin-bottom:6px}.ldsp-ldc-support-name{font-size:10px;margin-bottom:4px}.ldsp-ldc-support-amount{font-size:14px}.ldsp-ldc-support-badge{font-size:8px;padding:2px 5px;top:6px;right:6px}.ldsp-ldc-support-footer{padding:8px}.ldsp-ldc-support-footer-text{font-size:9px}.ldsp-github-star-card{gap:8px;padding:8px 10px}.ldsp-github-icon-wrap{width:26px;height:26px}.ldsp-github-icon{width:22px;height:22px}.ldsp-github-title{font-size:10px;gap:4px;flex-wrap:wrap}.ldsp-github-star-icon{font-size:12px}.ldsp-github-desc{font-size:8px;line-height:1.4}.ldsp-github-arrow{font-size:12px}.ldsp-cdk-user-card{padding:10px;gap:8px}.ldsp-cdk-user-avatar{width:36px;height:36px}.ldsp-cdk-user-name{font-size:12px}.ldsp-cdk-user-username{font-size:8px}.ldsp-cdk-user-level{font-size:8px;padding:2px 6px;margin-top:3px}.ldsp-cdk-score-card{min-width:60px;padding:8px}.ldsp-cdk-score-label{font-size:7px}.ldsp-cdk-score-value{font-size:16px}.ldsp-cdk-search{padding:6px 10px}.ldsp-cdk-search input{font-size:11px}.ldsp-cdk-qty-card{padding:8px;gap:6px}.ldsp-cdk-qty-item{padding:6px}.ldsp-cdk-qty-item .num{font-size:18px}.ldsp-cdk-qty-item .lbl{font-size:8px}.ldsp-cdk-item{padding:8px;gap:6px}.ldsp-cdk-item-name{font-size:11px}.ldsp-cdk-item-time{font-size:8px;padding:1px 4px}.ldsp-cdk-item-creator{font-size:9px}.ldsp-cdk-item-content{padding:5px 7px;font-size:9px;gap:6px}.ldsp-cdk-item-copy{width:24px;height:24px;font-size:10px}.ldsp-cdk-detail-title{font-size:12px}.ldsp-cdk-detail-meta{font-size:9px}.ldsp-cdk-detail-desc{font-size:10px;padding:8px}.ldsp-cdk-detail-content{padding:10px}.ldsp-cdk-detail-content-label{font-size:9px}.ldsp-cdk-detail-content-value{font-size:12px}.ldsp-cdk-detail-copy{font-size:9px}.ldsp-cdk-back-btn{padding:5px 10px;font-size:10px}.ldsp-cdk-detail-row{padding:6px 8px}.ldsp-cdk-detail-row .label,.ldsp-cdk-detail-row .value{font-size:9px}.ldsp-cdk-detail-tag{font-size:8px;padding:1px 6px}}
     @media (max-height:550px){.ldsp-ldc-body,.ldsp-ticket-body,.ldsp-melon-body,.ldsp-cdk-body{padding:8px;gap:6px}.ldsp-ldc-balance-card{padding:10px}.ldsp-ldc-balance-value{font-size:22px}.ldsp-ldc-stats-grid{gap:6px}.ldsp-ldc-stat-card{padding:8px}.ldsp-ldc-chart-bars{height:50px}.ldsp-ldc-section{gap:6px}.ldsp-ldc-filter-section{gap:5px;padding-bottom:6px}.ldsp-ldc-filter-chip{padding:4px 7px}.ldsp-ldc-support{gap:10px}.ldsp-ldc-support-header{padding:10px 8px}.ldsp-ldc-support-grid{gap:8px}.ldsp-ldc-support-card{padding:12px 8px}.ldsp-ldc-support-icon{font-size:26px;margin-bottom:6px}.ldsp-ldc-support-amount{font-size:16px}.ldsp-cdk-user-card{padding:10px;gap:8px}.ldsp-cdk-user-avatar{width:40px;height:40px}.ldsp-cdk-score-card{padding:8px}.ldsp-cdk-score-value{font-size:20px}.ldsp-cdk-qty-card{padding:10px}.ldsp-cdk-qty-item .num{font-size:18px}}
     @media (max-height:450px){.ldsp-ldc-body,.ldsp-cdk-body{padding:6px;gap:5px}.ldsp-ldc-balance-card{padding:8px}.ldsp-ldc-balance-value{font-size:18px}.ldsp-ldc-balance-label,.ldsp-ldc-balance-sub{font-size:9px}.ldsp-ldc-stats-grid{gap:4px}.ldsp-ldc-stat-card{padding:6px}.ldsp-ldc-stat-icon{font-size:12px}.ldsp-ldc-stat-num{font-size:11px}.ldsp-ldc-chart{padding:6px}.ldsp-ldc-chart-bars{height:40px}.ldsp-ldc-section{gap:4px}.ldsp-ldc-filter-section{gap:4px;padding-bottom:5px}.ldsp-ldc-filter-row{gap:4px}.ldsp-ldc-filter-chip{padding:3px 5px;font-size:8px}.ldsp-ldc-trans-item{padding:5px 6px}.ldsp-ldc-footer{padding-top:6px}.ldsp-ldc-support-header{padding:4px 0}.ldsp-ldc-support-title{font-size:12px}.ldsp-ldc-support-desc{font-size:10px}.ldsp-ldc-support-card{padding:8px 6px}.ldsp-ldc-support-icon{font-size:18px;margin-bottom:2px}.ldsp-ldc-support-name{font-size:10px}.ldsp-ldc-support-amount{font-size:12px}.ldsp-ldc-support-footer{padding:6px}.ldsp-ldc-support-footer-text{font-size:9px}.ldsp-cdk-user-card{padding:8px;gap:6px;flex-direction:row;text-align:left}.ldsp-cdk-user-avatar{width:36px;height:36px}.ldsp-cdk-user-name{font-size:12px}.ldsp-cdk-score-card{padding:6px;min-width:60px}.ldsp-cdk-score-value{font-size:16px}.ldsp-cdk-qty-card{padding:6px}.ldsp-cdk-qty-item .num{font-size:16px}.ldsp-cdk-item{padding:6px}}
+    @media (max-width:860px){.ldsp-modal{width:min(92vw,340px)}.ldsp-lb-hdr{flex-wrap:wrap;align-items:flex-start;gap:8px}.ldsp-lb-status{min-width:0;flex:1 1 170px;flex-wrap:wrap;gap:8px}.ldsp-my-rank{gap:12px}.ldsp-ticket-reply-form{align-items:stretch}.ldsp-ticket-reply-input{min-height:36px}.ldsp-export-body,.ldsp-follow-body{padding:10px}.ldsp-export-range,.ldsp-melon-range{align-items:flex-start}.ldsp-export-range-hint,.ldsp-melon-range-hint{width:100%;margin-left:0}.ldsp-export-format-cards,.ldsp-melon-mode-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.ldsp-cdk-header{gap:10px}.ldsp-cdk-header-actions{gap:6px;flex-wrap:wrap;justify-content:flex-end}.ldsp-cdk-tabs{overflow-x:auto}.ldsp-cdk-tab{flex:1 0 96px;white-space:nowrap}.ldsp-cdk-item-header{align-items:flex-start}}
+    @media (max-width:720px){.ldsp-modal-overlay{padding:12px max(10px,env(safe-area-inset-left)) max(12px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-right));align-items:flex-end}.ldsp-modal{width:min(100%,380px);max-width:none;padding:18px 16px;border-radius:18px 18px 14px 14px;transform:translateY(24px)}.ldsp-modal-overlay.show .ldsp-modal{transform:translateY(0)}.ldsp-modal-hdr{margin-bottom:14px}.ldsp-modal-body{font-size:12px;margin-bottom:16px;line-height:1.65}.ldsp-modal-footer{flex-direction:column;gap:8px}.ldsp-lb-hdr{padding:10px}.ldsp-lb-btn{width:100%}.ldsp-rank-item{align-items:flex-start;flex-wrap:wrap}.ldsp-rank-info{flex:1 1 calc(100% - 52px)}.ldsp-rank-time{width:100%;padding-left:38px}.ldsp-my-rank{flex-direction:column;align-items:flex-start}.ldsp-ticket-tabs,.ldsp-melon-tabs,.ldsp-follow-tabs,.ldsp-cdk-tabs{overflow-x:auto;scrollbar-width:none}.ldsp-ticket-tabs::-webkit-scrollbar,.ldsp-melon-tabs::-webkit-scrollbar,.ldsp-follow-tabs::-webkit-scrollbar,.ldsp-cdk-tabs::-webkit-scrollbar{display:none}.ldsp-ticket-tab,.ldsp-melon-tab{white-space:nowrap;flex:0 0 auto}.ldsp-ticket-reply-form{flex-direction:column}.ldsp-ticket-reply-btn{width:100%;height:34px}.ldsp-export-header,.ldsp-follow-header,.ldsp-cdk-header{padding:10px}.ldsp-export-title,.ldsp-follow-title,.ldsp-cdk-title{min-width:0;flex:1}.ldsp-export-header-actions{gap:5px}.ldsp-export-refresh{padding:4px 8px}.ldsp-export-format-cards,.ldsp-melon-mode-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.ldsp-export-actions,.ldsp-melon-actions{flex-direction:column}.ldsp-melon-viewer-overlay{padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}.ldsp-melon-viewer{position:relative;inset:auto!important;min-width:0;width:min(100%,760px);max-width:100%;max-height:100%;min-height:min(320px,100%)}.ldsp-melon-viewer-header{padding:10px 12px;cursor:default}.ldsp-melon-viewer-info{padding:10px 12px}.ldsp-melon-viewer-content{padding:12px}.ldsp-melon-viewer-chat{padding:10px 12px}.ldsp-follow-tab{min-width:120px;flex:0 0 auto;padding:8px 12px}.ldsp-follow-item{padding:9px}.ldsp-cdk-item-header{flex-direction:column;align-items:flex-start}.ldsp-cdk-item-time{align-self:flex-start}}
+    @media (max-width:560px){.ldsp-modal-overlay{padding:8px max(8px,env(safe-area-inset-left)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-right))}.ldsp-modal{padding:16px 14px;border-radius:16px 16px 12px 12px}.ldsp-modal-icon{font-size:24px}.ldsp-modal-title{font-size:15px}.ldsp-modal-note{font-size:10px;margin-top:10px}.ldsp-confirm-overlay{padding:8px}.ldsp-confirm-box{max-width:none}.ldsp-rank-item{padding:9px 10px;gap:8px}.ldsp-rank-num{width:24px;height:24px;border-radius:8px}.ldsp-rank-avatar{width:30px;height:30px;border-radius:8px}.ldsp-rank-display-name,.ldsp-rank-name-only{max-width:100%}.ldsp-rank-time{padding-left:32px;font-size:12px}.ldsp-ticket-body,.ldsp-export-body,.ldsp-follow-body,.ldsp-cdk-body,.ldsp-melon-body{padding:8px}.ldsp-export-info,.ldsp-export-options,.ldsp-export-format-selector,.ldsp-melon-info,.ldsp-melon-mode-selector{padding:9px}.ldsp-export-range,.ldsp-melon-range{gap:6px;padding:9px}.ldsp-export-range-label,.ldsp-melon-range-label{width:100%}.ldsp-export-range-input,.ldsp-melon-range-input{width:calc(50% - 14px);min-width:0;flex:1 1 0}.ldsp-export-range-sep,.ldsp-melon-range-sep{flex:0 0 auto}.ldsp-export-range-hint,.ldsp-melon-range-hint{font-size:8px}.ldsp-export-format-card,.ldsp-melon-mode-card{padding:10px 8px;gap:8px}.ldsp-export-format-card-name,.ldsp-melon-mode-card-title{font-size:10px}.ldsp-export-format-card-icon{width:24px;height:24px;margin-bottom:4px}.ldsp-melon-viewer-title{font-size:12px;gap:6px}.ldsp-melon-viewer-btn,.ldsp-melon-font-btn{width:26px;height:26px}.ldsp-melon-viewer-topic-title{font-size:13px}.ldsp-melon-viewer-meta{gap:6px;flex-wrap:wrap}.ldsp-melon-viewer-content{--viewer-font-size:14px}.ldsp-melon-chat-input-wrap{gap:6px}.ldsp-melon-chat-input{padding:9px 12px;font-size:12px}.ldsp-melon-chat-send{width:34px;height:34px}.ldsp-follow-header{padding:9px 10px}.ldsp-follow-tab{min-width:108px;padding:8px 10px}.ldsp-follow-tab-count{font-size:9px}.ldsp-follow-item{gap:8px;padding:8px}.ldsp-follow-avatar{width:32px;height:32px}.ldsp-follow-user-name{font-size:11px}.ldsp-follow-user-id{font-size:9px}.ldsp-topic-list-enhanced .ldsp-topic-item{align-items:flex-start}.ldsp-topic-footer{align-items:flex-start;flex-direction:column}.ldsp-topic-stats{justify-content:flex-start;flex-wrap:wrap}.ldsp-bookmark-meta,.ldsp-reply-meta,.ldsp-like-meta,.ldsp-reaction-meta,.ldsp-mytopic-meta{gap:6px}.ldsp-mytopic-row{align-items:flex-start;flex-wrap:wrap}.ldsp-cdk-title{font-size:12px}.ldsp-cdk-link{order:2;width:100%;text-align:right}.ldsp-cdk-tab{flex:1 0 88px;padding:8px 6px;font-size:10px}.ldsp-cdk-item-content{flex-wrap:wrap}.ldsp-cdk-item-copy{margin-left:auto}}
+    @media (max-width:420px){.ldsp-modal{width:100%}.ldsp-modal-body ul{margin:8px 0}.ldsp-modal-body li{padding-left:20px}.ldsp-lb-status{flex-direction:column;align-items:flex-start}.ldsp-rank-item{padding:8px}.ldsp-rank-info{gap:2px 4px}.ldsp-rank-display-name,.ldsp-rank-name,.ldsp-rank-name-only{font-size:11px}.ldsp-rank-username,.ldsp-rank-me-tag{font-size:9px}.ldsp-rank-time{font-size:11px;letter-spacing:0}.ldsp-my-rank{padding:10px}.ldsp-my-rank-val{font-size:18px}.ldsp-ticket-item-header,.ldsp-ticket-reply-header{flex-wrap:wrap;gap:4px}.ldsp-ticket-messages{padding:8px 10px}.ldsp-ticket-reply{max-width:92%;font-size:10px}.ldsp-ticket-input-area{padding:8px 10px}.ldsp-export-header,.ldsp-follow-header,.ldsp-cdk-header,.ldsp-melon-header{padding:8px 9px}.ldsp-export-refresh{padding:4px 6px;font-size:9px}.ldsp-export-format-cards,.ldsp-melon-mode-cards{grid-template-columns:1fr}.ldsp-melon-mode-card{padding:9px 10px}.ldsp-follow-tab{min-width:96px;padding:7px 8px;font-size:9px}.ldsp-follow-tab-icon{display:none}.ldsp-topic-title-row,.ldsp-reaction-header{align-items:flex-start}.ldsp-topic-badges{flex-wrap:wrap}.ldsp-topic-thumbnail{width:42px;height:42px}.ldsp-bookmark-excerpt,.ldsp-reply-excerpt,.ldsp-like-excerpt,.ldsp-reaction-excerpt{font-size:9px}.ldsp-cdk-header-actions{width:auto;max-width:50%;justify-content:flex-end}.ldsp-cdk-link{font-size:8px!important}.ldsp-cdk-item-name{white-space:normal}.ldsp-cdk-item-time{font-size:8px}}
+    @media (max-width:360px){.ldsp-confirm-overlay{padding:6px}.ldsp-confirm-box{padding:16px 12px}.ldsp-confirm-btns{flex-direction:column}.ldsp-confirm-btn{width:100%}.ldsp-rank-num{width:22px;height:22px}.ldsp-rank-avatar{width:28px;height:28px}.ldsp-rank-time{padding-left:30px}.ldsp-ticket-tab,.ldsp-melon-tab,.ldsp-follow-tab,.ldsp-cdk-tab{font-size:8px}.ldsp-export-range-input,.ldsp-melon-range-input{width:100%;flex:1 1 100%}.ldsp-export-range-sep,.ldsp-melon-range-sep{display:none}.ldsp-export-range-hint,.ldsp-melon-range-hint{margin-top:2px}.ldsp-follow-item{gap:6px}.ldsp-follow-avatar{width:28px;height:28px}.ldsp-topic-thumbnail{display:none}.ldsp-topic-posters{display:none}.ldsp-topic-stat{font-size:8px}.ldsp-cdk-item-content-text{word-break:break-all}}
+    @media (max-height:620px){.ldsp-modal-overlay{align-items:flex-end}.ldsp-modal{max-height:min(86vh,420px);overflow:auto}.ldsp-lb-hdr,.ldsp-my-rank{margin-bottom:8px}.ldsp-ticket-body.detail-mode{padding:0}.ldsp-ticket-messages{padding:8px 10px}.ldsp-export-body,.ldsp-follow-body,.ldsp-cdk-body,.ldsp-melon-body{gap:8px}.ldsp-melon-viewer{max-height:100%}.ldsp-melon-viewer-info{padding:8px 12px}.ldsp-melon-viewer-content{padding:10px}.ldsp-melon-viewer-chat{padding:8px 12px}.ldsp-topic-list,.ldsp-bookmark-list,.ldsp-reply-list,.ldsp-like-list,.ldsp-reaction-list,.ldsp-mytopic-list{gap:5px}}
+    @media (max-height:500px){.ldsp-modal{padding:14px 12px}.ldsp-modal-hdr{margin-bottom:10px}.ldsp-modal-footer{gap:6px}.ldsp-lb-hdr{padding:8px}.ldsp-rank-item{padding:7px 8px}.ldsp-my-rank{padding:8px}.ldsp-ticket-header,.ldsp-export-header,.ldsp-follow-header,.ldsp-cdk-header,.ldsp-melon-header{padding:8px 10px}.ldsp-ticket-tabs,.ldsp-melon-tabs,.ldsp-follow-tabs,.ldsp-cdk-tabs{padding-left:6px;padding-right:6px}.ldsp-ticket-body,.ldsp-export-body,.ldsp-follow-body,.ldsp-cdk-body,.ldsp-melon-body{padding:6px;gap:6px}.ldsp-export-info,.ldsp-export-options,.ldsp-export-format-selector,.ldsp-melon-info,.ldsp-melon-mode-selector,.ldsp-follow-item,.ldsp-ticket-item,.ldsp-cdk-item,.ldsp-topic-list-enhanced .ldsp-topic-item,.ldsp-bookmark-item,.ldsp-reply-item,.ldsp-like-item,.ldsp-reaction-item,.ldsp-mytopic-item{padding:7px}.ldsp-ticket-input-area,.ldsp-melon-viewer-chat{padding:6px 10px}.ldsp-topic-title,.ldsp-bookmark-title,.ldsp-reply-title,.ldsp-like-title,.ldsp-reaction-title,.ldsp-mytopic-title{font-size:10px}.ldsp-topic-footer,.ldsp-bookmark-meta,.ldsp-reply-meta,.ldsp-like-meta,.ldsp-reaction-meta,.ldsp-mytopic-meta{gap:5px}}
+    @media (max-height:420px){.ldsp-modal-overlay{padding:4px}.ldsp-modal{max-height:100%;border-radius:12px}.ldsp-confirm-overlay{align-items:flex-start;padding-top:6px}.ldsp-lb-hdr,.ldsp-my-rank{padding:7px}.ldsp-rank-time{font-size:10px}.ldsp-ticket-body,.ldsp-export-body,.ldsp-follow-body,.ldsp-cdk-body,.ldsp-melon-body{padding:5px;gap:5px}.ldsp-melon-viewer-header{padding:8px 10px}.ldsp-melon-viewer-info{padding:6px 10px}.ldsp-melon-viewer-content{padding:8px}.ldsp-melon-viewer-chat{padding:6px 10px}.ldsp-melon-chat-hint{display:none}}
     .ldsp-melon-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg);border-radius:0 0 var(--r-lg) var(--r-lg);z-index:10;display:none;flex-direction:column;overflow:hidden}
     .ldsp-melon-overlay.show{display:flex}
     .ldsp-melon-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg-card);border-bottom:1px solid var(--border);flex-shrink:0}
@@ -6247,11 +6431,11 @@
                 }
             }
 
-            async _fetchPosts(tid, start, end, progress, signal) {
+            async _fetchPosts(tid, start, end, progress, signal, startedAt = Date.now()) {
                 const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
                 const opts = { headers: { 'x-csrf-token': csrf, 'x-requested-with': 'XMLHttpRequest' }, signal };
 
-                progress?.('正在获取帖子列表...');
+                progress?.({ stage: 'list', message: '正在获取帖子列表...', detail: '正在读取楼层索引', percent: 5, current: 0, total: 0 });
                 const idRes = await fetch(`${location.origin}/t/${tid}/post_ids.json?post_number=0&limit=99999`, opts);
                 if (!idRes.ok) throw new Error(`获取帖子列表失败 (${idRes.status})`);
                 let pIds = (await idRes.json()).post_ids.slice(Math.max(0, start - 1), end);
@@ -6268,17 +6452,28 @@
                 const posts = [], total = Math.ceil(pIds.length / 200);
                 for (let i = 0; i < pIds.length; i += 200) {
                     if (signal?.aborted) throw new Error('导出已取消');
-                    progress?.(`正在获取帖子内容 (${Math.floor(i/200)+1}/${total})...`);
+                    const batchNo = Math.floor(i / 200) + 1;
+                    progress?.({
+                        stage: 'fetch',
+                        message: `正在获取帖子内容 (${batchNo}/${Math.max(total, 1)})...`,
+                        detail: `已定位 ${pIds.length} 楼，当前正在抓取第 ${batchNo} 批`,
+                        percent: Math.min(75, 10 + Math.round((i / Math.max(pIds.length, 1)) * 65)),
+                        current: Math.min(i, pIds.length),
+                        total: pIds.length
+                    });
                     const q = pIds.slice(i, i + 200).map(id => `post_ids[]=${id}`).join('&');
                     const res = await fetch(`${location.origin}/t/${tid}/posts.json?${q}&include_suggested=false`, opts);
                     if (!res.ok) throw new Error(`获取帖子详情失败 (${res.status})`);
-                    
-                    for (const p of (await res.json()).post_stream.posts) {
+
+                for (const p of (await res.json()).post_stream.posts) {
                         if (signal?.aborted) throw new Error('导出已取消');
                         let content = p.cooked || '', avatarUrl = p.avatar_template?.replace('{size}', '90') || '';
-                        if (this._embedImg) {
-                            content = await this._processImages(content);
-                            if (avatarUrl) avatarUrl = await this._imgToBase64(avatarUrl.startsWith('http') ? avatarUrl : `${location.origin}${avatarUrl}`);
+                        const shouldEmbedImages = this._embedImg && this._format !== 'md';
+                        content = await this._processImages(content, { embed: shouldEmbedImages, markdown: this._format === 'md' });
+                        if (shouldEmbedImages && avatarUrl) {
+                            avatarUrl = await this._imgToBase64(avatarUrl.startsWith('http') ? avatarUrl : `${location.origin}${avatarUrl}`);
+                        } else if (avatarUrl && !avatarUrl.startsWith('http')) {
+                            avatarUrl = `${location.origin}${avatarUrl}`;
                         }
                         posts.push({
                             postNumber: p.post_number,
@@ -6286,6 +6481,14 @@
                             timestamp: p.created_at, content,
                             replyTo: p.reply_to_post_number ? { postNumber: p.reply_to_post_number, username: p.reply_to_user?.username || '' } : null,
                             likeCount: p.actions_summary?.find(a => a.id === 2)?.count || 0
+                        });
+                        progress?.({
+                            stage: 'fetch',
+                            message: `正在整理帖子内容 (${posts.length}/${pIds.length})...`,
+                            detail: this._buildExportEta(posts.length, pIds.length, startedAt, '已获取内容，正在整理导出数据'),
+                            percent: Math.min(78, 10 + Math.round((posts.length / Math.max(pIds.length, 1)) * 68)),
+                            current: posts.length,
+                            total: pIds.length
                         });
                     }
                 }
@@ -6299,16 +6502,74 @@
                 } catch { return url; }
             }
 
-            async _processImages(html) {
+            async _processImages(html, options = {}) {
+                const { embed = this._embedImg, markdown = false } = options;
                 const div = document.createElement('div');
                 div.innerHTML = html;
+
+                for (const anchor of div.querySelectorAll('a.anchor, a[aria-hidden="true"].anchor')) {
+                    anchor.remove();
+                }
+
+                for (const heading of div.querySelectorAll('h1, h2, h3, h4, h5, h6')) {
+                    const text = heading.textContent.replace(/\s+/g, ' ').trim();
+                    if (!text) {
+                        heading.remove();
+                        continue;
+                    }
+                    heading.textContent = text;
+                }
+
+                for (const link of div.querySelectorAll('a[href]')) {
+                    const href = link.getAttribute('href');
+                    if (!href || href.startsWith('#')) continue;
+                    link.setAttribute('href', this._normalizeExportUrl(href));
+                }
+
                 for (const img of div.querySelectorAll('img')) {
                     const src = img.getAttribute('src');
-                    if (src && !src.startsWith('data:')) {
-                        try { img.setAttribute('src', await this._imgToBase64(src.startsWith('http') ? src : `${location.origin}${src}`)); } catch {}
+                    if (!src) continue;
+                    const normalizedSrc = this._normalizeExportUrl(src);
+                    if (embed && !src.startsWith('data:')) {
+                        try {
+                            img.setAttribute('src', await this._imgToBase64(normalizedSrc));
+                        } catch {}
+                    } else if (!embed) {
+                        img.setAttribute('src', normalizedSrc);
+                    }
+
+                    if (markdown) {
+                        const alt = (img.getAttribute('alt') || '').replace(/\s+/g, ' ').trim();
+                        if (!alt && img.closest('a.lightbox')) {
+                            const hint = img.closest('a.lightbox').getAttribute('title') || img.closest('a.lightbox').textContent || '';
+                            if (hint.trim()) img.setAttribute('alt', hint.replace(/\s+/g, ' ').trim());
+                        }
                     }
                 }
                 return div.innerHTML;
+            }
+
+            _normalizeExportUrl(url) {
+                if (!url || /^(?:data:|blob:|mailto:|javascript:|tel:)/i.test(url)) return url || '';
+                if (/^https?:\/\//i.test(url)) return url;
+                if (url.startsWith('//')) return `${location.protocol}${url}`;
+                try {
+                    return new URL(url, location.origin).toString();
+                } catch {
+                    return url;
+                }
+            }
+
+            _buildExportEta(current, total, startedAt = null, prefix = '正在处理') {
+                const safeTotal = Math.max(total || 0, 0);
+                const safeCurrent = Math.max(0, Math.min(current || 0, safeTotal || current || 0));
+                if (!safeTotal) return `${prefix}...`;
+                if (!startedAt || safeCurrent <= 0) return `${prefix}，已完成 ${safeCurrent}/${safeTotal}`;
+                const elapsedSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+                const avgSeconds = elapsedSeconds / safeCurrent;
+                const remaining = Math.max(0, safeTotal - safeCurrent);
+                const etaSeconds = Math.max(0, Math.round(avgSeconds * remaining));
+                return `${prefix}，已完成 ${safeCurrent}/${safeTotal}，预计还需约 ${etaSeconds} 秒`;
             }
 
             async _renderHome(refresh = false) {
@@ -6358,15 +6619,27 @@
                     <div class="ldsp-export-options">
                         <div class="ldsp-export-options-title">导出选项</div>
                         <div class="ldsp-export-option"><input type="checkbox" id="export-embed-images" ${this._embedImg ? 'checked' : ''}><label for="export-embed-images">嵌入图片（文件更大但可离线查看）</label></div>
+                        <div class="ldsp-export-option" id="export-embed-images-hint" style="display:${this._format === 'md' ? 'none' : 'flex'}"><span style="font-size:10px;color:var(--txt-sec);padding-left:24px">Markdown 导出默认保留原图链接，避免文件体积过大</span></div>
                     </div>
                     <div class="ldsp-export-actions"><button class="ldsp-export-btn-start" id="export-start-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>开始导出</span></button></div>
                     <div class="ldsp-export-status" id="export-status" style="display:none;"></div>`;
 
+                const embedImagesInput = body.querySelector('#export-embed-images');
+                const embedImagesHint = body.querySelector('#export-embed-images-hint');
+                const syncExportOptions = () => {
+                    const isMarkdown = this._format === 'md';
+                    embedImagesInput.disabled = isMarkdown;
+                    embedImagesInput.checked = isMarkdown ? false : this._embedImg;
+                    embedImagesHint.style.display = isMarkdown ? 'flex' : 'none';
+                };
+
                 body.querySelectorAll('.ldsp-export-format-card').forEach(c => c.addEventListener('click', () => {
                     body.querySelectorAll('.ldsp-export-format-card').forEach(x => x.classList.remove('active'));
                     c.classList.add('active'); this._format = c.dataset.format;
+                    syncExportOptions();
                 }));
-                body.querySelector('#export-embed-images').addEventListener('change', e => { this._embedImg = e.target.checked; });
+                embedImagesInput.addEventListener('change', e => { this._embedImg = e.target.checked; });
+                syncExportOptions();
                 body.querySelector('#export-start-btn').addEventListener('click', () => this._doExport(info));
             }
 
@@ -6384,15 +6657,26 @@
                 body.querySelector('#export-stop-btn').addEventListener('click', () => this._abort?.abort());
                 status.style.display = 'block';
 
-                const setStatus = msg => { status.innerHTML = `<div class="ldsp-export-status-icon">⏳</div>${msg}`; };
+                const setStatus = state => {
+                    const info = typeof state === 'string'
+                        ? { message: state }
+                        : (state || {});
+                    const message = info.message || '正在处理中...';
+                    const detail = info.detail ? `<div class="ldsp-export-status-sub">${Utils.escapeHtml(info.detail)}</div>` : '';
+                    const progress = info.total ? `<div class="ldsp-export-status-sub">进度：${Math.max(0, Math.min(info.current || 0, info.total))}/${info.total}${typeof info.percent === 'number' ? ` · ${Math.max(0, Math.min(Math.round(info.percent), 100))}%` : ''}</div>` : '';
+                    status.innerHTML = `<div class="ldsp-export-status-icon">⏳</div><div class="ldsp-export-status-main">${Utils.escapeHtml(message)}</div>${progress}${detail}`;
+                };
 
                 try {
-                    setStatus('正在获取帖子内容...');
-                    const posts = await this._fetchPosts(info.id, start, end, setStatus, this._abort.signal);
+                    const exportMode = this._format === 'md' ? 'markdown' : this._format;
+                    const totalPosts = Math.max(end - start + 1, 1);
+                    const exportStartedAt = Date.now();
+                    setStatus({ stage: 'prepare', message: '正在准备导出...', detail: this._buildExportEta(0, totalPosts, null, `准备导出 ${exportMode.toUpperCase()}`), percent: 2, current: 0, total: totalPosts });
+                    const posts = await this._fetchPosts(info.id, start, end, setStatus, this._abort.signal, exportStartedAt);
                     if (this._abort.signal.aborted) throw new Error('导出已取消');
                     if (!posts.length) throw new Error('没有获取到帖子内容');
 
-                    setStatus('正在生成文件...');
+                    setStatus({ stage: 'generate', message: '正在生成文件...', detail: this._buildExportEta(posts.length, posts.length, exportStartedAt, `正在生成 ${exportMode.toUpperCase()} 文件`), percent: 90, current: posts.length, total: posts.length });
                     const data = { topic: info, posts, exportDate: new Date().toISOString(), postCount: posts.length, range: { start, end } };
 
                     if (this._format === 'md') {
@@ -6401,7 +6685,10 @@
                     } else {
                         const html = this._genHTML(data);
                         if (this._format === 'html') this._download(html, this._genFilename(info, 'html'), 'text/html');
-                        else this._printPDF(html);
+                        else {
+                            setStatus({ stage: 'print', message: '正在打开打印窗口...', detail: this._buildExportEta(posts.length, posts.length, exportStartedAt, '文件已生成，等待打印窗口就绪'), percent: 96, current: posts.length, total: posts.length });
+                            this._printPDF(html);
+                        }
                     }
 
                     status.innerHTML = `<div class="ldsp-export-status-icon">✅</div>导出成功！`;
@@ -6464,7 +6751,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
 a{color:var(--accent);text-decoration:none;}
 a:hover{text-decoration:underline;}
 .container{max-width:920px;margin:0 auto;padding:24px;}
-.header{background:linear-gradient(135deg,#6b8cef 0%,#5a7de0 100%);color:#fff;padding:24px;border-radius:14px;margin-bottom:20px;box-shadow:0 8px 24px rgba(91,125,224,0.25);}
+.header{background:linear-gradient(135deg,#6b8cef 0%,#5a7de0 100%);color:#fff;padding:24px;border-radius:14px;margin-bottom:20px;box-shadow:0 8px 24px rgba(91,125,224,0.25);break-inside:avoid;page-break-inside:avoid;}
 .header h1{font-size:22px;font-weight:700;margin-bottom:10px;line-height:1.4;}
 .meta{display:flex;flex-wrap:wrap;gap:10px;font-size:13px;opacity:0.95;}
 .meta-item{display:flex;align-items:center;gap:4px;background:rgba(255,255,255,0.18);padding:4px 10px;border-radius:12px;}
@@ -6473,7 +6760,7 @@ a:hover{text-decoration:underline;}
 .topic-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
 .topic-category{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;}
 .topic-tag{display:inline-flex;align-items:center;padding:4px 10px;background:rgba(255,255,255,0.16);border-radius:12px;font-size:11px;font-weight:500;}
-.post{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(15,23,42,0.06);}
+.post{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(15,23,42,0.06);break-inside:avoid;page-break-inside:avoid;overflow:hidden;}
 .post-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);}
 .post-author{display:flex;align-items:center;gap:10px;min-width:0;}
 .avatar{width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0;}
@@ -6485,30 +6772,43 @@ a:hover{text-decoration:underline;}
 .post-time{color:var(--muted);font-size:12px;}
 .post-number{background:#eef2ff;color:#3b5bd6;padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;}
 .reply-to{background:#f8fafc;border-left:3px solid var(--accent);padding:8px 12px;margin-bottom:12px;border-radius:0 6px 6px 0;font-size:13px;color:#4b5563;}
-.post-content{font-size:15px;line-height:1.8;word-wrap:break-word;}
+.post-content{font-size:15px;line-height:1.8;word-wrap:break-word;overflow-wrap:anywhere;}
 .post-content p{margin:8px 0;}
-.post-content img{max-width:100%;height:auto;border-radius:8px;margin:8px 0;}
+.post-content img{display:block;max-width:100%;width:auto;height:auto;max-height:520px;object-fit:contain;border-radius:8px;margin:10px auto;page-break-inside:avoid;break-inside:avoid;}
 .post-content blockquote,.post-content aside.quote{background:#f8fafc;border-left:3px solid var(--accent);padding:12px 16px;margin:12px 0;border-radius:0 6px 6px 0;color:#4b5563;}
-.post-content pre{background:#0f172a;color:#e2e8f0;padding:14px;border-radius:8px;overflow-x:auto;font-size:13px;line-height:1.5;}
+.post-content pre{background:#0f172a;color:#e2e8f0;padding:14px;border-radius:8px;overflow-x:auto;font-size:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word;}
 .post-content code{background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:13px;}
 .post-content pre code{background:none;padding:0;}
 .post-content ul,.post-content ol{padding-left:22px;margin:8px 0;}
 .post-content li{margin:4px 0;}
-.post-content table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px;}
-.post-content th,.post-content td{border:1px solid var(--border);padding:6px 8px;text-align:left;}
+.post-content table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px;table-layout:fixed;}
+.post-content th,.post-content td{border:1px solid var(--border);padding:6px 8px;text-align:left;word-break:break-word;}
 .post-content hr{border:none;border-top:1px dashed var(--border);margin:12px 0;}
 .post-footer{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:13px;color:var(--muted);}
 .like-count{color:#e74c3c;font-weight:600;}
 .footer{text-align:center;padding:16px;color:var(--muted);font-size:12px;}
 .footer a{color:var(--accent);}
 @media print{
-  @page{margin:12mm;}
+  @page{size:A4;margin:8mm 7mm;}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  body{background:#fff;}
+  html,body{height:auto;}
+  body{background:#fff;font-size:12px;line-height:1.5;}
   .container{max-width:none;padding:0;}
-  .header{box-shadow:none;border-radius:0;margin-bottom:12px;}
-  .post{box-shadow:none;break-inside:auto;page-break-inside:auto;}
-  .post-header,.reply-to,.post-footer,.topic-tags{break-inside:avoid;page-break-inside:avoid;}
+  .header{box-shadow:none;border-radius:0;margin-bottom:10px;padding:16px 18px;break-inside:avoid;page-break-inside:avoid;}
+  .header h1{font-size:18px;margin-bottom:8px;}
+  .meta{gap:6px;font-size:11px;}
+  .meta-item{padding:3px 8px;}
+  .topic-tags{gap:6px;margin-top:8px;break-inside:avoid;page-break-inside:avoid;}
+  .post{box-shadow:none;border-radius:8px;margin-bottom:8px;padding:12px 14px;break-inside:auto;page-break-inside:auto;overflow:visible;}
+  .post-header{margin-bottom:8px;padding-bottom:8px;break-inside:avoid;page-break-inside:avoid;}
+  .reply-to{margin-bottom:8px;padding:6px 10px;break-inside:avoid;page-break-inside:avoid;}
+  .post-content{font-size:12px;line-height:1.6;}
+  .post-content p{margin:6px 0;orphans:2;widows:2;}
+  .post-content img{display:block;max-width:100%;width:auto;height:auto;max-height:180mm;margin:6px auto;object-fit:contain;break-inside:avoid;page-break-inside:avoid;}
+  .post-content pre{font-size:11px;padding:10px;white-space:pre-wrap;word-break:break-word;}
+  .post-content table{font-size:11px;}
+  .post-footer{margin-top:8px;padding-top:8px;break-inside:avoid;page-break-inside:avoid;}
+  .footer{padding:10px 0 0;font-size:10px;}
   .post-number{background:#e5edff;color:#1f3fb8;}
 }
 @media(max-width:600px){
@@ -6586,7 +6886,10 @@ a:hover{text-decoration:underline;}
                 if (!html) return '';
                 const wrapper = document.createElement('div');
                 wrapper.innerHTML = html;
+                wrapper.querySelectorAll('a.anchor, a[aria-hidden="true"].anchor').forEach(anchor => anchor.remove());
+                wrapper.querySelectorAll('[id^="post_"] a[href^="#p-"], [id^="post_"] a[href^="#post_"]').forEach(anchor => anchor.remove());
                 let md = this._nodeToMarkdownChildren(wrapper);
+                md = md.replace(/(^|\n)#+\s*#p-[\w-]+\s*(?=\n|$)/g, '$1');
                 md = md.replace(/\u00a0/g, ' ');
                 md = md.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
                 return md;
@@ -6630,13 +6933,17 @@ a:hover{text-decoration:underline;}
                     }
                     case 'a': {
                         const href = node.getAttribute('href') || '';
+                        const cls = node.className || '';
                         const text = this._inlineMarkdown(node) || href;
-                        return href ? `[${text}](${href})` : text;
+                        if (cls.includes('anchor') || /^#(?:p|post)_[\w-]+$/i.test(href) || /^#p-[\w-]+$/i.test(text)) return '';
+                        const normalizedHref = this._normalizeExportUrl(href);
+                        return normalizedHref ? `[${text}](${normalizedHref})` : text;
                     }
                     case 'img': {
                         const src = node.getAttribute('src') || '';
                         const alt = (node.getAttribute('alt') || '').replace(/\n/g, ' ').trim();
-                        return src ? `![${alt}](${src})` : '';
+                        if (!src || src.startsWith('data:')) return alt ? `![${alt}]()` : '';
+                        return `![${alt}](${this._normalizeExportUrl(src)})`;
                     }
                     case 'ul':
                         return this._listToMarkdown(node, false);
@@ -6734,9 +7041,24 @@ a:hover{text-decoration:underline;}
                 w.document.open();
                 w.document.write(html);
                 w.document.close();
+                const waitForImages = () => {
+                    const imgs = Array.from(w.document.images || []);
+                    if (!imgs.length) return Promise.resolve();
+                    return Promise.all(imgs.map(img => {
+                        if (img.complete) return Promise.resolve();
+                        return new Promise(resolve => {
+                            const done = () => resolve();
+                            img.addEventListener('load', done, { once: true });
+                            img.addEventListener('error', done, { once: true });
+                            setTimeout(done, 2500);
+                        });
+                    }));
+                };
                 const doPrint = () => {
-                    try { w.focus(); } catch {}
-                    setTimeout(() => { try { w.print(); } catch {} }, 200);
+                    waitForImages().finally(() => {
+                        try { w.focus(); } catch {}
+                        setTimeout(() => { try { w.print(); } catch {} }, 300);
+                    });
                 };
                 if (w.document.fonts && w.document.fonts.ready) {
                     w.document.fonts.ready.finally(doPrint);
@@ -10290,20 +10612,15 @@ a:hover{text-decoration:underline;}
                 const startStr = `${start.getHours()}:${String(start.getMinutes()).padStart(2,'0')}`, nowStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
                 let h = `<div class="ldsp-time-info">今日 00:00 ~ ${nowStr} (首次记录于 ${startStr})</div><div class="ldsp-rd-stats" style="background:${lv.bg.replace('0.15','0.08')}"><div class="ldsp-rd-stats-icon">${lv.icon}</div><div class="ldsp-rd-stats-info"><div class="ldsp-rd-stats-val">${Utils.formatReadingTime(rt)}</div><div class="ldsp-rd-stats-lbl">今日累计阅读</div></div><div class="ldsp-rd-stats-badge" style="background:${lv.bg};color:${lv.color};box-shadow:0 3px 12px ${lv.bg.replace('0.15','0.4')},inset 0 1px 0 rgba(255,255,255,.25)">${lv.label}</div></div><div class="ldsp-rd-prog"><div class="ldsp-rd-prog-hdr"><span class="ldsp-rd-prog-title">📖 阅读目标 (${goalText}小时)</span><span class="ldsp-rd-prog-val">${Math.round(pct)}%</span></div><div class="ldsp-rd-prog-bar"><div class="ldsp-rd-prog-fill" style="width:${pct}%;background:${lv.bg.replace('0.15','1')}"></div></div></div>`;
                 if (reqs?.length) {
-                    const hasYesterdayBase = !!(yesterdayBase?.data && Object.keys(yesterdayBase.data).length);
-                    if (!hasYesterdayBase) {
-                        h += `<div class="ldsp-no-chg">暂无昨日数据，今日变化将在次日可见</div>`;
-                    } else {
-                        const baselineData = yesterdayBase.data;
-                        const compareLabel = yesterdayBase.label || '昨日';
-                        const chgs = reqs.map(r=>({
-                            name: Utils.simplifyName(r.name),
-                            diff: Utils.toSafeNumber(r.currentValue, 0) - Utils.getMetricValue(baselineData, r.name, 0)
-                        })).filter(c=>c.diff!==0).sort((a,b)=>b.diff-a.diff);
-                        const pos = chgs.filter(c=>c.diff>0).length, neg = chgs.filter(c=>c.diff<0).length;
-                        h += `<div class="ldsp-today-stats"><div class="ldsp-today-stat"><div class="ldsp-today-stat-val">${pos}</div><div class="ldsp-today-stat-lbl">📈 增长项</div></div><div class="ldsp-today-stat"><div class="ldsp-today-stat-val">${neg}</div><div class="ldsp-today-stat-lbl">📉 下降项</div></div></div>`;
-                        h += chgs.length ? `<div class="ldsp-chart"><div class="ldsp-chart-title">📊 今日变化明细<span class="ldsp-chart-sub">较${compareLabel}</span></div><div class="ldsp-changes">${chgs.map(c=>`<div class="ldsp-chg-row"><span class="ldsp-chg-name">${c.name}</span><span class="ldsp-chg-val ${c.diff>0?'up':'down'}">${c.diff>0?'+':''}${c.diff}</span></div>`).join('')}</div></div>` : `<div class="ldsp-no-chg">相比${compareLabel}暂无数据变化</div>`;
-                    }
+                    const baselineData = td.baselineData || yesterdayBase?.data || {};
+                    const compareLabel = td.compareLabel || yesterdayBase?.label || '前一日';
+                    const chgs = reqs.map(r=>({
+                        name: Utils.simplifyName(r.name),
+                        diff: Utils.toSafeNumber(r.currentValue, 0) - Utils.getMetricValue(baselineData, r.name, 0)
+                    })).filter(c=>c.diff!==0).sort((a,b)=>b.diff-a.diff);
+                    const pos = chgs.filter(c=>c.diff>0).length, neg = chgs.filter(c=>c.diff<0).length;
+                    h += `<div class="ldsp-today-stats"><div class="ldsp-today-stat"><div class="ldsp-today-stat-val">${pos}</div><div class="ldsp-today-stat-lbl">📈 增长项</div></div><div class="ldsp-today-stat"><div class="ldsp-today-stat-val">${neg}</div><div class="ldsp-today-stat-lbl">📉 下降项</div></div></div>`;
+                    h += chgs.length ? `<div class="ldsp-chart"><div class="ldsp-chart-title">📊 今日变化明细<span class="ldsp-chart-sub">较${compareLabel}</span></div><div class="ldsp-changes">${chgs.map(c=>`<div class="ldsp-chg-row"><span class="ldsp-chg-name">${c.name}</span><span class="ldsp-chg-val ${c.diff>0?'up':'down'}">${c.diff>0?'+':''}${c.diff}</span></div>`).join('')}</div></div>` : `<div class="ldsp-no-chg">相比${compareLabel}暂无数据变化</div>`;
                 }
                 return h;
             }
@@ -10558,8 +10875,14 @@ a:hover{text-decoration:underline;}
 
             // 登录提示模态框
             showLoginPrompt(isUpgrade = false) {
+                const existingOverlay = this.panel.el.querySelector('.ldsp-modal-overlay');
+                if (existingOverlay) existingOverlay.remove();
+
                 const overlay = document.createElement('div');
                 overlay.className = 'ldsp-modal-overlay';
+                if (this.panel.el.classList.contains('collapsed')) {
+                    overlay.style.display = 'none';
+                }
                 overlay.innerHTML = `
                     <div class="ldsp-modal">
                         <div class="ldsp-modal-hdr"><span class="ldsp-modal-icon">${isUpgrade ? '🎉' : '👋'}</span><span class="ldsp-modal-title">${isUpgrade ? '升级到 v3.0' : '欢迎使用 LDStatus Pro'}</span></div>
@@ -10573,7 +10896,10 @@ a:hover{text-decoration:underline;}
                         <div class="ldsp-modal-note">登录仅用于云同步，不登录也可正常使用本地功能</div>
                     </div>`;
                 this.panel.el.appendChild(overlay);
-                requestAnimationFrame(() => overlay.classList.add('show'));
+                requestAnimationFrame(() => {
+                    if (overlay.style.display === 'none') return;
+                    overlay.classList.add('show');
+                });
                 return overlay;
             }
 
@@ -10650,7 +10976,7 @@ a:hover{text-decoration:underline;}
                     const badge = ur>0?`<span class="ldsp-topic-badge ldsp-badge-unread">${ur}</span>`:np>0?`<span class="ldsp-topic-badge ldsp-badge-new">${np}</span>`:'';
                     const tagsH = (catName || tags.length)?`<div class="ldsp-topic-tags">${catH}${tags.slice(0,2).map(x=>`<span class="ldsp-topic-tag">${Utils.escapeHtml(getTagName(x))}</span>`).join('')}${tags.length>2?`<span class="ldsp-topic-tag-more">+${tags.length-2}</span>`:''}</div>`:'';
                     let psH = ps.length?'<div class="ldsp-topic-posters">'+ps.slice(0,3).map((p,j)=>`<img src="${getAv(p)}" class="ldsp-topic-avatar ${p.description?.includes('原始发帖人')?'ldsp-poster-op':p.extras?.includes('latest')?'ldsp-poster-latest':''}" title="${Utils.escapeHtml(p.name||p.username)}" style="z-index:${5-j}" loading="lazy">`).join('')+(ps.length>3?`<span class="ldsp-topic-posters-more">+${ps.length-3}</span>`:'')+'</div>':'';
-                    h += `<a href="${url}" target="_blank" class="ldsp-topic-item" style="animation-delay:${i*20}ms"><div class="ldsp-topic-main"><div class="ldsp-topic-header"><div class="ldsp-topic-title-row">${badge?`<div class="ldsp-topic-badges">${badge}</div>`:''}<div class="ldsp-topic-title" title="${title}">${title}</div></div><div class="ldsp-topic-info">${tagsH}</div></div><div class="ldsp-topic-footer">${psH}<div class="ldsp-topic-stats"><span class="ldsp-topic-stat" title="回复">${ic.reply}<em>${pc}</em></span><span class="ldsp-topic-stat" title="阅读">${ic.view}<em>${v>=1000?(v/1000).toFixed(1)+'k':v}</em></span>${lc>0?`<span class="ldsp-topic-stat ldsp-stat-like" title="点赞">${ic.like}<em>${lc}</em></span>`:''}<span class="ldsp-topic-time">${rt}</span></div></div></div>${thumb?`<div class="ldsp-topic-thumbnail"><img src="${thumb}" loading="lazy"></div>`:''}</a>`;
+                    h += `<a href="${url}" target="_blank" class="ldsp-topic-item" data-scroll-key="topic-${t.id}" style="animation-delay:${i*20}ms"><div class="ldsp-topic-main"><div class="ldsp-topic-header"><div class="ldsp-topic-title-row">${badge?`<div class="ldsp-topic-badges">${badge}</div>`:''}<div class="ldsp-topic-title" title="${title}">${title}</div></div><div class="ldsp-topic-info">${tagsH}</div></div><div class="ldsp-topic-footer">${psH}<div class="ldsp-topic-stats"><span class="ldsp-topic-stat" title="回复">${ic.reply}<em>${pc}</em></span><span class="ldsp-topic-stat" title="阅读">${ic.view}<em>${v>=1000?(v/1000).toFixed(1)+'k':v}</em></span>${lc>0?`<span class="ldsp-topic-stat ldsp-stat-like" title="点赞">${ic.like}<em>${lc}</em></span>`:''}<span class="ldsp-topic-time">${rt}</span></div></div></div>${thumb?`<div class="ldsp-topic-thumbnail"><img src="${thumb}" loading="lazy"></div>`:''}</a>`;
                 });
                 return h+'</div>'+(hasMore?'<div class="ldsp-load-more"><div class="ldsp-load-more-spinner"></div><span>加载更多...</span></div>':'');
             }
@@ -10690,7 +11016,7 @@ a:hover{text-decoration:underline;}
                         : '';
                     const catH = catName ? `<span class="ldsp-bookmark-tag ldsp-bookmark-category" ${catStyle}>📁 ${Utils.escapeHtml(catName)}</span>` : '';
                     const tagsH = (catName || tags.length)?`<div class="ldsp-bookmark-tags">${catH}${tags.slice(0,4).map(t=>`<span class="ldsp-bookmark-tag">${Utils.escapeHtml(getTagName(t))}</span>`).join('')}${tags.length>4?`<span class="ldsp-bookmark-tag-more">+${tags.length-4}</span>`:''}</div>`:'';
-                    h += `<div class="ldsp-bookmark-item" data-url="${url}" style="animation-delay:${i*30}ms"><div class="ldsp-bookmark-title">${title}</div><div class="ldsp-bookmark-meta"><span class="ldsp-bookmark-time" title="收藏时间">${ic.calendar}${ct||'--'}</span><span class="ldsp-bookmark-time" title="最后活动">${ic.clock}${rt||'--'}</span></div>${tagsH}${ex?`<div class="ldsp-bookmark-excerpt">${ex}</div>`:''}</div>`;
+                    h += `<div class="ldsp-bookmark-item" data-url="${url}" data-scroll-key="bookmark-${b.id}" style="animation-delay:${i*30}ms"><div class="ldsp-bookmark-title">${title}</div><div class="ldsp-bookmark-meta"><span class="ldsp-bookmark-time" title="收藏时间">${ic.calendar}${ct||'--'}</span><span class="ldsp-bookmark-time" title="最后活动">${ic.clock}${rt||'--'}</span></div>${tagsH}${ex?`<div class="ldsp-bookmark-excerpt">${ex}</div>`:''}</div>`;
                 });
                 return h+'</div>'+(hasMore?'<div class="ldsp-load-more"><div class="ldsp-load-more-spinner"></div><span>加载更多...</span></div>':'');
             }
@@ -10701,7 +11027,7 @@ a:hover{text-decoration:underline;}
                 let h = '<div class="ldsp-reply-list">';
                 rp.forEach((r,i) => {
                     const title = Utils.escapeHtml(r.title||'无标题'), ex = r.excerpt||'', rt = Utils.formatRelativeTime(r.created_at), url = `https://${CURRENT_SITE.domain}/t/topic/${r.topic_id}/${r.post_number}`;
-                    h += `<div class="ldsp-reply-item" data-url="${url}" style="animation-delay:${i*30}ms"><div class="ldsp-reply-title">${title}</div><div class="ldsp-reply-meta"><span class="ldsp-reply-time" title="回复时间">${ic.clock}${rt||'--'}</span>${r.reply_to_post_number?`<span class="ldsp-reply-to" title="回复楼层">${ic.reply}#${r.reply_to_post_number}</span>`:''}</div>${ex?`<div class="ldsp-reply-excerpt">${ex}</div>`:''}</div>`;
+                    h += `<div class="ldsp-reply-item" data-url="${url}" data-scroll-key="reply-${r.post_id}" style="animation-delay:${i*30}ms"><div class="ldsp-reply-title">${title}</div><div class="ldsp-reply-meta"><span class="ldsp-reply-time" title="回复时间">${ic.clock}${rt||'--'}</span>${r.reply_to_post_number?`<span class="ldsp-reply-to" title="回复楼层">${ic.reply}#${r.reply_to_post_number}</span>`:''}</div>${ex?`<div class="ldsp-reply-excerpt">${ex}</div>`:''}</div>`;
                 });
                 return h+'</div>'+(hasMore?'<div class="ldsp-load-more"><div class="ldsp-load-more-spinner"></div><span>加载更多...</span></div>':'');
             }
@@ -10713,7 +11039,7 @@ a:hover{text-decoration:underline;}
                 lk.forEach((l,i) => {
                     const title = Utils.escapeHtml(l.title||'无标题'), ex = l.excerpt||'', rt = Utils.formatRelativeTime(l.created_at), url = `https://${CURRENT_SITE.domain}/t/topic/${l.topic_id}/${l.post_number}`;
                     const name = Utils.escapeHtml(l.name||l.username||'匿名');
-                    h += `<div class="ldsp-like-item" data-url="${url}" style="animation-delay:${i*30}ms"><div class="ldsp-like-title">${title}</div><div class="ldsp-like-meta"><span class="ldsp-like-time" title="点赞时间">${ic.clock}${rt||'--'}</span><span class="ldsp-like-author" title="作者：@${l.username}">${ic.user}${name}</span></div>${ex?`<div class="ldsp-like-excerpt">${ex}</div>`:''}</div>`;
+                    h += `<div class="ldsp-like-item" data-url="${url}" data-scroll-key="like-${l.post_id}" style="animation-delay:${i*30}ms"><div class="ldsp-like-title">${title}</div><div class="ldsp-like-meta"><span class="ldsp-like-time" title="点赞时间">${ic.clock}${rt||'--'}</span><span class="ldsp-like-author" title="作者：@${l.username}">${ic.user}${name}</span></div>${ex?`<div class="ldsp-like-excerpt">${ex}</div>`:''}</div>`;
                 });
                 return h+'</div>'+(hasMore?'<div class="ldsp-load-more"><div class="ldsp-load-more-spinner"></div><span>加载更多...</span></div>':'');
             }
@@ -10739,7 +11065,7 @@ a:hover{text-decoration:underline;}
                     const catH = catName ? `<span class="ldsp-mytopic-tag ldsp-mytopic-category" ${catStyle}>📁 ${Utils.escapeHtml(catName)}</span>` : '';
                     const tagsH = (catName || tags.length)?`<div class="ldsp-mytopic-tags">${catH}${tags.slice(0,3).map(x=>`<span class="ldsp-mytopic-tag">${Utils.escapeHtml(getTagName(x))}</span>`).join('')}${tags.length>3?`<span class="ldsp-mytopic-tag-more">+${tags.length-3}</span>`:''}</div>`:'';
                     const st = (t.pinned?`<span class="ldsp-mytopic-status" title="已置顶">${ic.pin}</span>`:'')+(t.closed?`<span class="ldsp-mytopic-status ldsp-mytopic-closed" title="已关闭">${ic.lock}</span>`:'');
-                    h += `<a href="${url}" target="_blank" class="ldsp-mytopic-item${t.closed?' closed':''}" style="animation-delay:${i*30}ms" title="${title}"><div class="ldsp-mytopic-header"><div class="ldsp-mytopic-title">${title}</div>${st?`<div class="ldsp-mytopic-icons">${st}</div>`:''}</div><div class="ldsp-mytopic-row">${tagsH}<span class="ldsp-mytopic-time" title="创建时间">${ic.calendar}${ct||'--'}</span></div><div class="ldsp-mytopic-meta"><span class="ldsp-mytopic-stat" title="回复数">${ic.reply}${pc}</span><span class="ldsp-mytopic-stat" title="浏览量">${ic.view}${v}</span><span class="ldsp-mytopic-stat ldsp-mytopic-likes" title="点赞数">${ic.heart}${lc}</span><div class="ldsp-mytopic-meta-right"><span class="ldsp-mytopic-time" title="最后活动">${ic.clock}${rt||'--'}</span></div></div></a>`;
+                    h += `<a href="${url}" target="_blank" class="ldsp-mytopic-item${t.closed?' closed':''}" data-scroll-key="mytopic-${t.id}" style="animation-delay:${i*30}ms" title="${title}"><div class="ldsp-mytopic-header"><div class="ldsp-mytopic-title">${title}</div>${st?`<div class="ldsp-mytopic-icons">${st}</div>`:''}</div><div class="ldsp-mytopic-row">${tagsH}<span class="ldsp-mytopic-time" title="创建时间">${ic.calendar}${ct||'--'}</span></div><div class="ldsp-mytopic-meta"><span class="ldsp-mytopic-stat" title="回复数">${ic.reply}${pc}</span><span class="ldsp-mytopic-stat" title="浏览量">${ic.view}${v}</span><span class="ldsp-mytopic-stat ldsp-mytopic-likes" title="点赞数">${ic.heart}${lc}</span><div class="ldsp-mytopic-meta-right"><span class="ldsp-mytopic-time" title="最后活动">${ic.clock}${rt||'--'}</span></div></div></a>`;
                 });
                 return h+'</div>'+(hasMore?'<div class="ldsp-load-more"><div class="ldsp-load-more-spinner"></div><span>加载更多...</span></div>':'');
             }
@@ -10757,7 +11083,7 @@ a:hover{text-decoration:underline;}
                     const url = `https://${CURRENT_SITE.domain}/t/topic/${p.topic_id}/${p.post_number}`;
                     const name = Utils.escapeHtml(pu.name||pu.username||p.username||'匿名'), un = pu.username||p.username, av = getAv(pu);
                     const rv = rd.reaction_value||'+1', ri = getEmoji(rv), cnt = rd.reaction_users_count||1;
-                    h += `<div class="ldsp-reaction-item" data-url="${url}" style="animation-delay:${i*30}ms"><div class="ldsp-reaction-header"><div class="ldsp-reaction-icon" title="${rv}">${ri}</div><div class="ldsp-reaction-title">${title}</div></div><div class="ldsp-reaction-meta">${av?`<img src="${av}" class="ldsp-reaction-avatar" loading="lazy">`:''}<span class="ldsp-reaction-author" title="作者：@${un}">${name}</span><span class="ldsp-reaction-time" title="互动时间">${icClk}${rt||'--'}</span>${cnt>1?`<span class="ldsp-reaction-count" title="共${cnt}人">+${cnt-1}</span>`:''}</div>${ex?`<div class="ldsp-reaction-excerpt">${ex}</div>`:''}</div>`;
+                    h += `<div class="ldsp-reaction-item" data-url="${url}" data-scroll-key="reaction-${r.id}" style="animation-delay:${i*30}ms"><div class="ldsp-reaction-header"><div class="ldsp-reaction-icon" title="${rv}">${ri}</div><div class="ldsp-reaction-title">${title}</div></div><div class="ldsp-reaction-meta">${av?`<img src="${av}" class="ldsp-reaction-avatar" loading="lazy">`:''}<span class="ldsp-reaction-author" title="作者：@${un}">${name}</span><span class="ldsp-reaction-time" title="互动时间">${icClk}${rt||'--'}</span>${cnt>1?`<span class="ldsp-reaction-count" title="共${cnt}人">+${cnt-1}</span>`:''}</div>${ex?`<div class="ldsp-reaction-excerpt">${ex}</div>`:''}</div>`;
                 });
                 return h+'</div>'+(hasMore?'<div class="ldsp-load-more"><div class="ldsp-load-more-spinner"></div><span>加载更多...</span></div>':'');
             }
@@ -11435,11 +11761,11 @@ a:hover{text-decoration:underline;}
                 this._orderDragDirty = false;
                 this.themeMode = 'light';
                 this._fontSizeLevels = [
-                    { level: 1, label: '较小', scale: 0.90 },
-                    { level: 2, label: '小', scale: 0.96 },
+                    { level: 1, label: '紧凑', scale: 0.82 },
+                    { level: 2, label: '偏小', scale: 0.92 },
                     { level: 3, label: '标准', scale: 1.00 },
-                    { level: 4, label: '较大', scale: 1.08 },
-                    { level: 5, label: '大', scale: 1.16 }
+                    { level: 4, label: '舒适', scale: 1.14 },
+                    { level: 5, label: '宽大', scale: 1.30 }
                 ];
                 this.fontSizeLevel = this._loadFontSizeLevel();
                 this.readingGoalHours = this._loadReadingGoalHours();
@@ -11776,13 +12102,13 @@ a:hover{text-decoration:underline;}
                                         </div>
                                         <input class="ldsp-settings-font-range" type="range" min="1" max="5" step="1" data-font-level-input="range">
                                         <div class="ldsp-settings-font-levels">
-                                            <span>较小</span>
-                                            <span>小</span>
+                                            <span>紧凑</span>
+                                            <span>偏小</span>
                                             <span>标准</span>
-                                            <span>较大</span>
-                                            <span>大</span>
+                                            <span>舒适</span>
+                                            <span>宽大</span>
                                         </div>
-                                        <div class="ldsp-settings-font-hint">五档滑杆：较小 / 小 / 标准 / 较大 / 大</div>
+                                        <div class="ldsp-settings-font-hint">五档梯度重新拉开：更适合小屏压缩阅读，也能在大屏下获得更明显放大效果</div>
                                     </div>
                                 </div>
                                 <div class="ldsp-settings-view" data-settings-view="actions-root">
@@ -13183,10 +13509,10 @@ a:hover{text-decoration:underline;}
             }
 
             _getPanelSizeBounds(cfg, vw, vh) {
-                const margin = 8;
-                const minW = cfg.isVerySmall ? 200 : 220;
-                const minH = cfg.isVerySmall ? 240 : 300;
-                const maxW = Math.min(420, Math.max(minW, vw - margin * 2));
+                const margin = cfg.isVerySmall ? 4 : cfg.isMobile ? 6 : 8;
+                const minW = cfg.isVerySmall ? 184 : cfg.isPhone ? 200 : cfg.isTablet ? 224 : 236;
+                const minH = cfg.isVerySmall ? 190 : cfg.isLandscapeCompact ? 208 : cfg.isPhone ? 228 : 260;
+                const maxW = Math.min(cfg.isTablet ? 460 : 440, Math.max(minW, vw - margin * 2));
                 const maxH = Math.max(minH, vh - margin * 2);
                 return { minW, maxW, minH, maxH, margin };
             }
@@ -13200,17 +13526,13 @@ a:hover{text-decoration:underline;}
                 let width = cfg.width;
                 let maxHeight = cfg.maxHeight;
                 
+                // 用绝对像素值而非 ratio 来还原尺寸，避免 ratio 精度丢失
                 if (custom && typeof custom === 'object') {
-                    const wRatio = Utils.toSafeNumber(custom.widthRatio, 0);
-                    const hRatio = Utils.toSafeNumber(custom.heightRatio, 0);
                     const w = Utils.toSafeNumber(custom.width, 0);
                     const h = Utils.toSafeNumber(custom.height, 0);
-                    
-                    if (wRatio > 0) width = vw * wRatio;
-                    else if (w > 0) width = w;
-                    
-                    if (hRatio > 0) maxHeight = vh * hRatio;
-                    else if (h > 0) maxHeight = h;
+
+                    if (w > 0) width = w;
+                    if (h > 0) maxHeight = h;
                 }
                 
                 width = Math.round(Math.min(bounds.maxW, Math.max(bounds.minW, width)));
@@ -13224,8 +13546,16 @@ a:hover{text-decoration:underline;}
                 const el = this.el;
                 if (!el) return;
                 const fontScale = this._getFontSizeScale();
-                
-                const key = `${cfg.width}|${cfg.maxHeight}|${cfg.fontSize}|${cfg.padding}|${cfg.avatarSize}|${cfg.ringSize}|${fontScale}`;
+
+                el.classList.toggle('ldsp-device-phone', !!cfg.isPhone);
+                el.classList.toggle('ldsp-device-tablet', !!cfg.isTablet);
+                el.classList.toggle('ldsp-device-mobile', !!cfg.isMobile);
+                el.classList.toggle('ldsp-device-landscape-compact', !!cfg.isLandscapeCompact);
+                el.classList.toggle('ldsp-device-very-small', !!cfg.isVerySmall);
+                el.style.setProperty('--safe-top', `${cfg.offsetTop || 0}px`);
+                el.style.setProperty('--safe-left', `${cfg.offsetLeft || 0}px`);
+
+                const key = `${cfg.width}|${cfg.maxHeight}|${cfg.fontSize}|${cfg.padding}|${cfg.avatarSize}|${cfg.ringSize}|${cfg.readingWidth}|${fontScale}|${cfg.isPhone ? 1 : 0}|${cfg.isTablet ? 1 : 0}|${cfg.isLandscapeCompact ? 1 : 0}`;
                 if (this._lastSizeKey === key) return;
                 this._lastSizeKey = key;
                 
@@ -13236,7 +13566,11 @@ a:hover{text-decoration:underline;}
                 el.style.setProperty('--pd', `${cfg.padding}px`);
                 el.style.setProperty('--av', `${cfg.avatarSize}px`);
                 el.style.setProperty('--ring', `${cfg.ringSize}px`);
-                
+                el.style.setProperty('--reading-w', `${cfg.readingWidth}px`);
+                el.style.setProperty('--min-w', `${cfg.bounds.minW}px`);
+                el.style.setProperty('--max-w', `${cfg.bounds.maxW}px`);
+                el.style.setProperty('--min-h', `${cfg.bounds.minH}px`);
+
                 // 即使处于折叠状态，也更新尺寸以便展开时生效
                 el.style.width = `${cfg.width}px`;
                 el.style.maxHeight = `${cfg.maxHeight}px`;
@@ -13356,68 +13690,83 @@ a:hover{text-decoration:underline;}
 
             // 初始化面板手动调整大小功能（仅桌面端）
             _initResize() {
-                // 检测是否为桌面端（有鼠标悬停能力且是精确指针）
                 if (!window.matchMedia('(hover:hover) and (pointer:fine)').matches) return;
-                
                 const el = this.el;
                 const handles = el.querySelectorAll('.ldsp-resize-handle');
                 if (!handles.length) return;
-                
-                let startX, startY, startW, startH, startLeft, startTop, direction, alignRight;
-                
+
+                let startX, startY, startW, startMaxH, startLeft, startTop, direction, alignRight;
+                let resizeMoved = false;
+                let originalWidthStyle, originalMaxHStyle, originalCssW, originalCssH;
+                let originalLeftStyle, originalRightStyle, originalTopStyle;
+
                 const onMouseMove = (e) => {
                     if (!direction) return;
                     e.preventDefault();
-                    
+
                     const dx = e.clientX - startX;
                     const dy = e.clientY - startY;
+                    if (!resizeMoved && Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+                    resizeMoved = true;
                     const { innerWidth: vw, innerHeight: vh } = window;
                     const cfg = Screen.getConfig();
                     const bounds = this._getPanelSizeBounds(cfg, vw, vh);
-                    
-                    let maxW = Math.min(bounds.maxW, vw - bounds.margin - startLeft);
-                    let maxH = Math.min(bounds.maxH, vh - bounds.margin - startTop);
-                    maxW = Math.max(bounds.minW, maxW);
-                    maxH = Math.max(bounds.minH, maxH);
-                    
-                    // 根据方向调整尺寸
+
+                    const maxW = Math.max(bounds.minW, Math.min(bounds.maxW, vw - bounds.margin - startLeft));
+                    const maxH = Math.max(bounds.minH, Math.min(bounds.maxH, vh - bounds.margin - startTop));
+
                     if (direction.includes('e')) {
                         const newW = Math.max(bounds.minW, Math.min(maxW, startW + dx));
                         el.style.width = `${newW}px`;
                         el.style.setProperty('--w', `${newW}px`);
                     }
                     if (direction.includes('s')) {
-                        const newH = Math.max(bounds.minH, Math.min(maxH, startH + dy));
+                        const newH = Math.max(bounds.minH, Math.min(maxH, startMaxH + dy));
                         el.style.maxHeight = `${newH}px`;
                         el.style.setProperty('--h', `${newH}px`);
                     }
                     this._scheduleIndicatorRefresh(true);
                 };
-                
+
                 const onMouseUp = () => {
                     if (!direction) return;
                     direction = null;
                     el.classList.remove('resizing');
                     document.removeEventListener('mousemove', onMouseMove);
                     document.removeEventListener('mouseup', onMouseUp);
-                    
+
+                    if (!resizeMoved) {
+                        // 没有实际拖拽，恢复所有原始样式
+                        el.style.width = originalWidthStyle;
+                        el.style.maxHeight = originalMaxHStyle;
+                        el.style.left = originalLeftStyle;
+                        el.style.right = originalRightStyle;
+                        el.style.top = originalTopStyle;
+                        el.style.setProperty('--w', originalCssW);
+                        el.style.setProperty('--h', originalCssH);
+                        this._scheduleIndicatorRefresh(true);
+                        return;
+                    }
+
                     const rect = el.getBoundingClientRect();
                     const { innerWidth: vw, innerHeight: vh } = window;
-                    const width = Math.round(rect.width);
-                    const height = Math.round(rect.height);
-                    const widthRatio = vw > 0 ? Math.round((width / vw) * 10000) / 10000 : 0;
-                    const heightRatio = vh > 0 ? Math.round((height / vh) * 10000) / 10000 : 0;
-                    
-                    // 保存用户自定义的尺寸（像素 + 相对比例）
+
+                    // 从 inline style 读取最终尺寸值（而非 getBoundingClientRect）
+                    // rect.width/height 受 scrollbar-gutter、padding、sub-pixel 影响，
+                    // 且面板内容未撑满时 rect.height < maxHeight
+                    const finalWidth = parseFloat(el.style.width) || parseFloat(el.style.getPropertyValue('--w')) || rect.width;
+                    const finalMaxH = parseFloat(el.style.maxHeight) || parseFloat(el.style.getPropertyValue('--h')) || rect.height;
+                    const widthRatio = vw > 0 ? finalWidth / vw : 0;
+                    const heightRatio = vh > 0 ? finalMaxH / vh : 0;
+
                     this.storage.setGlobalNow('customSize', {
-                        width,
-                        height,
+                        width: Math.round(finalWidth),
+                        height: Math.round(finalMaxH),
                         widthRatio,
                         heightRatio,
                         updatedAt: Date.now()
                     });
-                    
-                    // 恢复原有对齐方式（保持当前右/左边距）
+
                     if (alignRight) {
                         const right = Math.max(8, Math.round(vw - rect.right));
                         el.style.right = `${right}px`;
@@ -13427,40 +13776,46 @@ a:hover{text-decoration:underline;}
                         el.style.left = `${left}px`;
                         el.style.right = 'auto';
                     }
-                    
-                    // 保存位置（保持 alignRight 不变）
+
                     this._savePositionKeepAlign(!!alignRight);
                     this._lastSizeKey = null;
+                    this._applyPanelSize('resize-finish');
                     this._scheduleIndicatorRefresh(true);
                 };
-                
+
                 handles.forEach(handle => {
                     handle.addEventListener('mousedown', (e) => {
                         if (el.classList.contains('collapsed')) return;
                         e.preventDefault();
                         e.stopPropagation();
-                        
-                        // 判断调整方向
+
                         if (handle.classList.contains('ldsp-resize-e')) direction = 'e';
                         else if (handle.classList.contains('ldsp-resize-s')) direction = 's';
                         else if (handle.classList.contains('ldsp-resize-se')) direction = 'se';
-                        
+
+                        // 保存原始样式值（用于没有拖拽时恢复）
+                        originalWidthStyle = el.style.width;
+                        originalMaxHStyle = el.style.maxHeight;
+                        originalLeftStyle = el.style.left;
+                        originalRightStyle = el.style.right;
+                        originalTopStyle = el.style.top;
+                        originalCssW = el.style.getPropertyValue('--w');
+                        originalCssH = el.style.getPropertyValue('--h');
+
+                        // 从 CSS 属性读取起始值（而非 getBoundingClientRect），避免 sub-pixel 差异
+                        // 面板实际渲染高度可能小于 maxHeight（内容未撑满），所以必须用 maxHeight 作为拖拽起点
                         const rect = el.getBoundingClientRect();
                         startX = e.clientX;
                         startY = e.clientY;
-                        startW = rect.width;
-                        startH = rect.height;
+                        startW = parseFloat(el.style.width) || rect.width;
+                        startMaxH = parseFloat(el.style.maxHeight) || parseFloat(el.style.getPropertyValue('--h')) || rect.height;
                         startLeft = rect.left;
                         startTop = rect.top;
-                        
-                        // 记录当前对齐方式，避免 resize 期间锚点跳动
+                        resizeMoved = false;
+
                         const savedPos = this.storage.getGlobal('position');
                         alignRight = savedPos?.alignRight ?? el.classList.contains('expand-left');
-                        
-                        // resize 期间统一使用 left 定位，保证拖拽方向与鼠标一致
-                        el.style.left = `${Math.round(startLeft)}px`;
-                        el.style.right = 'auto';
-                        
+
                         el.classList.add('resizing');
                         document.addEventListener('mousemove', onMouseMove);
                         document.addEventListener('mouseup', onMouseUp);
@@ -13557,7 +13912,18 @@ a:hover{text-decoration:underline;}
                 // 6. 切换折叠状态（使用 rAF 确保过渡生效）
                 requestAnimationFrame(() => {
                     el.classList.toggle('collapsed');
-                    
+
+                    const loginOverlay = this.el.querySelector('.ldsp-modal-overlay');
+                    if (loginOverlay) {
+                        if (willCollapse) {
+                            loginOverlay.classList.remove('show');
+                            loginOverlay.style.display = 'none';
+                        } else {
+                            loginOverlay.style.display = '';
+                            requestAnimationFrame(() => loginOverlay.classList.add('show'));
+                        }
+                    }
+
                     // 更新箭头方向
                     this._updateArrow();
                     
@@ -14013,9 +14379,7 @@ a:hover{text-decoration:underline;}
                     '访问次数': 50,           // 50%
                     '回复的话题': 10,
                     '浏览的话题': 500,
-                    '浏览的话题（所有时间）': 200,
                     '已读帖子': 20000,
-                    '已读帖子（所有时间）': 500,
                     '被举报的帖子': 5,         // 最多5个（反向）
                     '发起举报的用户': 5,       // 最多5个（反向）
                     '点赞': 30,
@@ -14318,8 +14682,10 @@ a:hover{text-decoration:underline;}
                 // 因此这里的数据仅供参考，不能完全代表升级进度
                 // 升级要求参考: https://linux.do/t/topic/2460
                 const normalizedLevel = Number.parseInt(level, 10);
+                const targetMap = this._getRequirementTargetMap(normalizedLevel);
+                const shouldShowFallbackTargets = normalizedLevel >= 2;
                 let statsConfig;
-                
+
                 if (normalizedLevel === 0) {
                     // 0级升1级要求：
                     // - 进入5个话题、阅读30篇帖子、阅读10分钟
@@ -14350,10 +14716,15 @@ a:hover{text-decoration:underline;}
                         { key: '访问天数', required: 0, isStats: true },
                         { key: '浏览话题', required: 0, isStats: true },
                         { key: '已读帖子', required: 0, isStats: true },
-                        { key: '送出赞', required: 0, isStats: true },
+                        { key: '回复话题', required: 0, isStats: true },
+                        { key: '点赞', required: 0, isStats: true },
                         { key: '获赞', required: 0, isStats: true },
-                        { key: '回复', required: 0, isStats: true },
-                        { key: '创建话题', required: 0, isStats: true },
+                        { key: '获赞天数', required: 0, isStats: true },
+                        { key: '获赞用户', required: 0, isStats: true },
+                        { key: '被举报帖子', required: 0, isStats: true },
+                        { key: '发起举报', required: 0, isStats: true },
+                        { key: '被禁言', required: 0, isStats: true },
+                        { key: '被封禁', required: 0, isStats: true },
                         { key: '阅读时间', required: 0, isStats: true }
                     ];
                 }
@@ -14370,8 +14741,8 @@ a:hover{text-decoration:underline;}
                             break;
                         }
                     }
-                    const requiredValue = config.required;
-                    const isSuccess = currentValue >= requiredValue;
+                    const requiredValue = shouldShowFallbackTargets ? (targetMap[this._normalizeConnectRequirementName(config.key)] ?? config.required) : config.required;
+                    const isSuccess = requiredValue <= 0 ? currentValue <= 0 : currentValue >= requiredValue;
                     const prev = this.prevReqs.find(p => p.name === config.key || aliases.includes(p.name));
                     
                     reqs.push({
@@ -14459,9 +14830,7 @@ a:hover{text-decoration:underline;}
             _getRequirementTargetMap(level) {
                 if (level === 0) {
                     return {
-                        '浏览话题': 5,
                         '浏览的话题': 5,
-                        '浏览的话题（所有时间）': 5,
                         '已读帖子': 30,
                         '阅读时间': 10
                     };
@@ -14469,47 +14838,29 @@ a:hover{text-decoration:underline;}
 
                 if (level === 1) {
                     return {
-                        '访问天数': 15,
                         '访问次数': 15,
                         '送出赞': 1,
-                        '点赞': 1,
                         '获赞': 1,
-                        '回复话题': 3,
                         '回复的话题': 3,
-                        '回复': 3,
-                        '浏览话题': 20,
                         '浏览的话题': 20,
-                        '浏览的话题（所有时间）': 20,
                         '已读帖子': 100,
                         '阅读时间': 60
                     };
                 }
 
-                if (level === 2 || level === 3) {
+                if (level === 2 || level === 3 || level === 4) {
                     return {
-                        '访问天数': 50,
                         '访问次数': 50,
-                        '回复话题': 10,
                         '回复的话题': 10,
-                        '浏览话题': 500,
                         '浏览的话题': 500,
-                        '浏览的话题（所有时间）': 200,
-                        '浏览帖子': 20000,
                         '已读帖子': 20000,
-                        '已读帖子（所有时间）': 500,
-                        '被举报帖子': 5,
                         '被举报的帖子': 5,
-                        '举报用户': 5,
                         '发起举报的用户': 5,
                         '点赞': 30,
                         '获赞': 20,
-                        '获赞天数': 7,
                         '获赞：单日最高数量': 7,
-                        '获赞用户': 5,
                         '获赞：点赞用户数量': 5,
-                        '被禁言': 0,
                         '被禁言（过去 6 个月）': 0,
-                        '被封禁': 0,
                         '被封禁（过去 6 个月）': 0
                     };
                 }
@@ -14517,32 +14868,72 @@ a:hover{text-decoration:underline;}
                 return {};
             }
 
-            _normalizeRequirementTargets(reqs, level) {
+            _ensureRequirementTargets(reqs, level) {
                 const normalizedLevel = Number.parseInt(level, 10);
                 const targetMap = this._getRequirementTargetMap(normalizedLevel);
                 if (!Array.isArray(reqs) || reqs.length === 0 || Object.keys(targetMap).length === 0) {
                     return Array.isArray(reqs) ? reqs : [];
                 }
 
-                return reqs.map(req => {
-                    const fallbackTarget = targetMap[req.name];
-                    if (fallbackTarget === undefined) return req;
+                const canonicalReqs = new Map();
+                reqs.forEach(req => {
+                    const name = Utils.normalizeMetricName(this._normalizeConnectRequirementName(req?.name || ''));
+                    if (!name) return;
 
-                    const currentValue = Utils.toSafeInt(req.currentValue, 0);
-                    const parsedTarget = Utils.toSafeInt(req.requiredValue, 0);
-                    const isReverse = req.isReverse ?? PATTERNS.REVERSE.test(req.name);
-                    const shouldUseFallback = normalizedLevel <= 1 || (parsedTarget <= 0 && fallbackTarget > 0);
+                    const currentValue = Utils.toSafeInt(req?.currentValue, 0);
+                    const parsedTarget = Utils.toSafeInt(req?.requiredValue, 0);
+                    const fallbackTarget = targetMap[name];
+                    const isReverse = req?.isReverse ?? PATTERNS.REVERSE.test(name);
+                    const shouldUseFallback = fallbackTarget !== undefined && (normalizedLevel <= 1 || parsedTarget <= 0);
                     const requiredValue = shouldUseFallback ? fallbackTarget : parsedTarget;
-                    const isSuccess = isReverse ? currentValue <= requiredValue : currentValue >= requiredValue;
+                    const existing = canonicalReqs.get(name);
 
-                    return {
+                    if (existing) {
+                        existing.currentValue = Math.max(existing.currentValue, currentValue);
+                        existing.requiredValue = Math.max(existing.requiredValue, requiredValue);
+                        existing.isSuccess = isReverse
+                            ? existing.currentValue <= existing.requiredValue
+                            : existing.currentValue >= existing.requiredValue;
+                        return;
+                    }
+
+                    const prev = this.prevReqs.find(p => Utils.normalizeMetricName(p.name) === name);
+                    canonicalReqs.set(name, {
                         ...req,
+                        name,
                         currentValue,
                         requiredValue,
-                        isSuccess,
+                        isSuccess: typeof req?.isSuccess === 'boolean' && !shouldUseFallback
+                            ? req.isSuccess
+                            : (isReverse ? currentValue <= requiredValue : currentValue >= requiredValue),
+                        change: prev ? currentValue - prev.currentValue : (req?.change || 0),
                         isReverse
-                    };
+                    });
                 });
+
+                Object.entries(targetMap).forEach(([rawName, requiredValue]) => {
+                    const name = Utils.normalizeMetricName(rawName);
+                    if (canonicalReqs.has(name)) return;
+                    const metricCandidates = Utils.getMetricCandidates(rawName).map(candidate => Utils.normalizeMetricName(candidate));
+                    const hasAliasInReqs = reqs.some(item => metricCandidates.includes(Utils.normalizeMetricName(this._normalizeConnectRequirementName(item?.name || ''))));
+                    if (hasAliasInReqs) return;
+                    const isReverse = PATTERNS.REVERSE.test(name);
+                    const prev = this.prevReqs.find(p => Utils.normalizeMetricName(p.name) === name);
+                    canonicalReqs.set(name, {
+                        name,
+                        currentValue: 0,
+                        requiredValue,
+                        isSuccess: isReverse ? 0 <= requiredValue : 0 >= requiredValue,
+                        change: prev ? -prev.currentValue : 0,
+                        isReverse
+                    });
+                });
+
+                return [...canonicalReqs.values()];
+            }
+
+            _normalizeRequirementTargets(reqs, level) {
+                return this._ensureRequirementTargets(reqs, level);
             }
 
             _parseConnectMetricNumber(text) {
@@ -14637,8 +15028,17 @@ a:hover{text-decoration:underline;}
                     if (cells.length < 3) continue;
 
                     const name = cells[0].textContent.trim();
-                    const currentValue = this._parseConnectMetricNumber(cells[1].textContent);
-                    const requiredValue = this._parseConnectMetricNumber(cells[2].textContent);
+                    const currentText = cells[1].textContent;
+                    const requiredText = cells[2].textContent;
+                    let currentValue = this._parseConnectMetricNumber(currentText);
+                    let requiredValue = this._parseConnectMetricNumber(requiredText);
+                    const normalizedName = this._normalizeConnectRequirementName(name);
+                    if (!requiredValue && /访问次数/.test(normalizedName) && /%/.test(requiredText)) {
+                        requiredValue = 50;
+                    }
+                    if (!requiredValue && /被举报的帖子|发起举报的用户|被禁言（过去 6 个月）|被封禁（过去 6 个月）/.test(normalizedName)) {
+                        requiredValue = this._getRequirementTargetMap(3)[normalizedName] ?? 0;
+                    }
                     const isSuccess = cells[1].classList.contains('text-green-500');
                     pushReq(name, currentValue, requiredValue, isSuccess);
                 }
@@ -14738,7 +15138,7 @@ a:hover{text-decoration:underline;}
                 const section = [...doc.querySelectorAll('.bg-white.p-6.rounded-lg, .card')].find(d => {
                     const titleText = d.querySelector('h2, .card-title')?.textContent || '';
                     return /信任级别|trust\s*level/i.test(titleText) ||
-                        !!d.querySelector('.tl3-rings, .tl3-bars, .tl3-quota, .tl3-veto');
+                        !!d.querySelector('.tl3-rings, .tl3-bars, .tl3-quota, .tl3-veto, table');
                 });
                 
 
@@ -14819,11 +15219,11 @@ a:hover{text-decoration:underline;}
                     this._updateTrustLevel(connectLevel);
                 }
                 
-                const reqs = this._extractConnectRequirements(section);
+                const reqs = this._ensureRequirementTargets(this._extractConnectRequirements(section), level);
                 if (!reqs.length) {
                     return await this._showFallbackStats(username, level);
                 }
-                const orderedReqs = Utils.reorderRequirements(this._normalizeRequirementTargets(reqs, level));
+                const orderedReqs = Utils.reorderRequirements(reqs);
                 let isOK = orderedReqs.every(r => r.isSuccess);
                 const statusEl = section.querySelector('.badge, .status-met, .status-unmet, p[class*="status"]');
                 if (statusEl) {
@@ -14877,28 +15277,44 @@ a:hover{text-decoration:underline;}
                 return stored?.date === Utils.getTodayKey() ? stored : null;
             }
 
-            _getYesterdayTrendBase(history) {
-                if (!Array.isArray(history) || history.length === 0) return null;
-                const yesterday = new Date();
-                yesterday.setHours(0, 0, 0, 0);
-                yesterday.setDate(yesterday.getDate() - 1);
-                const yesterdayKey = yesterday.toDateString();
-
-                let latestYesterday = null;
-                history.forEach(record => {
-                    if (!record?.ts || !record?.data) return;
-                    if (new Date(record.ts).toDateString() !== yesterdayKey) return;
-                    if (!latestYesterday || record.ts > latestYesterday.ts) latestYesterday = record;
-                });
-
-                if (!latestYesterday?.data || typeof latestYesterday.data !== 'object') return null;
+            _buildTodayTrendData(history) {
+                const todayKey = Utils.getTodayKey();
+                const todayRecord = this.historyMgr.getRecordByDay(todayKey);
+                if (!todayRecord) return null;
+                const compareDate = new Date(todayRecord.dayKey);
+                compareDate.setDate(compareDate.getDate() - 1);
+                const compareRecord = this.historyMgr.getRecordByDay(compareDate.toDateString());
                 return {
-                    label: Utils.formatDate(yesterday.getTime(), 'short'),
-                    data: latestYesterday.data
+                    date: todayKey,
+                    startData: { ...(todayRecord.startData || todayRecord.baselineData || {}) },
+                    currentData: { ...(todayRecord.endData || todayRecord.data || {}) },
+                    baselineData: compareRecord?.endData ? { ...compareRecord.endData } : { ...(todayRecord.baselineData || {}) },
+                    compareLabel: compareRecord ? Utils.formatDate(compareRecord.ts, 'short') : '前一日',
+                    startTs: todayRecord.ts,
+                    currentTs: todayRecord.lastSyncTs || todayRecord.ts
                 };
             }
 
+            _getYesterdayTrendBase(history) {
+                if (!Array.isArray(history) || history.length === 0) return null;
+                const todayData = this._buildTodayTrendData(history);
+                if (todayData?.baselineData) {
+                    return {
+                        label: todayData.compareLabel || '前一日',
+                        data: todayData.baselineData
+                    };
+                }
+                return null;
+            }
+
             _setTodayData(data, isStart = false) {
+                const history = this.historyMgr?.getHistory?.() || [];
+                const todayTrendData = this._buildTodayTrendData(history);
+                if (todayTrendData) {
+                    this.storage.set('todayData', todayTrendData);
+                    return;
+                }
+
                 const today = Utils.getTodayKey();
                 const existing = this._getTodayData();
                 const now = Date.now();
@@ -14907,13 +15323,37 @@ a:hover{text-decoration:underline;}
                 const shouldResetStart = isStart || !existing || (startDataEmpty && hasIncomingData);
 
                 this.storage.set('todayData', shouldResetStart
-                    ? { date: today, startData: data, startTs: now, currentData: data, currentTs: now }
+                    ? { date: today, startData: data, startTs: now, currentData: data, currentTs: now, baselineData: {}, compareLabel: '前一日' }
                     : { ...existing, currentData: data, currentTs: now }
                 );
             }
 
             _setLastVisit(data) {
                 this.storage.set('lastVisit', { ts: Date.now(), data });
+            }
+
+            _captureTrendScrollState() {
+                const container = this.$?.trends?.querySelector('.ldsp-trend-content');
+                if (!container) return null;
+                const heatmap = container.querySelector('.ldsp-year-heatmap');
+                return {
+                    tab: this.trendTab,
+                    containerTop: container.scrollTop,
+                    heatmapTop: heatmap?.scrollTop ?? null
+                };
+            }
+
+            _restoreTrendScrollState(state) {
+                if (!state || state.tab !== this.trendTab) return;
+                const container = this.$?.trends?.querySelector('.ldsp-trend-content');
+                if (!container) return;
+                if (typeof state.containerTop === 'number' && container.scrollHeight > container.clientHeight) {
+                    this._scrollTo(container, Math.min(state.containerTop, Math.max(0, container.scrollHeight - container.clientHeight)));
+                }
+                if (state.tab !== 'year' || typeof state.heatmapTop !== 'number') return;
+                const heatmap = container.querySelector('.ldsp-year-heatmap');
+                if (!heatmap || heatmap.scrollHeight <= heatmap.clientHeight) return;
+                this._scrollTo(heatmap, Math.min(state.heatmapTop, Math.max(0, heatmap.scrollHeight - heatmap.clientHeight)));
             }
 
             _renderTrends(history, reqs) {
@@ -14939,16 +15379,23 @@ a:hover{text-decoration:underline;}
                 if (!container) return;
                 this._suppressScrollIndicatorUntil = Date.now() + 300;
                 container.dataset.view = this.trendTab;
+                const scrollState = this._captureTrendScrollState();
 
                 if (this.trendTab === 'year') {
                     container.innerHTML = `<div class="ldsp-mini-loader"><div class="ldsp-mini-spin"></div><div class="ldsp-mini-txt">加载数据中...</div></div>`;
                     requestAnimationFrame(() => {
                         setTimeout(() => {
                             container.innerHTML = this.renderer.renderYearTrend(history, reqs, this.historyMgr, this.tracker);
-                            // 自动滚动热力图到today位置（底部），使用程序性滚动避免显示滚动条
+                            const shouldRestoreHeatmapScroll = scrollState?.tab === 'year' && typeof scrollState.heatmapTop === 'number';
                             const heatmap = container.querySelector('.ldsp-year-heatmap');
                             if (heatmap) {
-                                requestAnimationFrame(() => this._scrollTo(heatmap, heatmap.scrollHeight));
+                                requestAnimationFrame(() => {
+                                    if (shouldRestoreHeatmapScroll) {
+                                        this._restoreTrendScrollState(scrollState);
+                                    } else {
+                                        this._scrollTo(heatmap, heatmap.scrollHeight);
+                                    }
+                                });
                             }
                         }, 50);
                     });
@@ -14964,13 +15411,25 @@ a:hover{text-decoration:underline;}
                 };
 
                 container.innerHTML = fns[this.trendTab]?.() || '';
+                requestAnimationFrame(() => this._restoreTrendScrollState(scrollState));
             }
 
             /**
              * 加载并显示系统公告（公开接口，不需要登录）
              */
             async _loadAnnouncement() {
+                const today = new Date().toISOString().slice(0, 10);
+                const cacheDateKey = 'ldsp_announcement_date';
+                const cacheDataKey = 'ldsp_announcement_payload';
+
                 try {
+                    const cachedDate = GM_getValue(cacheDateKey, null);
+                    const cachedPayload = GM_getValue(cacheDataKey, null);
+                    if (cachedDate === today && cachedPayload) {
+                        this._showCachedAnnouncementPayload(cachedPayload);
+                        return;
+                    }
+
                     const result = await new Promise((resolve, reject) => {
                         GM_xmlhttpRequest({
                             method: 'GET',
@@ -14992,39 +15451,43 @@ a:hover{text-decoration:underline;}
                             ontimeout: () => reject(new Error('Timeout'))
                         });
                     });
-                    
+
                     if (!result.success || !result.data) return;
-                    
-                    // 处理可能的双重嵌套: result.data.data 或 result.data
-                    const announcement = result.data.data || result.data;
-                    if (!announcement.enabled) return;
-                    
-                    // v3.3.3: 支持多条公告 - 兼容旧版单条公告格式
-                    let items = [];
-                    if (Array.isArray(announcement.items) && announcement.items.length > 0) {
-                        items = announcement.items;
-                    } else if (announcement.content) {
-                        // 兼容旧版单条公告格式
-                        items = [{
-                            content: announcement.content,
-                            type: announcement.type || 'info',
-                            expiresAt: announcement.expiresAt || null
-                        }];
-                    }
-                    
-                    // 过滤已过期的公告
-                    const now = Date.now();
-                    items = items.filter(item => !item.expiresAt || item.expiresAt > now);
-                    
-                    if (items.length === 0) {
-                        return;
-                    }
-                    
-                    // 显示公告
-                    this._showAnnouncements(items);
+
+                    GM_setValue(cacheDateKey, today);
+                    GM_setValue(cacheDataKey, result.data);
+                    this._showCachedAnnouncementPayload(result.data);
                 } catch (e) {
                     console.warn('[Announcement] Load failed:', e.message);
+                    const cachedPayload = GM_getValue(cacheDataKey, null);
+                    if (cachedPayload) {
+                        this._showCachedAnnouncementPayload(cachedPayload);
+                    }
                 }
+            }
+
+            _showCachedAnnouncementPayload(payload) {
+                if (!payload) return;
+
+                const announcement = payload.data || payload;
+                if (!announcement?.enabled) return;
+
+                let items = [];
+                if (Array.isArray(announcement.items) && announcement.items.length > 0) {
+                    items = announcement.items;
+                } else if (announcement.content) {
+                    items = [{
+                        content: announcement.content,
+                        type: announcement.type || 'info',
+                        expiresAt: announcement.expiresAt || null
+                    }];
+                }
+
+                const now = Date.now();
+                items = items.filter(item => !item.expiresAt || item.expiresAt > now);
+                if (items.length === 0) return;
+
+                this._showAnnouncements(items);
             }
 
             /**
@@ -16087,16 +16550,58 @@ a:hover{text-decoration:underline;}
                 });
             }
 
+            _captureActivityScrollAnchor(content, container) {
+                if (!content || !container) return null;
+                const containerRect = container.getBoundingClientRect();
+                const items = Array.from(container.querySelectorAll('[data-scroll-key]'));
+                for (const item of items) {
+                    const rect = item.getBoundingClientRect();
+                    if (rect.bottom > containerRect.top + 4) {
+                        return {
+                            key: item.dataset.scrollKey,
+                            top: rect.top - containerRect.top,
+                            scrollTop: content.scrollTop
+                        };
+                    }
+                }
+                return { key: null, top: 0, scrollTop: content.scrollTop };
+            }
+
+            _restoreActivityScrollAnchor(content, container, anchor) {
+                if (!content || !container || !anchor) return;
+                this._activityRestoringScroll = true;
+                if (anchor.key) {
+                    const item = container.querySelector(`[data-scroll-key="${anchor.key}"]`);
+                    if (item) {
+                        const containerRect = container.getBoundingClientRect();
+                        const rect = item.getBoundingClientRect();
+                        content.scrollTop += (rect.top - containerRect.top) - anchor.top;
+                    } else {
+                        content.scrollTop = anchor.scrollTop;
+                    }
+                } else {
+                    content.scrollTop = anchor.scrollTop;
+                }
+                requestAnimationFrame(() => {
+                    this._activityRestoringScroll = false;
+                });
+            }
+
             _bindActivityScroll(container, type = 'read') {
                 const content = this.el.querySelector('.ldsp-content');
                 if (!content) return;
+
+                if (this._activityScrollHandler) {
+                    content.removeEventListener('scroll', this._activityScrollHandler);
+                    this._activityScrollHandler = null;
+                }
 
                 let isLoading = false;
                 const threshold = 100; // 距离底部100px时触发加载
 
                 this._activityScrollHandler = async () => {
-                    if (isLoading) return;
-                    
+                    if (isLoading || this._activityRestoringScroll) return;
+
                     const scrollTop = content.scrollTop;
                     const scrollHeight = content.scrollHeight;
                     const clientHeight = content.clientHeight;
@@ -16111,11 +16616,13 @@ a:hover{text-decoration:underline;}
                             loadMoreEl.classList.add('loading');
                         }
 
+                        const anchor = this._captureActivityScrollAnchor(content, container);
+
                         try {
                             // 加载下一页
                             let result, newItems;
                             const username = this.storage.getUser();
-                            
+
                             if (type === 'bookmarks') {
                                 result = await this.activityMgr.getBookmarks(state.page, username);
                                 const existingIds = new Set(state.allItems.map(b => b.id));
@@ -16124,15 +16631,13 @@ a:hover{text-decoration:underline;}
                                 state.hasMore = result.hasMore;
                                 state.page = result.page + 1;
                                 this.activityMgr.setPageState(type, state);
-                                // 根据搜索词过滤
                                 const search = state.search || '';
                                 const batchSize = state.batchSize || 20;
                                 let filteredItems = state.allItems;
                                 if (search) {
                                     const kw = search.toLowerCase();
-                                    // 兼容新旧tags格式（新格式是对象数组 {id,name,slug}，旧格式是字符串数组）
                                     const getTagName = tag => typeof tag === 'string' ? tag : (tag?.name || '');
-                                    filteredItems = state.allItems.filter(b => 
+                                    filteredItems = state.allItems.filter(b =>
                                         (b.title && b.title.toLowerCase().includes(kw)) ||
                                         (b.fancy_title && b.fancy_title.toLowerCase().includes(kw)) ||
                                         (b.tags && b.tags.some(tag => getTagName(tag).toLowerCase().includes(kw))) ||
@@ -16182,24 +16687,20 @@ a:hover{text-decoration:underline;}
                                 container.innerHTML = this.renderer.renderReactionList(state.allItems, state.hasMore);
                                 this._bindReactionClicks(container);
                             } else {
-                                // 已读话题：滚动加载使用默认大小（约30条/页）
-                                // state.page 存储的是下一页的页码
                                 result = await this.activityMgr.getReadTopics(state.page, 30);
                                 const existingIds = new Set(state.allTopics.map(t => t.id));
                                 newItems = result.topics.filter(t => !existingIds.has(t.id));
                                 state.allTopics = [...state.allTopics, ...newItems];
                                 state.hasMore = result.hasMore;
-                                state.page = result.page + 1;  // 下一次从下一页开始
+                                state.page = result.page + 1;
                                 this.activityMgr.setPageState(type, state);
-                                // 根据搜索词过滤
                                 const search = state.search || '';
                                 const batchSize = state.batchSize || 20;
                                 let filteredTopics = state.allTopics;
                                 if (search) {
                                     const kw = search.toLowerCase();
-                                    // 兼容新旧tags格式（新格式是对象数组 {id,name,slug}，旧格式是字符串数组）
                                     const getTagName = tag => typeof tag === 'string' ? tag : (tag?.name || '');
-                                    filteredTopics = state.allTopics.filter(t => 
+                                    filteredTopics = state.allTopics.filter(t =>
                                         (t.title && t.title.toLowerCase().includes(kw)) ||
                                         (t.tags && t.tags.some(tag => getTagName(tag).toLowerCase().includes(kw)))
                                     );
@@ -16207,16 +16708,16 @@ a:hover{text-decoration:underline;}
                                 container.innerHTML = this.renderer.renderTopicListWithSearch(filteredTopics, state.hasMore && !search, search, batchSize, state.allTopics.length);
                                 this._bindReadSearchEvents(container, state);
                             }
-                            
+
+                            requestAnimationFrame(() => this._restoreActivityScrollAnchor(content, container, anchor));
+
                             if (state.hasMore) {
-                                // 继续监听
                                 isLoading = false;
                             } else {
                                 this._cleanupActivityScroll();
                             }
                         } catch (e) {
                             this.renderer.showToast(`⚠️ 加载更多失败: ${e.message}`);
-                            // 回退页码/偏移（reactions 使用 lastId，不需要回退）
                             if (type === 'replies' || type === 'likes') {
                                 state.offset -= 30;
                             } else if (type !== 'reactions') {
@@ -16224,7 +16725,7 @@ a:hover{text-decoration:underline;}
                             }
                             this.activityMgr.setPageState(type, state);
                             isLoading = false;
-                            
+
                             if (loadMoreEl) {
                                 loadMoreEl.classList.remove('loading');
                                 loadMoreEl.innerHTML = '<span>加载失败，向下滚动重试</span>';
