@@ -1,6 +1,13 @@
 <template>
   <div class="order-detail-page">
     <div class="page-container">
+      <div class="top-nav">
+        <button class="top-back-btn" type="button" @click="goBack">
+          <span class="top-back-btn__icon">←</span>
+          <span>返回订单列表</span>
+        </button>
+      </div>
+
       <!-- 加载中 -->
       <div v-if="loading" class="loading-state">
         <div class="skeleton-card large">
@@ -273,6 +280,7 @@ const isPaymentMaintenanceBlocked = computed(() =>
 
 // 当前用户角色（买家/卖家）
 const currentRole = computed(() => route.query.role || 'buyer')
+const backTarget = computed(() => currentRole.value === 'seller' ? '/user/orders?tab=seller' : '/user/orders?tab=buyer')
 
 // 是否显示操作按钮区域（买家和卖家都可以取消待支付订单）
 const showActions = computed(() => {
@@ -302,6 +310,10 @@ const categoryNameMap = computed(() => {
   }
   return map
 })
+
+function goBack() {
+  router.push(backTarget.value)
+}
 
 function isCdkOrder(orderData) {
   return isCdkProduct(orderData)
@@ -628,8 +640,7 @@ async function handleCancelOrder() {
     const orderNo = order.value?.order_no || order.value?.orderNo
     await shopStore.cancelOrder(orderNo)
     toast.success('订单已取消')
-    // 返回订单列表
-    router.push('/user/orders')
+    router.push(backTarget.value)
   } catch (error) {
     toast.error(error.message || '取消失败')
   } finally {
@@ -668,6 +679,54 @@ onUnmounted(() => {
   max-width: 600px;
   margin: 0 auto;
   padding: 16px;
+}
+
+.top-nav {
+  margin-bottom: 12px;
+}
+
+.top-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.top-back-btn:hover {
+  background: var(--bg-secondary);
+  border-color: var(--border-medium);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.top-back-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary, #a5b4a3) 60%, white 40%);
+  outline-offset: 2px;
+}
+
+.top-back-btn__icon {
+  font-size: 15px;
+}
+
+@media (max-width: 640px) {
+  .page-container {
+    padding: 12px;
+  }
+
+  .top-back-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* 加载骨架 */
