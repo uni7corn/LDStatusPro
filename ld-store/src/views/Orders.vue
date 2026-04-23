@@ -96,14 +96,22 @@
           class="order-card"
         >
           <div class="order-header" @click="viewOrderDetail(order)">
-            <span class="order-date">{{ formatDate(order.created_at || order.createdAt) }}</span>
+            <div class="order-header-main">
+              <span class="order-date">{{ formatDate(order.created_at || order.createdAt) }}</span>
+              <span v-if="order.status === 'pending' && (isPlatformOrder(order) || isBuyRequestOrder(order))" class="order-expire-chip">
+                {{ getExpireCountdownText(order) }}
+              </span>
+            </div>
             <span :class="['order-status', getStatusClass(order.status)]">
               {{ getStatusText(order.status) }}
             </span>
           </div>
-          
+
           <div class="order-content" @click="viewOrderDetail(order)">
-            <div class="product-name">{{ getOrderDisplayName(order) }}</div>
+            <div class="product-name-row">
+              <div class="product-name">{{ getOrderDisplayName(order) }}</div>
+              <span v-if="isPlatformOrder(order)" class="order-quantity-badge">x{{ getOrderQuantity(order) }}</span>
+            </div>
             <div class="order-info">
               <!-- <span class="order-type">{{ getOrderTypeText(order.product_type || order.product?.product_type) }}</span> -->
               <span class="order-seller" v-if="isBuyRequestOrder(order)">
@@ -115,10 +123,6 @@
               <span class="order-seller" v-else>
                 买家: {{ order.buyer_username || order.buyer?.username || '未知' }}
               </span>
-              <span v-if="isPlatformOrder(order)" class="order-quantity">
-                x{{ getOrderQuantity(order) }}
-              </span>
-              <span v-if="order.status === 'pending' && (isPlatformOrder(order) || isBuyRequestOrder(order))" class="order-expire-inline">{{ getExpireCountdownText(order) }}</span>
             </div>
             <div v-if="requiresBuyerContactOrder(order)" class="order-manual-hint">
               {{ currentRole === 'buyer' ? '支付后请主动联系卖家获取服务' : '该订单需手动履约，请及时处理' }}
@@ -165,9 +169,9 @@
           </div>
           
           <div class="order-footer">
-            <div class="order-amount-wrap">
+            <div class="order-amount-wrap compact">
               <span class="order-amount">{{ order.total_price || order.amount }} LDC</span>
-              <span v-if="isPlatformOrder(order)" class="order-count">共 {{ getOrderQuantity(order) }} 个</span>
+              <span v-if="isPlatformOrder(order)" class="order-count">· 共 {{ getOrderQuantity(order) }} 个</span>
             </div>
             <div class="order-actions">
               <!-- 图床订单 -->
@@ -281,7 +285,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useShopStore } from '@/stores/shop'
 import { isMaintenanceFeatureEnabled, isRestrictedMaintenanceMode } from '@/config/maintenance'
@@ -330,6 +334,9 @@ const refreshingOrderId = ref(null)
 const refreshingBuyOrderId = ref(null)
 const nowTs = ref(Date.now())
 let countdownTimer = null
+let restoredScrollKey = ''
+const ORDER_LIST_SCROLL_KEY = 'orders_list_scroll_state'
+const ORDER_LIST_SCROLL_SOURCE = 'order-detail'
 const isPaymentMaintenanceBlocked = computed(() =>
   isRestrictedMaintenanceMode() && !isMaintenanceFeatureEnabled('orderPayment')
 )
@@ -362,6 +369,59 @@ function syncRouteState() {
     ? String(route.query.categoryName || `分类 #${activeCategoryId.value}`).trim()
     : ''
   onlyDealOrders.value = currentRole.value === 'buy' ? false : parseRouteBoolean(route.query.dealOnly)
+}
+
+function getOrderScrollSnapshot() {
+  return {
+    tab: currentRole.value,
+    categoryId: activeCategoryId.value,
+    categoryName: activeCategoryName.value,
+    dealOnly: onlyDealOrders.value ? '1' : '',
+    search: orderSearch.value.trim(),
+    timeRange: timeRange.value,
+    scrollY: window.scrollY || 0,
+    source: ''
+  }
+}
+
+function getOrderScrollKey(snapshot = getOrderScrollSnapshot()) {
+  return [
+    snapshot.tab,
+    snapshot.categoryId || 0,
+    snapshot.categoryName || '',
+    snapshot.dealOnly || '',
+    snapshot.search || '',
+    snapshot.timeRange || ''
+  ].join('|')
+}
+
+function saveScrollState(source = '') {
+  try {
+    sessionStorage.setItem(ORDER_LIST_SCROLL_KEY, JSON.stringify({
+      ...getOrderScrollSnapshot(),
+      source
+    }))
+  } catch {
+    // ignore sessionStorage errors
+  }
+}
+
+async function restoreScrollState() {
+  try {
+    const raw = sessionStorage.getItem(ORDER_LIST_SCROLL_KEY)
+    if (!raw) return
+    const snapshot = JSON.parse(raw)
+    if (snapshot?.source !== ORDER_LIST_SCROLL_SOURCE) return
+    const snapshotKey = getOrderScrollKey(snapshot)
+    const currentKey = getOrderScrollKey()
+    if (snapshotKey !== currentKey || restoredScrollKey === snapshotKey) return
+    restoredScrollKey = snapshotKey
+    sessionStorage.removeItem(ORDER_LIST_SCROLL_KEY)
+    await nextTick()
+    window.scrollTo(0, Number(snapshot.scrollY) || 0)
+  } catch {
+    // ignore sessionStorage errors
+  }
 }
 
 // 切换角色
@@ -571,6 +631,8 @@ function extractErrorMessage(result, fallback) {
 
 // 查看订单详情
 function viewOrderDetail(order) {
+  saveScrollState(ORDER_LIST_SCROLL_SOURCE)
+
   // 图床订单跳转到图床页面
   if (order.order_type === 'image') {
     router.push('/ld-image')
@@ -922,10 +984,12 @@ onMounted(() => {
 watch(
   () => [route.query.tab, route.query.categoryId, route.query.categoryName, route.query.dealOnly].join('|'),
   async () => {
+    restoredScrollKey = ''
     syncRouteState()
     page.value = 1
     closeDeliverForm()
     await loadOrders()
+    await restoreScrollState()
   },
   { immediate: true }
 )
@@ -987,7 +1051,7 @@ onUnmounted(() => {
 }
 
 .role-tab.active {
-  background: rgba(143, 163, 141, 0.15);
+  background: #e8ede7;
   border-color: #8fa38d;
   color: #6b7d69;
   font-weight: 600;
@@ -1015,23 +1079,23 @@ onUnmounted(() => {
   min-height: 34px;
   padding: 0 12px;
   border-radius: 999px;
-  background: rgba(181, 168, 152, 0.14);
+  background: #f3eee8;
   color: #7c6f62;
   font-size: 13px;
   font-weight: 500;
 }
 
 .direct-filter-chip.strong {
-  background: rgba(143, 163, 141, 0.18);
+  background: #e8ede7;
   color: #5d715b;
 }
 
 .direct-filter-clear {
   height: 34px;
   padding: 0 12px;
-  border: none;
+  border: 1px solid var(--border-light);
   border-radius: 999px;
-  background: transparent;
+  background: var(--bg-card);
   color: var(--color-primary);
   font-size: 13px;
   cursor: pointer;
@@ -1155,23 +1219,34 @@ onUnmounted(() => {
 
 .order-card {
   background: var(--bg-card);
-  border-radius: 16px;
-  padding: 16px 20px;
+  border: 1px solid var(--border-light);
+  border-radius: 18px;
+  padding: 18px 20px;
   box-shadow: var(--shadow-sm);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .order-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
+  border-color: var(--border-hover);
 }
 
 .order-header {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.order-header-main {
+  display: flex;
   align-items: center;
-  margin-bottom: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .order-date {
@@ -1179,11 +1254,28 @@ onUnmounted(() => {
   color: var(--text-tertiary);
 }
 
-.order-status {
-  padding: 4px 10px;
-  border-radius: 20px;
+.order-expire-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--color-warning-light);
+  color: var(--color-warning);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
+}
+
+.order-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .status-pending {
@@ -1222,30 +1314,63 @@ onUnmounted(() => {
 }
 
 .order-content {
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+}
+
+.product-name-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .product-name {
+  flex: 1;
+  min-width: 0;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 6px;
+  line-height: 1.5;
+  margin-bottom: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.order-quantity-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
 }
 
 .order-info {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
   font-size: 13px;
   color: var(--text-tertiary);
 }
 
+.order-seller {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+}
+
 .order-manual-hint {
-  margin-top: 8px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--bg-secondary);
   font-size: 12px;
   color: var(--color-primary);
 }
@@ -1265,10 +1390,11 @@ onUnmounted(() => {
 
 /* CDK 显示区域 */
 .cdk-display {
-  margin: 12px 0;
-  padding: 12px;
+  margin: 14px 0;
+  padding: 14px;
   background: var(--bg-secondary);
-  border-radius: 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
 }
 
 .cdk-label {
@@ -1345,30 +1471,38 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 12px;
+  gap: 14px;
+  padding-top: 14px;
   border-top: 1px solid var(--border-light);
 }
 
 .order-amount-wrap {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.order-amount-wrap.compact {
+  flex-wrap: wrap;
 }
 
 .order-amount {
   font-size: 18px;
   font-weight: 700;
   color: var(--color-warning);
+  line-height: 1.2;
 }
 
 .order-count {
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 
 .order-action {
   font-size: 13px;
   color: var(--color-primary);
+  font-weight: 600;
 }
 
 .order-actions {
@@ -1388,10 +1522,11 @@ onUnmounted(() => {
 }
 
 .action-btn {
-  padding: 6px 14px;
-  border-radius: 8px;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 10px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
   text-decoration: none;
@@ -1536,6 +1671,28 @@ onUnmounted(() => {
   .filter-select,
   .filter-btn {
     flex: 1;
+  }
+
+  .order-header {
+    align-items: flex-start;
+  }
+
+  .product-name {
+    white-space: normal;
+  }
+
+  .order-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .order-amount-wrap {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .order-actions {
+    justify-content: flex-start;
   }
 }
 </style>

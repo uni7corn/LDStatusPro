@@ -537,15 +537,24 @@ export const useShopStore = defineStore('shop', () => {
     if (!keyword) {
       searchResults.value = []
       setLastError('')
-      return []
+      return {
+        products: [],
+        total: 0,
+        hasMore: false,
+        page: 1
+      }
     }
 
     const {
       sort = 'default',
       inStockOnly: onlyInStock = inStockOnly.value,
       page: searchPage = 1,
-      pageSize: searchPageSize = pageSize
+      pageSize: searchPageSize = pageSize,
+      priceMin = null,
+      priceMax = null
     } = options
+
+    const normalizedPriceRange = normalizePriceRange(priceMin, priceMax)
 
     searchQuery.value = keyword
     searchLoading.value = true
@@ -556,21 +565,45 @@ export const useShopStore = defineStore('shop', () => {
         page: searchPage,
         pageSize: searchPageSize,
         sort,
-        inStockOnly: onlyInStock
+        inStockOnly: onlyInStock,
+        priceMin: normalizedPriceRange.priceMin,
+        priceMax: normalizedPriceRange.priceMax
       })
 
-      if (result.success && result.data?.products) {
-        searchResults.value = result.data.products
+      if (result.success && Array.isArray(result.data?.products)) {
+        const nextProducts = result.data.products
+        const totalCount = result.data.pagination?.total || result.data.total || nextProducts.length
+        const nextHasMore = (Number(searchPage) * Number(searchPageSize)) < Number(totalCount)
+        searchResults.value = nextProducts
         setLastError('')
-        return result.data.products
+        return {
+          products: nextProducts,
+          total: totalCount,
+          hasMore: nextHasMore,
+          page: Number(searchPage)
+        }
       }
 
-      setLastError(result.error || '搜索失败，请稍后重试')
-      return []
+      const errorMessage = result.error || '搜索失败，请稍后重试'
+      setLastError(errorMessage)
+      return {
+        products: [],
+        total: 0,
+        hasMore: false,
+        page: Number(searchPage),
+        error: errorMessage
+      }
     } catch (error) {
       console.error('Search products failed:', error)
-      setLastError(error.message || '搜索失败，请稍后重试')
-      return []
+      const errorMessage = error.message || '搜索失败，请稍后重试'
+      setLastError(errorMessage)
+      return {
+        products: [],
+        total: 0,
+        hasMore: false,
+        page: Number(searchPage),
+        error: errorMessage
+      }
     } finally {
       searchLoading.value = false
     }

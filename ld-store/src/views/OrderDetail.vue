@@ -6,6 +6,10 @@
           <span class="top-back-btn__icon">←</span>
           <span>返回订单列表</span>
         </button>
+        <router-link to="/support" class="support-btn top-support-btn">
+          <span class="support-heart">💖</span>
+          <span>支持 LD 士多</span>
+        </router-link>
       </div>
 
       <!-- 加载中 -->
@@ -33,10 +37,23 @@
       <template v-else>
         <!-- 订单状态卡片 -->
         <div :class="['status-card', getStatusClass(order.status)]">
-          <div class="status-icon">{{ getStatusIcon(order.status) }}</div>
-          <div class="status-text">{{ getStatusText(order.status) }}</div>
-          <div class="status-time" v-if="order.created_at || order.createdAt">
-            {{ formatDateTime(order.created_at || order.createdAt) }}
+          <div class="status-card__main">
+            <div class="status-icon">{{ getStatusIcon(order.status) }}</div>
+            <div>
+              <div class="status-text">{{ getStatusText(order.status) }}</div>
+              <div class="status-time" v-if="order.created_at || order.createdAt">
+                {{ formatDateTime(order.created_at || order.createdAt) }}
+              </div>
+            </div>
+          </div>
+          <div class="status-card__meta">
+            <span class="status-chip">订单号 {{ order.order_no || order.orderNo || order.id }}</span>
+            <span class="status-chip">
+              {{ currentStatusTimeLabel }} {{ currentStatusTimeText }}
+            </span>
+            <span v-if="getProductCategoryText(order) !== '未知'" class="status-chip secondary">
+              {{ getProductCategoryText(order) }}
+            </span>
           </div>
         </div>
         
@@ -46,9 +63,17 @@
           
           <div class="info-row">
             <span class="info-label">物品名称</span>
-            <span class="info-value">{{ order.product?.name || order.product_name || order.productName }}</span>
+            <button
+              v-if="productDetailPath"
+              type="button"
+              class="info-value info-link"
+              @click="goToProductDetail"
+            >
+              {{ order.product?.name || order.product_name || order.productName }}
+            </button>
+            <span v-else class="info-value">{{ order.product?.name || order.product_name || order.productName }}</span>
           </div>
-          
+
           <div class="info-row">
             <span class="info-label">物品分类</span>
             <span class="info-value">
@@ -130,11 +155,15 @@
               <template v-else>••••••••••••</template>
             </code>
             <div class="cdk-actions">
-              <button class="icon-btn" @click="showCdk = !showCdk">
+              <button
+                class="icon-btn"
+                :title="showCdk ? '隐藏密钥' : '显示密钥'"
+                @click="showCdk = !showCdk"
+              >
                 {{ showCdk ? '🙈' : '👁️' }}
               </button>
-              <button class="icon-btn" @click="copyCdk">📋</button>
-              <button class="icon-btn" @click="downloadCdk">💾</button>
+              <button class="icon-btn" title="复制密钥" @click="copyCdk">📋</button>
+              <button class="icon-btn" title="导出为 TXT" @click="downloadCdk">💾</button>
             </div>
           </div>
         </div>
@@ -153,35 +182,16 @@
         <!-- 订单信息 -->
         <div class="info-card">
           <h3 class="card-title">订单信息</h3>
-          
-          <div class="info-row">
-            <span class="info-label">订单号</span>
-            <span class="info-value mono">{{ order.order_no || order.orderNo || order.id }}</span>
-          </div>
-          
-          <div class="info-row">
-            <span class="info-label">创建时间</span>
-            <span class="info-value">{{ formatDateTime(order.created_at || order.createdAt) }}</span>
-          </div>
-          
-          <div class="info-row" v-if="order.paid_at || order.paidAt">
-            <span class="info-label">支付时间</span>
-            <span class="info-value">{{ formatDateTime(order.paid_at || order.paidAt) }}</span>
-          </div>
-          
-          <div class="info-row" v-if="order.delivered_at">
-            <span class="info-label">发货时间</span>
-            <span class="info-value">{{ formatDateTime(order.delivered_at) }}</span>
-          </div>
-          
-          <div class="info-row" v-if="order.completed_at || order.completedAt">
-            <span class="info-label">完成时间</span>
-            <span class="info-value">{{ formatDateTime(order.completed_at || order.completedAt) }}</span>
-          </div>
-          
-          <div class="info-row" v-if="order.ldc_trade_no">
-            <span class="info-label">LDC交易号</span>
-            <span class="info-value mono">{{ order.ldc_trade_no }}</span>
+
+          <div class="order-summary-grid">
+            <div class="summary-item">
+              <span class="summary-label">订单号</span>
+              <span class="summary-value mono">{{ order.order_no || order.orderNo || order.id }}</span>
+            </div>
+            <div v-if="order.ldc_trade_no" class="summary-item">
+              <span class="summary-label">LDC交易号</span>
+              <span class="summary-value mono">{{ order.ldc_trade_no }}</span>
+            </div>
           </div>
         </div>
         
@@ -190,21 +200,16 @@
           <h3 class="card-title">订单动态</h3>
           
           <div class="order-logs">
-            <div class="log-item" v-for="(log, index) in orderLogs" :key="index">
+            <div class="log-item" v-for="(log, index) in sortedOrderLogs" :key="index">
               <div class="log-icon">{{ getLogIcon(log.action) }}</div>
               <div class="log-content">
                 <div class="log-action">{{ getLogText(log) }}</div>
-                <div class="log-time">{{ formatDateTime(log.created_at) }}</div>
+                <div class="log-time">{{ formatDateTime(log.created_at || log.createdAt || log.time) }}</div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 支持 LD 士多 -->
-        <div class="support-cta">
-          <router-link to="/support" class="support-btn"><span class="support-heart">💖</span> 支持 LD 士多 </router-link>
-        </div>
-        
         <!-- 操作按钮 -->
         <div class="actions" v-if="showActions">
           <div class="actions-row">
@@ -311,8 +316,32 @@ const categoryNameMap = computed(() => {
   return map
 })
 
+const productDetailPath = computed(() => {
+  const productId =
+    order.value?.product?.id ??
+    order.value?.product_id ??
+    order.value?.productId
+
+  if (productId == null || productId === '') return ''
+  return `/product/${productId}`
+})
+
+const sortedOrderLogs = computed(() => {
+  const logs = Array.isArray(orderLogs.value) ? [...orderLogs.value] : []
+  return logs.sort((a, b) => getLogTimestamp(b) - getLogTimestamp(a))
+})
+
+const currentStatusTime = computed(() => getStatusTimestamp(order.value, orderLogs.value))
+const currentStatusTimeLabel = computed(() => getStatusTimeLabel(order.value))
+const currentStatusTimeText = computed(() => formatDateTime(currentStatusTime.value))
+
 function goBack() {
   router.push(backTarget.value)
+}
+
+function goToProductDetail() {
+  if (!productDetailPath.value) return
+  router.push(productDetailPath.value)
 }
 
 function isCdkOrder(orderData) {
@@ -455,6 +484,67 @@ function getLogText(log) {
   const actionText = actionMap[log.action] || log.action
   const operator = log.operator_name || log.operator_type || ''
   return operator ? `${actionText} (${operator})` : actionText
+}
+
+function toTimestamp(value) {
+  if (!value) return 0
+  if (typeof value === 'number') return value
+  const parsed = new Date(value).getTime()
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function getLogTimestamp(log) {
+  return toTimestamp(log?.created_at || log?.createdAt || log?.time)
+}
+
+function isLogActionMatch(log, actions = []) {
+  const action = String(log?.action || '').toLowerCase()
+  return actions.includes(action)
+}
+
+function getTimelineTimestampFromLogs(logs, actions = []) {
+  const matchedLogs = Array.isArray(logs) ? logs.filter((log) => isLogActionMatch(log, actions)) : []
+  if (!matchedLogs.length) return 0
+  return matchedLogs.reduce((latest, log) => Math.max(latest, getLogTimestamp(log)), 0)
+}
+
+function getStatusTimestamp(orderData, logs = []) {
+  if (!orderData) return 0
+  const status = String(orderData.status || '')
+  const logTimestampMap = {
+    delivered: getTimelineTimestampFromLogs(logs, ['deliver']),
+    completed: getTimelineTimestampFromLogs(logs, ['deliver']),
+    paid: getTimelineTimestampFromLogs(logs, ['pay']),
+    refunded: getTimelineTimestampFromLogs(logs, ['refund']),
+    cancelled: getTimelineTimestampFromLogs(logs, ['cancel']),
+    expired: getTimelineTimestampFromLogs(logs, ['expire'])
+  }
+  const fieldMap = {
+    delivered: orderData.delivered_at || orderData.deliveredAt,
+    completed: orderData.completed_at || orderData.completedAt || orderData.delivered_at || orderData.deliveredAt,
+    paid: orderData.paid_at || orderData.paidAt,
+    refunded: orderData.refunded_at || orderData.refundedAt,
+    cancelled: orderData.cancelled_at || orderData.cancelledAt,
+    expired: orderData.expired_at || orderData.expiredAt || orderData.pay_expired_at || orderData.payExpiredAt || orderData.expire_at || orderData.expireAt,
+    pending: orderData.created_at || orderData.createdAt,
+    paying: orderData.paid_at || orderData.paidAt || orderData.created_at || orderData.createdAt
+  }
+  return logTimestampMap[status] || toTimestamp(fieldMap[status]) || toTimestamp(orderData.updated_at || orderData.updatedAt || orderData.created_at || orderData.createdAt)
+}
+
+function getStatusTimeLabel(orderData) {
+  const status = String(orderData?.status || '')
+  const map = {
+    delivered: '发货时间',
+    completed: '完成时间',
+    paid: '支付时间',
+    refunded: '退款时间',
+    cancelled: '取消时间',
+    expired: '过期时间',
+    pending: '创建时间',
+    paying: '支付时间'
+  }
+  return map[status] || '更新时间'
 }
 
 // 状态文字
@@ -682,6 +772,10 @@ onUnmounted(() => {
 }
 
 .top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 12px;
 }
 
@@ -693,7 +787,7 @@ onUnmounted(() => {
   padding: 0 14px;
   border: 1px solid var(--border-light);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+  background: var(--bg-card);
   color: var(--text-secondary);
   font-size: 14px;
   font-weight: 600;
@@ -723,9 +817,18 @@ onUnmounted(() => {
     padding: 12px;
   }
 
-  .top-back-btn {
-    width: 100%;
+  .top-nav {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .top-back-btn,
+  .top-support-btn {
+    flex: 1 1 0;
+    min-width: 0;
     justify-content: center;
+    padding: 0 10px;
+    font-size: 13px;
   }
 }
 
@@ -787,8 +890,7 @@ onUnmounted(() => {
 
 /* 状态卡片 */
 .status-card {
-  text-align: center;
-  padding: 32px;
+  padding: 24px;
   border-radius: 20px;
   margin-bottom: 16px;
   background: var(--bg-card);
@@ -817,15 +919,53 @@ onUnmounted(() => {
 }
 
 .status-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
+  width: 56px;
+  height: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 30px;
+  margin-bottom: 0;
+  border-radius: 16px;
+  background: var(--bg-card);
+}
+
+.status-card__main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
+}
+
+.status-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-chip.secondary {
+  background: var(--bg-secondary);
 }
 
 .status-text {
   font-size: 20px;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .status-time {
@@ -841,6 +981,10 @@ onUnmounted(() => {
   margin-bottom: 16px;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-light);
+}
+
+.info-card:hover {
+  box-shadow: var(--shadow-md);
 }
 
 .card-title {
@@ -887,6 +1031,35 @@ onUnmounted(() => {
   text-align: right;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.info-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.info-link::after {
+  content: '↗';
+  font-size: 12px;
+  line-height: 1;
+}
+
+.info-link:hover {
+  opacity: 0.85;
+}
+
+.info-link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 40%, white);
+  outline-offset: 3px;
+  border-radius: 8px;
 }
 
 .info-value.mono {
@@ -951,6 +1124,7 @@ onUnmounted(() => {
   padding: 16px;
   background: var(--bg-secondary);
   border-radius: 12px;
+  border: 1px solid var(--border-light);
 }
 
 .cdk-head {
@@ -1038,6 +1212,33 @@ onUnmounted(() => {
   word-break: break-word;
 }
 
+.order-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.summary-item {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+}
+
+.summary-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.summary-value {
+  display: block;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
 /* 寄存信息 */
 .store-info {
   padding: 16px;
@@ -1056,12 +1257,6 @@ onUnmounted(() => {
   border: none;
 }
 
-/* Support button */
-.support-cta {
-  margin: 8px 0 24px;
-  text-align: center;
-}
-
 /* 操作按钮 */
 .actions {
   position: fixed;
@@ -1075,18 +1270,24 @@ onUnmounted(() => {
 }
 
 .support-btn {
-  display: inline-block;
-  width: 100%;
-  max-width: 568px;
-  padding: 16px 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  min-height: 40px;
   background: linear-gradient(135deg, #a5b4a3 0%, #95a493 100%);
   color: white;
-  border-radius: 14px;
+  border-radius: 999px;
   text-decoration: none;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   text-align: center;
   transition: all 0.2s;
+}
+
+.top-support-btn {
+  flex-shrink: 0;
 }
 
 .support-btn:hover {
@@ -1208,7 +1409,7 @@ onUnmounted(() => {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 12px 0;
+  padding: 14px 0;
   border-bottom: 1px solid var(--border-light);
 }
 
@@ -1247,5 +1448,52 @@ onUnmounted(() => {
 .log-time {
   font-size: 12px;
   color: var(--text-tertiary);
+}
+
+@media (max-width: 640px) {
+  .page-container {
+    padding: 12px;
+  }
+
+  .status-card {
+    padding: 20px;
+  }
+
+  .status-card__main {
+    align-items: flex-start;
+  }
+
+  .status-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 26px;
+  }
+
+  .info-row {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .order-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .info-value {
+    max-width: 65%;
+  }
+
+  .actions {
+    padding: 12px;
+  }
+
+  .actions-row {
+    flex-direction: column;
+  }
+
+  .pay-btn,
+  .cancel-btn,
+  .refresh-btn {
+    width: 100%;
+  }
 }
 </style>

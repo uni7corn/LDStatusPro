@@ -34,7 +34,7 @@
             <div v-if="filteredSearchHistory.length > 0" class="search-section">
               <div class="search-section-header">
                 <span>搜索记录</span>
-                <button class="search-clear-btn" @mousedown.prevent="clearSearchHistory">清空</button>
+                <button class="search-clear-btn" @mousedown.prevent="clearHeaderSearchHistory">清空</button>
               </div>
               <div class="search-tags">
                 <button
@@ -102,6 +102,12 @@
         
         <!-- 更多菜单（移动端） -->
         <div v-if="isMobile" class="more-dropdown" ref="moreDropdownRef">
+          <button class="action-btn" @click="goToSearch" title="搜索">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </button>
           <button class="action-btn" @click="toggleMoreMenu">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="1"/>
@@ -220,6 +226,7 @@ import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import AvatarImage from '@/components/common/AvatarImage.vue'
 import { storage } from '@/utils/storage'
 import { api } from '@/utils/api'
+import { DEFAULT_SEARCH_KEYWORDS, loadSearchHistory, saveSearchHistory, clearSearchHistory } from '@/utils/search'
 
 const route = useRoute()
 const router = useRouter()
@@ -237,7 +244,7 @@ const showSearchPanel = ref(false)
 const searchHistory = ref([])
 const messageUnread = ref(0)
 const sellerPendingDeliveryCount = ref(0)
-const recommendedKeywords = ['gpt', 'team', '小鸡', 'chatgpt', 'claude', 'vps', 'api', '存储', '代理']
+const recommendedKeywords = DEFAULT_SEARCH_KEYWORDS
 
 // 计算属性
 const isLoggedIn = computed(() => userStore.isLoggedIn)
@@ -419,32 +426,21 @@ async function handleLogout() {
 }
 
 // 方法
-function loadSearchHistory() {
-  const history = storage.get('search_history', [])
-  if (Array.isArray(history)) {
-    searchHistory.value = history
-      .filter(item => typeof item === 'string' && item.trim())
-      .slice(0, 10)
-  } else {
-    searchHistory.value = []
-  }
+function loadHeaderSearchHistory() {
+  searchHistory.value = loadSearchHistory(storage)
 }
 
-function saveSearchHistory(keyword) {
-  if (!keyword) return
-  const history = searchHistory.value.filter(item => item !== keyword)
-  history.unshift(keyword)
-  searchHistory.value = history.slice(0, 10)
-  storage.set('search_history', searchHistory.value)
+function saveHeaderSearchHistory(keyword) {
+  searchHistory.value = saveSearchHistory(storage, keyword)
 }
 
-function clearSearchHistory() {
+function clearHeaderSearchHistory() {
   searchHistory.value = []
-  storage.remove('search_history')
+  clearSearchHistory(storage)
 }
 
 function openSearchPanel() {
-  loadSearchHistory()
+  loadHeaderSearchHistory()
   showSearchPanel.value = true
 }
 
@@ -466,7 +462,7 @@ function selectKeyword(keyword) {
 function handleSearch() {
   const keyword = searchQuery.value.trim()
   if (!keyword) return
-  saveSearchHistory(keyword)
+  saveHeaderSearchHistory(keyword)
   closeSearchPanel()
   router.push({ name: 'Search', query: { q: keyword } })
   searchQuery.value = ''
@@ -533,7 +529,7 @@ function handleVisibilityChange() {
 }
 
 onMounted(() => {
-  loadSearchHistory()
+  loadHeaderSearchHistory()
   checkMobile()
   updateMessageUnread(true)
   startMessageUnreadPolling()
