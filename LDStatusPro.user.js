@@ -151,7 +151,7 @@
         const SITE_CONFIGS = {
             'linux.do': {
                 name: 'Linux.do',
-                icon: 'https://linux.do/uploads/default/optimized/4X/6/a/6/6a6affc7b1ce8140279e959d32671304db06d5ab_2_180x180.png',
+                icon: 'https://img.ldstore.cc.cd/JackyLiii/20260424_logo-new-5_0vbj4s.png',
                 apiUrl: 'https://connect.linux.do',
                 supportsLeaderboard: true
             },
