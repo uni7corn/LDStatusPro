@@ -1,7 +1,7 @@
  // ==UserScript==
     // @name         LDStatus Pro
     // @namespace    http://tampermonkey.net/
-    // @version      3.9.0.1
+    // @version      3.9.0.2
     // @description  在 Linux.do 和 IDCFlare 页面显示信任级别进度，支持历史趋势、里程碑通知、阅读时间统计、排行榜系统、我的活动查看。两站点均支持排行榜和云同步功能
     // @author       JackLiii
     // @license      MIT
@@ -29,7 +29,7 @@
     // @connect      api2.ldspro.qzz.io
     // @updateURL    https://raw.githubusercontent.com/caigg188/LDStatusPro/main/LDStatusPro.user.js
     // @downloadURL  https://raw.githubusercontent.com/caigg188/LDStatusPro/main/LDStatusPro.user.js
-    // @icon         https://linux.do/uploads/default/optimized/4X/6/a/6/6a6affc7b1ce8140279e959d32671304db06d5ab_2_180x180.png
+    // @icon         https://img.ldstore.cc.cd/JackyLiii/20260424_logo-new-5_0vbj4s.png
     // ==/UserScript==
 
     (function() {
@@ -38,11 +38,7 @@
         // 提前定义跨域白名单 & 调试开关（桥接逻辑需要）
         const ALLOWED_ORIGINS = ['https://linux.do', 'https://www.linux.do', 'https://idcflare.com', 'https://www.idcflare.com'];
         const STORE_WEB_URL = 'https://ldcstore.com/';
-        // 使用独立 data URI 保留原 SVG 设计，同时规避内联 gradient/filter 在部分站点环境中的渲染异常。
-        const COLLAPSED_LOGO_DATA_URI = (() => {
-            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="ldsp-logo-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#8fa8f8"/><stop offset="100%" stop-color="#7ed4c4"/></linearGradient></defs><path d="M 31,4 A 28,28 0 1,1 11,52" fill="none" stroke="url(#ldsp-logo-grad)" stroke-width="8" stroke-linecap="round"/><rect x="25" y="26" width="12" height="12" rx="3" fill="url(#ldsp-logo-grad)" transform="rotate(45 31 32)"/></svg>`;
-            return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-        })();
+        const COLLAPSED_LOGO_DATA_URI = 'https://img.ldstore.cc.cd/JackyLiii/20260424_logo-new-5_0vbj4s.png';
         const DEBUG = {
             bridgeLogs: (typeof GM_getValue === 'function' && GM_getValue('ldsp_debug_bridge', false)) || false
         };
@@ -499,7 +495,8 @@
                 readingGoalHours: 'reading_goal_hours',
                 fontSizeLevel: 'font_size_level',
                 readingLevels: 'reading_levels', readingLevelsTime: 'reading_levels_time',
-                websiteUrl: 'website_url', websiteUrlDate: 'website_url_date'
+                websiteUrl: 'website_url', websiteUrlDate: 'website_url_date',
+                requirementsDisplayMode: 'requirements_display_mode'
             },
             // 用户特定的存储键
             USER_KEYS: new Set(['history', 'milestones', 'lastVisit', 'todayData', 'userAvatar', 'readingTime']),
@@ -2231,8 +2228,7 @@
                         weekDays.push(cursor.toDateString());
                         cursor.setDate(cursor.getDate() + 1);
                     }
-                    const lastDayKey = weekDays.at(-1);
-                    const weekRecord = lastDayKey ? dailyMap.get(lastDayKey) : null;
+                    const weekRecord = [...weekDays].reverse().map(dayKey => dailyMap.get(dayKey)).find(Boolean) || null;
                     const weekData = {};
                     reqs.forEach(r => {
                         const currentVal = Utils.getMetricValue(weekRecord?.endData, r.name, 0);
@@ -2242,7 +2238,7 @@
                     if (weekRecord?.endData) {
                         prevWeekEndData = { ...weekRecord.endData };
                     }
-                    result.set(i, { weekNum: i + 1, start: week.start, end: week.end, label: `第${i + 1}周`, data: weekData });
+                    result.set(i, { weekNum: i + 1, start: week.start, end: week.end, label: `第${i + 1}周`, data: weekData, endData: weekRecord?.endData ? { ...weekRecord.endData } : null });
                 });
 
                 this.cache.set(cacheKey, result);
@@ -2278,7 +2274,7 @@
                     if (latest?.endData) {
                         prevMonthEndData = { ...latest.endData };
                     }
-                    result.set(month, monthData);
+                    result.set(month, { data: monthData, endData: latest?.endData ? { ...latest.endData } : null });
                 });
 
                 this.cache.set(cacheKey, result);
@@ -4554,10 +4550,10 @@
     @media (max-height:500px){.ldsp-user{padding:5px var(--pd) 5px}.ldsp-reading{padding:4px 4px 2px}.ldsp-reading-icon{font-size:15px;margin-bottom:4px}.ldsp-reading-time{font-size:10px;margin-bottom:2px}.ldsp-reading-label{min-height:14px;padding:0 5px;font-size:7px;margin-bottom:4px}.ldsp-tabs{padding:5px 6px;gap:4px}.ldsp-tab{padding:5px 6px;font-size:9px}.ldsp-section{padding:5px}.ldsp-ring{padding:8px 10px;margin-bottom:8px}.ldsp-ring-wrap{--ring:55px}.ldsp-announcement.active{height:20px;min-height:20px}.ldsp-announcement-text{font-size:9px}}
     /* 极矮屏 (高度<420px): 隐藏操作按钮 */
     @media (max-height:420px){.ldsp-user-actions{display:none}.ldsp-reading::after{bottom:2px;font-size:6px}}
-    @media (max-width:860px){.ldsp-user{grid-template-columns:minmax(0,1fr) minmax(84px,24%)}.ldsp-settings-menu{width:min(320px,calc(100vw - 20px));max-width:min(320px,calc(100vw - 20px))}}
+    @media (max-width:860px){.ldsp-user{grid-template-columns:minmax(0,1fr) minmax(84px,24%)}.ldsp-settings-menu{width:min(320px,calc(100vw - 20px));max-width:min(320px,calc(100vw - 20px))}.ldsp-rd-stats{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:12px}.ldsp-rd-stats-info{min-width:0}.ldsp-rd-stats-val,.ldsp-rd-stats-lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ldsp-rd-stats-badge{justify-self:end;white-space:nowrap;padding:5px 9px}.ldsp-track{flex-wrap:nowrap;min-width:0}.ldsp-track span,.ldsp-track{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
     @media (max-width:720px){.ldsp-user{grid-template-columns:minmax(0,1fr)}.ldsp-reading{justify-self:stretch;max-width:none;min-width:0;aspect-ratio:auto;min-height:64px;flex-direction:row;justify-content:flex-start;gap:10px;padding:10px 12px 6px}.ldsp-reading::after{left:12px;bottom:4px;transform:none;text-align:left}.ldsp-reading-ripple{inset:0}.ldsp-user-actions{gap:5px}.ldsp-follow-combined{flex-wrap:wrap}.ldsp-join-days{white-space:nowrap}}
     @media (max-width:560px){#ldsp-panel{left:max(4px,env(safe-area-inset-left));right:auto;top:max(6px,env(safe-area-inset-top))}#ldsp-panel.expand-left .ldsp-settings-menu,#ldsp-panel.expand-right .ldsp-settings-menu{left:0;right:auto}.ldsp-settings-menu{top:32px;width:min(340px,calc(100vw - 12px - env(safe-area-inset-left) - env(safe-area-inset-right)));max-width:min(340px,calc(100vw - 12px - env(safe-area-inset-left) - env(safe-area-inset-right)));max-height:min(70vh,calc(var(--h) - 28px))}.ldsp-hdr{padding-left:max(10px,calc(10px + env(safe-area-inset-left) * .2));padding-right:max(10px,calc(10px + env(safe-area-inset-right) * .2))}.ldsp-content{padding-bottom:max(0px,env(safe-area-inset-bottom))}}
-    @media (max-width:420px){.ldsp-user-row{align-items:flex-start}.ldsp-user-meta{gap:6px}.ldsp-follow-combined{font-size:9px}.ldsp-reading{gap:8px;min-height:54px}.ldsp-reading-time{font-size:12px}.ldsp-reading-label{font-size:8px}.ldsp-reading::after{bottom:4px;font-size:7px;max-width:calc(100% - 20px);white-space:normal;line-height:1.25}.ldsp-user-actions-toggle{padding:4px 8px}}
+    @media (max-width:420px){.ldsp-user-row{align-items:flex-start}.ldsp-user-meta{gap:6px}.ldsp-follow-combined{font-size:9px}.ldsp-reading{gap:8px;min-height:54px}.ldsp-reading-time{font-size:12px}.ldsp-reading-label{font-size:8px}.ldsp-reading::after{bottom:4px;font-size:7px;max-width:calc(100% - 20px);white-space:normal;line-height:1.25}.ldsp-user-actions-toggle{padding:4px 8px}.ldsp-rd-stats{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"icon info" "badge badge"}.ldsp-rd-stats-icon{grid-area:icon}.ldsp-rd-stats-info{grid-area:info}.ldsp-rd-stats-badge{grid-area:badge;justify-self:start;margin-top:2px}}
     /* --- 宽度响应式 --- */
     /* 窄屏优化 (宽度<380px): 手机竖屏 */
     @media (max-width:380px){#ldsp-panel{--w:260px}#ldsp-panel.collapsed{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;max-height:42px!important}#ldsp-panel.collapsed .ldsp-toggle-logo{width:20px;height:20px}.ldsp-hdr{padding:8px 10px;gap:6px;min-height:46px}.ldsp-hdr-info{gap:5px}.ldsp-site-icon{width:22px;height:22px}.ldsp-site-ver{font-size:7px}.ldsp-title{font-size:11px}.ldsp-app-name{font-size:9px}.ldsp-hdr-btns{gap:3px}.ldsp-hdr-btns button{width:24px;height:24px;font-size:10px}.ldsp-user{gap:8px}.ldsp-avatar,.ldsp-avatar-ph{width:40px;height:40px;border-radius:10px}.ldsp-user-display-name{font-size:14px}.ldsp-user-handle{font-size:10px}.ldsp-reading{padding:5px 5px 4px;max-width:85px}.ldsp-reading-icon{font-size:16px}.ldsp-reading-time{font-size:11px}.ldsp-reading-label{font-size:8px}.ldsp-reading::after{bottom:2px;font-size:7px}.ldsp-user-actions{gap:4px}.ldsp-action-btn{font-size:9px;padding:4px 6px;gap:3px}.ldsp-action-icon{font-size:11px}.ldsp-tabs{padding:6px 8px;gap:4px}.ldsp-tab{font-size:9px;padding:5px 6px}.ldsp-section{padding:8px}.ldsp-ring{padding:10px;gap:8px}.ldsp-ring-stat-val{font-size:14px}.ldsp-ring-stat-lbl{font-size:8px}}
@@ -10502,6 +10498,10 @@ a:hover{text-decoration:underline;}
                 const canUp = lv < 3, tgt = canUp ? lv + 1 : lv;
                 const [tipText, tipClass] = !canUp ? [lv >= 4 ? '🏆 已达最高等级' : '🎖️ 已达普通用户最高等级', 'max'] : remain > 0 ? [`⏳ 距升级还需完成 ${remain} 项要求`, 'progress'] : ['🎉 已满足升级条件', 'ok'];
 
+                // Filter items for display only; ring stats always reflect full data
+                const rdm = this.panel.storage.getGlobal('requirementsDisplayMode', 'all');
+                const displayReqs = rdm === 'incomplete' ? reqs.filter(item => !item.isSuccess) : reqs;
+
                 const colors = ['#5070d0','#5bb5a6','#f97316','#22c55e','#eab308','#ec4899','#f43f5e','#6b8cef'];
                 const shapes = '●■★❤✨❀';
                 const confetti = pct === 100 ? Array.from({length:28},(_,i)=>{const a=(i/28)*360+(Math.random()-.5)*25,rad=a*Math.PI/180,d=55+Math.random()*45;return`<span class="ldsp-confetti-piece" style="color:${colors[i%8]};--tx:${Math.cos(rad)*d}px;--ty:${Math.sin(rad)*d*.7}px;--drift:${(Math.random()-.5)*40}px;--rot:${(Math.random()-.5)*900}deg;animation-delay:${Math.random()*.06}s">${shapes[Math.floor(Math.random()*6)]}</span>`}).join('') : '';
@@ -10512,13 +10512,17 @@ a:hover{text-decoration:underline;}
                     `<div class="ldsp-ring-stat"><div class="ldsp-ring-stat-val fail">○${remain}</div><div class="ldsp-ring-stat-lbl">待完成</div></div></div>`,
                     `<div class="ldsp-ring-tip ${tipClass}">${tipText}</div>`);
 
-                for (const req of reqs) {
-                    const name = Utils.simplifyName(req.name), prev = this.prevValues.get(req.name);
-                    const upd = prev !== undefined && prev !== req.currentValue;
-                    const chg = req.change ? `<span class="ldsp-item-chg ${req.change>0?'up':'down'}">${req.change>0?'+':''}${req.change}</span>` : '';
-                    h.push(`<div class="ldsp-item ${req.isSuccess?'ok':'fail'}"><span class="ldsp-item-icon">${req.isSuccess?'✓':'○'}</span><span class="ldsp-item-name">${name}</span><div class="ldsp-item-vals"><span class="ldsp-item-cur${upd?' upd':''}">${req.currentValue}</span><span class="ldsp-item-sep">/</span><span class="ldsp-item-req">${req.requiredValue}</span></div>${chg}</div>`);
-                    this.prevValues.set(req.name, req.currentValue);
+                if (displayReqs.length === 0 && rdm === 'incomplete') {
+                    h.push(`<div class="ldsp-empty"><div class="ldsp-empty-icon">🎉</div><div class="ldsp-empty-txt">所有升级要求都已完成</div></div>`);
+                } else {
+                    for (const req of displayReqs) {
+                        const name = Utils.simplifyName(req.name), prev = this.prevValues.get(req.name);
+                        const upd = prev !== undefined && prev !== req.currentValue;
+                        const chg = req.change ? `<span class="ldsp-item-chg ${req.change>0?'up':'down'}">${req.change>0?'+':''}${req.change}</span>` : '';
+                        h.push(`<div class="ldsp-item ${req.isSuccess?'ok':'fail'}"><span class="ldsp-item-icon">${req.isSuccess?'✓':'○'}</span><span class="ldsp-item-name">${name}</span><div class="ldsp-item-vals"><span class="ldsp-item-cur${upd?' upd':''}">${req.currentValue}</span><span class="ldsp-item-sep">/</span><span class="ldsp-item-req">${req.requiredValue}</span></div>${chg}</div>`);
+                    }
                 }
+                this.prevValues = new Map(reqs.map(req => [req.name, req.currentValue]));
                 h.push(`<a class="ldsp-learn-trust" href="https://linux.do/t/topic/2460" target="_blank" rel="noopener">了解论坛信任等级 →</a>`);
                 this.panel.$.reqs.innerHTML = h.join('');
 
@@ -10628,13 +10632,13 @@ a:hover{text-decoration:underline;}
             renderWeekTrend(hist, reqs, hm, tracker) {
                 let h = this._renderWeekChart(tracker);
                 if (reqs?.length) {
-                    const daily = hm.aggregateDaily(hist, reqs, 7), trends = [];
+                    const daily = this._getCurrentWeekRecords(hist), trends = [];
                     for (const f of this.getTrendFields(reqs)) {
-                        const d = this._calcDailyTrend(daily, f.name, 7);
+                        const d = this._calcAbsoluteDailyTrend(daily, f.name);
                         if (d.values.some(v => v !== 0)) trends.push({label: f.label, ...d, current: f.req.currentValue});
                     }
                     if (trends.length) {
-                        h += `<div class="ldsp-chart"><div class="ldsp-chart-title">📈 本周每日新增<span class="ldsp-chart-sub">较前一日</span></div>${this._renderSparkRows(trends)}${trends[0].dates.length?`<div class="ldsp-date-labels">${trends[0].dates.map(d=>`<span class="ldsp-date-lbl">${d}</span>`).join('')}</div>`:''}</div>`;
+                        h += `<div class="ldsp-chart"><div class="ldsp-chart-title">📈 本周每日数据<span class="ldsp-chart-sub">对应日期阅读数据</span></div>${this._renderSparkRows(trends,false,true)}${trends[0].dates.length?`<div class="ldsp-date-labels">${trends[0].dates.map(d=>`<span class="ldsp-date-lbl">${d}</span>`).join('')}</div>`:''}</div>`;
                     }
                 }
                 return h;
@@ -10645,11 +10649,11 @@ a:hover{text-decoration:underline;}
                 if (reqs?.length && hist.length >= 1) {
                     const weekly = hm.aggregateWeekly(hist, reqs), trends = [];
                     for (const f of this.getTrendFields(reqs)) {
-                        const d = this._calcWeeklyTrend(weekly, f.name);
+                        const d = this._calcAbsoluteWeeklyTrend(weekly, f.name);
                         if (d.values.some(v => v !== 0)) trends.push({label: f.label, ...d, current: f.req.currentValue});
                     }
                     if (trends.length) {
-                        h += `<div class="ldsp-chart"><div class="ldsp-chart-title">📈 本月每周新增<span class="ldsp-chart-sub">较前一周</span></div>${this._renderSparkRows(trends,true)}${trends[0].labels?.length?`<div class="ldsp-date-labels" style="padding-left:60px">${trends[0].labels.map(l=>`<span class="ldsp-date-lbl">${l}</span>`).join('')}</div>`:''}</div>`;
+                        h += `<div class="ldsp-chart"><div class="ldsp-chart-title">📈 本月每周数据<span class="ldsp-chart-sub">对应周阅读数据</span></div>${this._renderSparkRows(trends,true,true)}${trends[0].labels?.length?`<div class="ldsp-date-labels" style="padding-left:60px">${trends[0].labels.map(l=>`<span class="ldsp-date-lbl">${l}</span>`).join('')}</div>`:''}</div>`;
                     }
                 }
                 return h;
@@ -10662,16 +10666,11 @@ a:hover{text-decoration:underline;}
                     if (hist.length >= 1) {
                         const monthly = hm.aggregateMonthly(hist, reqs), trends = [];
                         for (const f of this.getTrendFields(reqs)) {
-                            const d = this._calcMonthlyTrend(monthly, f.name, currentYear);
+                            const d = this._calcAbsoluteMonthlyTrend(monthly, f.name, currentYear);
                             if (d.values.some(v => v !== 0)) trends.push({label: f.label, ...d, current: f.req.currentValue});
                         }
                         if (trends.length) {
-                            h += `<div class="ldsp-chart"><div class="ldsp-chart-title">📊 本年每月新增<span class="ldsp-chart-sub">较前一月</span></div>`;
-                            trends.forEach(t => {
-                                const maxAbs = Math.max(...t.values.map(v => Math.abs(v)), 1);
-                                h += `<div class="ldsp-spark-row"><span class="ldsp-spark-lbl">${t.label}</span><div class="ldsp-spark-bars" style="max-width:100%">${t.values.map((v,i)=>`<div class="ldsp-spark-bar${i===t.values.length-1?' ldsp-spark-current':''}${v<0?' ldsp-spark-negative':''}" style="height:${Math.max(Math.abs(v)/maxAbs*16,2)}px" data-v="${t.dates?.[i] || `${i + 1}月`}: ${v > 0 ? '+' : ''}${v}"></div>`).join('')}</div><span class="ldsp-spark-val">${t.current}</span></div>`;
-                            });
-                            h += `</div>`;
+                            h += `<div class="ldsp-chart"><div class="ldsp-chart-title">📊 本年每月数据<span class="ldsp-chart-sub">对应月份阅读数据</span></div>${this._renderSparkRows(trends,false,true)}</div>`;
                         }
                     }
                 }
@@ -10842,10 +10841,56 @@ a:hover{text-decoration:underline;}
                 };
             }
 
+            _getCurrentWeekRecords(hist) {
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const start = new Date(today);
+                start.setDate(today.getDate() - (today.getDay() || 7) + 1);
+                const daily = new Map((hist || []).map(record => [new Date(record.dayKey || record.date || record.ts).toDateString(), record]));
+                const records = [];
+                for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
+                    const dayKey = d.toDateString();
+                    const record = daily.get(dayKey);
+                    if (record) records.push({ dayKey, endData: record.endData || record.data || {} });
+                }
+                return records;
+            }
+
+            _calcAbsoluteDailyTrend(records, name) {
+                return {
+                    values: records.map(record => Math.max(0, Utils.toSafeNumber(Utils.getMetricValue(record.endData, name, 0), 0))),
+                    dates: records.map(record => Utils.formatDate(new Date(record.dayKey).getTime(), 'short'))
+                };
+            }
+
+            _calcAbsoluteWeeklyTrend(weekly, name) {
+                const sorted = [...weekly.keys()].sort((a, b) => a - b);
+                return {
+                    values: sorted.map(i => {
+                        const item = weekly.get(i);
+                        return Math.max(0, Utils.toSafeNumber(Utils.getMetricValue(item?.endData, name, 0), 0));
+                    }),
+                    labels: sorted.map(i => weekly.get(i).label)
+                };
+            }
+
+            _calcAbsoluteMonthlyTrend(monthly, name, year = null) {
+                const sorted = [...monthly.keys()]
+                    .sort((a, b) => new Date(a) - new Date(b))
+                    .filter(m => year === null || new Date(m).getFullYear() === year);
+                return {
+                    values: sorted.map(m => {
+                        const item = monthly.get(m);
+                        return Math.max(0, Utils.toSafeNumber(Utils.getMetricValue(item?.endData, name, 0), 0));
+                    }),
+                    dates: sorted.map(m => `${new Date(m).getMonth() + 1}月`)
+                };
+            }
+
             _calcWeeklyTrend(weekly, name) {
                 const sorted = [...weekly.keys()].sort((a, b) => a - b);
                 return {
-                    values: sorted.map(i => Utils.toSafeNumber(weekly.get(i).data[name], 0)),
+                    values: sorted.map(i => Utils.toSafeNumber(weekly.get(i).data?.[name], 0)),
                     labels: sorted.map(i => weekly.get(i).label)
                 };
             }
@@ -10855,7 +10900,7 @@ a:hover{text-decoration:underline;}
                     .sort((a, b) => new Date(a) - new Date(b))
                     .filter(m => year === null || new Date(m).getFullYear() === year);
                 return {
-                    values: sorted.map(m => Utils.toSafeNumber(monthly.get(m)[name], 0)),
+                    values: sorted.map(m => Utils.toSafeNumber(monthly.get(m).data?.[name], 0)),
                     dates: sorted.map(m => `${new Date(m).getMonth() + 1}月`)
                 };
             }
@@ -12047,6 +12092,11 @@ a:hover{text-decoration:underline;}
                                         <span class="ldsp-settings-nav-value" data-settings-actions-value></span>
                                         <span class="ldsp-settings-nav-arrow">›</span>
                                     </button>
+                                    <button class="ldsp-settings-nav" data-settings-open="requirements-display">
+                                        <span class="ldsp-settings-nav-main">📋 要求展示</span>
+                                        <span class="ldsp-settings-nav-value" data-settings-requirements-value></span>
+                                        <span class="ldsp-settings-nav-arrow">›</span>
+                                    </button>
                                 </div>
                                 <div class="ldsp-settings-view" data-settings-view="theme">
                                     <div class="ldsp-settings-head">
@@ -12150,6 +12200,26 @@ a:hover{text-decoration:underline;}
                                         <div class="ldsp-settings-order-item" draggable="true" data-order-key="ticket"><span class="ldsp-settings-order-handle">⋮⋮</span><span class="ldsp-settings-order-label">工单按钮</span></div>
                                     </div>
                                     <button class="ldsp-settings-order-reset" type="button">恢复默认顺序</button>
+                                </div>
+                                <div class="ldsp-settings-view" data-settings-view="requirements-display">
+                                    <div class="ldsp-settings-head">
+                                        <button class="ldsp-settings-back" data-settings-back="root" aria-label="返回">‹</button>
+                                        <span class="ldsp-settings-head-title">要求展示</span>
+                                    </div>
+                                    <button class="ldsp-settings-option" data-requirements-display-mode="all">
+                                        <span class="ldsp-settings-option-main">
+                                            <span class="ldsp-settings-option-label">展示所有升级数据</span>
+                                            <span class="ldsp-settings-option-desc">默认展示已完成和未完成的升级要求</span>
+                                        </span>
+                                        <span class="ldsp-settings-option-check">✔</span>
+                                    </button>
+                                    <button class="ldsp-settings-option" data-requirements-display-mode="incomplete">
+                                        <span class="ldsp-settings-option-main">
+                                            <span class="ldsp-settings-option-label">只显示未完成</span>
+                                            <span class="ldsp-settings-option-desc">要求板块仅保留尚未达成的项目</span>
+                                        </span>
+                                        <span class="ldsp-settings-option-check">✔</span>
+                                    </button>
                                 </div>
                             </div>
                             <button class="ldsp-toggle" title="折叠面板" aria-label="折叠面板"><span class="ldsp-toggle-arrow">◀</span><img class="ldsp-toggle-logo" src="${COLLAPSED_LOGO_DATA_URI}" alt="" aria-hidden="true" draggable="false"></button>
@@ -12287,6 +12357,8 @@ a:hover{text-decoration:underline;}
                     settingsGoalValues: this.el.querySelectorAll('[data-settings-goal-value]'),
                     settingsFontValues: this.el.querySelectorAll('[data-settings-font-value]'),
                     settingsActionsValues: this.el.querySelectorAll('[data-settings-actions-value]'),
+                    settingsRequirementsValues: this.el.querySelectorAll('[data-settings-requirements-value]'),
+                    settingsRequirementsOptions: this.el.querySelectorAll('.ldsp-settings-option[data-requirements-display-mode]'),
                     settingsThemeOptions: this.el.querySelectorAll('.ldsp-settings-option[data-theme-mode]'),
                     settingsActionInputs: this.el.querySelectorAll('.ldsp-settings-toggle input[data-action-key]'),
                     settingsGoalRange: this.el.querySelector('.ldsp-settings-goal-range'),
@@ -12459,6 +12531,15 @@ a:hover{text-decoration:underline;}
                     if (themeOption) {
                         const mode = themeOption.dataset.themeMode;
                         if (mode) this._setThemeMode(mode);
+                    }
+
+                    const reqDisplayBtn = e.target.closest('[data-requirements-display-mode]');
+                    if (reqDisplayBtn) {
+                        const mode = reqDisplayBtn.dataset.requirementsDisplayMode || 'all';
+                        this.storage.setGlobalNow('requirementsDisplayMode', mode);
+                        this._syncSettingsMenuState();
+                        this._refreshReqsFromCache();
+                        return;
                     }
                 });
                 this.$.settingsMenu?.addEventListener('change', e => {
@@ -13453,7 +13534,21 @@ a:hover{text-decoration:underline;}
                     el.textContent = actionSummary;
                 });
 
+                const rdm = this.storage.getGlobal('requirementsDisplayMode', 'all');
+                this.$.settingsRequirementsOptions?.forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.requirementsDisplayMode === rdm);
+                });
+                this.$.settingsRequirementsValues?.forEach(el => {
+                    el.textContent = rdm === 'incomplete' ? '只显示未完成' : '展示全部';
+                });
+
                 this._renderActionOrderList();
+            }
+
+            _refreshReqsFromCache() {
+                if (!this.cachedReqs.length) return;
+                this.animRing = true;
+                this.renderer.renderReqs(this.cachedReqs);
             }
 
             _showSettingsMenu() {
