@@ -181,11 +181,46 @@
         <div class="stores-header">
           <p class="stores-desc">🏪 汇集各路大佬的自建小店，欢迎入驻🎉</p>
         </div>
+
+        <!-- 小店筛选 -->
+        <div class="stores-filter">
+          <div class="stores-tag-filter">
+            <button
+              class="stores-tag-btn"
+              :class="{ active: !shopsTagFilter }"
+              @click="shopsTagFilter = ''; loadShops(true)"
+            >全部</button>
+            <button
+              v-for="tag in SHOPS_TAGS"
+              :key="tag"
+              class="stores-tag-btn"
+              :class="{ active: shopsTagFilter === tag, ['tag-' + tagClassMap[tag]]: true }"
+              @click="shopsTagFilter = tag; loadShops(true)"
+            >{{ tag }}</button>
+          </div>
+          <div class="stores-search">
+            <input
+              v-model="shopsSearchKeyword"
+              type="text"
+              class="stores-search-input"
+              placeholder="搜索小店名称、店主或描述"
+              @keyup.enter="loadShops(true)"
+            />
+            <button class="stores-search-btn" @click="loadShops(true)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
+          </div>
+        </div>
         
         <!-- 小店统计 -->
         <div class="products-header">
           <span class="products-count">
-            全部 共 <strong>{{ shopsTotal }}</strong> 个小店
+            <template v-if="shopsTagFilter || shopsSearchKeyword.trim()">
+              筛选结果 共 <strong>{{ shopsTotal }}</strong> 个小店
+            </template>
+            <template v-else>
+              全部 共 <strong>{{ shopsTotal }}</strong> 个小店
+            </template>
           </span>
         </div>
         
@@ -609,6 +644,10 @@ const shopsPageSize = 20
 const shopsHasMore = ref(false)
 const shopsSentinel = ref(null)
 let shopsObserver = null
+const shopsTagFilter = ref('')
+const shopsSearchKeyword = ref('')
+const SHOPS_TAGS = ['订阅', '服务', '小鸡', 'AI', '娱乐', '公益站']
+const tagClassMap = { '订阅': 'subscription', '服务': 'service', '小鸡': 'vps', 'AI': 'ai', '娱乐': 'entertainment', '公益站': 'charity' }
 
 const buyRequests = ref([])
 const buyLoading = ref(false)
@@ -850,7 +889,13 @@ async function loadShops(resetPage = true) {
   }
   shopsLoading.value = true
   try {
-    const result = await api.get(`/api/shops?page=${shopsPage.value}&pageSize=${shopsPageSize}`)
+    const params = new URLSearchParams({
+      page: String(shopsPage.value),
+      pageSize: String(shopsPageSize)
+    })
+    if (shopsTagFilter.value) params.set('tag', shopsTagFilter.value)
+    if (shopsSearchKeyword.value.trim()) params.set('search', shopsSearchKeyword.value.trim())
+    const result = await api.get(`/api/shops?${params.toString()}`)
     if (result.success && result.data?.shops) {
       const newShops = result.data.shops
       if (resetPage) {
@@ -1673,6 +1718,115 @@ function trendCurve(catTrend) {
   grid-gap: 16px;
 }
 
+/* 小店筛选 */
+.stores-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.stores-tag-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.stores-tag-btn {
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 14px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.stores-tag-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.stores-tag-btn.active {
+  font-weight: 600;
+}
+
+.stores-tag-btn.active:not([class*="tag-"]) {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+/* 非激活状态：轻量颜色 */
+.stores-tag-btn.tag-subscription { background: var(--color-success-light); color: var(--color-success); border-color: transparent; }
+.stores-tag-btn.tag-service { background: var(--color-info-light); color: var(--color-info); border-color: transparent; }
+.stores-tag-btn.tag-vps { background: var(--color-warning-light); color: var(--color-warning); border-color: transparent; }
+.stores-tag-btn.tag-ai { background: #f3e8ff; color: #7c3aed; border-color: transparent; }
+.stores-tag-btn.tag-entertainment { background: #ffe4e6; color: #be123c; border-color: transparent; }
+.stores-tag-btn.tag-charity { background: #fce7f3; color: #be185d; border-color: transparent; }
+
+/* 激活状态：加深背景+边框 */
+.stores-tag-btn.active.tag-subscription { box-shadow: inset 0 0 0 2px var(--color-success); }
+.stores-tag-btn.active.tag-service { box-shadow: inset 0 0 0 2px var(--color-info); }
+.stores-tag-btn.active.tag-vps { box-shadow: inset 0 0 0 2px var(--color-warning); }
+.stores-tag-btn.active.tag-ai { box-shadow: inset 0 0 0 2px #7c3aed; }
+.stores-tag-btn.active.tag-entertainment { box-shadow: inset 0 0 0 2px #be123c; }
+.stores-tag-btn.active.tag-charity { box-shadow: inset 0 0 0 2px #be185d; }
+
+.stores-search {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+
+.stores-search-input {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  padding: 10px 12px;
+  padding-right: 40px;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.stores-search-input:focus {
+  outline: none;
+  background: var(--input-focus-bg);
+  border-color: var(--input-focus-border);
+  box-shadow: 0 2px 8px var(--glass-shadow-light);
+}
+
+.stores-search-input::placeholder {
+  color: var(--text-placeholder);
+}
+
+.stores-search-btn {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px;
+  background: var(--glass-bg-heavy);
+  color: var(--text-secondary);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: none;
+  cursor: pointer;
+}
+
 /* 物品网格 */
 .buy-header {
   margin-bottom: 14px;
@@ -2157,9 +2311,31 @@ function trendCurve(catTrend) {
   .stores-header {
     padding: 12px 16px;
   }
-  
+
   .stores-desc {
     font-size: 13px;
+  }
+
+  .stores-filter {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .stores-search-input {
+    padding: 8px 8px;
+    padding-right: 34px;
+    font-size: 13px;
+  }
+
+  .stores-search-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .stores-tag-btn {
+    padding: 4px 10px;
+    font-size: 11px;
   }
 
   .buy-header {
