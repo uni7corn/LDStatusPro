@@ -804,7 +804,7 @@ import { useToast } from '@/composables/useToast'
 import { useDialog } from '@/composables/useDialog'
 import { formatRelativeTime, formatPrice } from '@/utils/format'
 import { escapeHtml } from '@/utils/security'
-import { prepareNewTab, openInNewTab, cleanupPreparedTab } from '@/utils/newTab'
+import { preparePaymentPopup, openPaymentPopup, watchPaymentPopup, prepareNewTab, openInNewTab, cleanupPreparedTab } from '@/utils/newTab'
 import AvatarImage from '@/components/common/AvatarImage.vue'
 import StarRatingDisplay from '@/components/common/StarRatingDisplay.vue'
 import StarRatingInput from '@/components/common/StarRatingInput.vue'
@@ -2248,34 +2248,35 @@ async function handleBuyProduct() {
   
   if (!confirmed) return
   
-  // Pre-open a blank tab to keep navigation tied to the user gesture (better for mobile Safari).
-  const preparedWindow = prepareNewTab()
-  let paymentOpened = false
-  
+  const preparedWindow = preparePaymentPopup()
+  let paymentPopup = null
+
   purchasing.value = true
-  
+
   try {
     const result = await shopStore.createOrder(product.value.id, quantity)
-    
+
     if (result.success && result.data?.paymentUrl) {
-      // 跳转支付
-      paymentOpened = openInNewTab(result.data.paymentUrl, preparedWindow)
-      if (!paymentOpened) {
-        cleanupPreparedTab(preparedWindow)
+      const { popup, isPopup } = openPaymentPopup(result.data.paymentUrl, preparedWindow)
+      if (!isPopup) cleanupPreparedTab(preparedWindow)
+      paymentPopup = isPopup ? popup : null
+
+      if (paymentPopup) {
+        watchPaymentPopup(paymentPopup, () => {
+          toast.info('支付窗口已关闭，请检查订单状态')
+        })
       }
-      
-      // 提示用户
+
       const orderCreatedMessage = isNormal.value
-        ? `订单已创建：<strong>${result.data.orderNo}</strong><br><br>📝 请在新窗口中完成支付<br>⏰ 订单有效期 <strong>5分钟</strong>，请尽快完成支付<br>📨 支付成功后请主动联系卖家获取服务<br>📋 可在「我的订单」中查看状态`
-        : `订单已创建：<strong>${result.data.orderNo}</strong><br><br>📝 请在新窗口中完成支付<br>⏰ 订单有效期 <strong>5分钟</strong>，请尽快完成支付<br>✅ 支付完成后 CDK 将自动发放<br>📋 可在「我的订单」中查看状态`
+        ? `订单已创建：<strong>${result.data.orderNo}</strong><br><br>📝 请在支付窗口中完成支付<br>⏰ 订单有效期 <strong>5分钟</strong>，请尽快完成支付<br>📨 支付成功后请主动联系卖家获取服务<br>📋 可在「我的订单」中查看状态`
+        : `订单已创建：<strong>${result.data.orderNo}</strong><br><br>📝 请在支付窗口中完成支付<br>⏰ 订单有效期 <strong>5分钟</strong>，请尽快完成支付<br>✅ 支付完成后 CDK 将自动发放<br>📋 可在「我的订单」中查看状态`
       await dialog.alert(
         orderCreatedMessage,
         { title: '订单创建成功', icon: '🎉' }
       )
     } else {
       cleanupPreparedTab(preparedWindow)
-      // 提取错误消息，处理对象格式的 error
-      const errorMsg = typeof result.error === 'object' 
+      const errorMsg = typeof result.error === 'object'
         ? (result.error.message || result.error.code || '创建订单失败')
         : (result.error || '创建订单失败')
       toast.error(errorMsg)

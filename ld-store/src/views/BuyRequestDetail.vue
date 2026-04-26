@@ -237,7 +237,7 @@ import { useToast } from '@/composables/useToast'
 import { useDialog } from '@/composables/useDialog'
 import { formatPrice, formatRelativeTime } from '@/utils/format'
 import { isValidLdcPaymentUrl } from '@/utils/security'
-import { prepareNewTab, openInNewTab, cleanupPreparedTab } from '@/utils/newTab'
+import { preparePaymentPopup, openPaymentPopup, watchPaymentPopup, cleanupPreparedTab } from '@/utils/newTab'
 
 const route = useRoute()
 const router = useRouter()
@@ -725,7 +725,7 @@ async function createPaymentOrder() {
   if (!activeSessionId.value) return
 
   actionLoading.value = true
-  const preparedWindow = prepareNewTab()
+  const preparedWindow = preparePaymentPopup()
   try {
     const result = await api.post(`/api/shop/buy-sessions/${activeSessionId.value}/payment`, {})
     if (!result.success) {
@@ -737,7 +737,7 @@ async function createPaymentOrder() {
     const paymentUrl = result.data?.order?.paymentUrl || ''
     if (!paymentUrl) {
       cleanupPreparedTab(preparedWindow)
-      toast.warning('订单已创建，请在“求购订单”中继续支付')
+      toast.warning('订单已创建，请在”求购订单”中继续支付')
       await loadDetail(false)
       return
     }
@@ -748,13 +748,14 @@ async function createPaymentOrder() {
       return
     }
 
-    const opened = openInNewTab(paymentUrl, preparedWindow)
-    if (!opened) {
-      cleanupPreparedTab(preparedWindow)
-      toast.warning('支付窗口被拦截，请允许弹窗后重试')
-    } else {
-      toast.success('支付页面已打开，请完成支付后刷新状态')
+    const { popup, isPopup } = openPaymentPopup(paymentUrl, preparedWindow)
+    if (!isPopup) cleanupPreparedTab(preparedWindow)
+    if (isPopup && popup) {
+      watchPaymentPopup(popup, () => {
+        refreshPaymentStatus()
+      })
     }
+    toast.success('支付窗口已打开，关闭后将自动检查支付状态')
 
     await loadDetail(false)
   } catch (error) {

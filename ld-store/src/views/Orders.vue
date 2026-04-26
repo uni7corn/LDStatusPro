@@ -276,7 +276,7 @@ import AppSelect from '@/components/common/AppSelect.vue'
 import LiquidTabs from '@/components/common/LiquidTabs.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { isValidLdcPaymentUrl } from '@/utils/security'
-import { prepareNewTab, openInNewTab, cleanupPreparedTab } from '@/utils/newTab'
+import { preparePaymentPopup, openPaymentPopup, watchPaymentPopup, cleanupPreparedTab } from '@/utils/newTab'
 import {
   isCdkProduct,
   isNormalProduct,
@@ -796,7 +796,7 @@ async function handleRepay(order) {
   if (!orderNo || payingOrderId.value === orderNo) return
 
   const loadingId = toast.loading('正在获取支付链接...')
-  const preparedWindow = prepareNewTab()
+  const preparedWindow = preparePaymentPopup()
   payingOrderId.value = orderNo
 
   try {
@@ -817,11 +817,21 @@ async function handleRepay(order) {
       return
     }
 
-    const opened = openInNewTab(paymentUrl, preparedWindow)
-    if (!opened) {
-      cleanupPreparedTab(preparedWindow)
+    const { popup, isPopup } = openPaymentPopup(paymentUrl, preparedWindow)
+    if (!isPopup) cleanupPreparedTab(preparedWindow)
+    if (isPopup && popup) {
+      const refOrder = order
+      const refOrderNo = orderNo
+      watchPaymentPopup(popup, () => {
+        if (isBuyRequestOrder(refOrder)) {
+          handleRefreshBuyOrder(refOrder)
+        } else {
+          handleRefreshOrder(refOrder)
+        }
+        toast.info('支付窗口已关闭，已自动检查订单状态')
+      })
     }
-    toast.success('支付页面已打开')
+    toast.success('支付窗口已打开')
   } catch (error) {
     cleanupPreparedTab(preparedWindow)
     toast.error(error?.message || '获取支付链接失败')

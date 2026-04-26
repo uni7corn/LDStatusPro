@@ -93,7 +93,7 @@ import { isMaintenanceFeatureEnabled, isRestrictedMaintenanceMode } from '@/conf
 import { useToast } from '@/composables/useToast'
 import { formatPrice } from '@/utils/format'
 import { isValidLdcPaymentUrl } from '@/utils/security'
-import { prepareNewTab, openInNewTab, cleanupPreparedTab } from '@/utils/newTab'
+import { preparePaymentPopup, openPaymentPopup, watchPaymentPopup, cleanupPreparedTab } from '@/utils/newTab'
 
 const route = useRoute()
 const router = useRouter()
@@ -211,7 +211,7 @@ async function handleRepay() {
   if (!orderNo.value || paying.value) return
   paying.value = true
 
-  const preparedWindow = prepareNewTab()
+  const preparedWindow = preparePaymentPopup()
   try {
     const result = await shopStore.getBuyOrderPaymentUrl(orderNo.value)
     const paymentUrl = result?.data?.paymentUrl || ''
@@ -227,13 +227,14 @@ async function handleRepay() {
       return
     }
 
-    const opened = openInNewTab(paymentUrl, preparedWindow)
-    if (!opened) {
-      cleanupPreparedTab(preparedWindow)
-      toast.warning('支付窗口被拦截，请允许弹窗后重试')
-      return
+    const { popup, isPopup } = openPaymentPopup(paymentUrl, preparedWindow)
+    if (!isPopup) cleanupPreparedTab(preparedWindow)
+    if (isPopup && popup) {
+      watchPaymentPopup(popup, () => {
+        handleRefresh()
+      })
     }
-    toast.success('支付页面已打开')
+    toast.success('支付窗口已打开')
   } catch (error) {
     cleanupPreparedTab(preparedWindow)
     toast.error(error.message || '获取支付链接失败')

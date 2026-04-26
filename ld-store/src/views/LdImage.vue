@@ -273,7 +273,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useToast } from '@/composables/useToast'
 import { api } from '@/utils/api'
-import { prepareNewTab, openInNewTab, cleanupPreparedTab } from '@/utils/newTab'
+import { preparePaymentPopup, openPaymentPopup, watchPaymentPopup, cleanupPreparedTab } from '@/utils/newTab'
 
 const userStore = useUserStore()
 const toast = useToast()
@@ -473,9 +473,8 @@ async function startUpload() {
   uploadStatus.value = 'paying'
   payError.value = ''
 
-  // 预开新标签页，保持用户手势，避免 Safari 拦截
-  const preparedWindow = prepareNewTab()
-  let paymentOpened = false
+  // 预开支付窗口，保持用户手势，避免 Safari 拦截
+  const preparedWindow = preparePaymentPopup()
 
   try {
     const result = await api.post('/api/image/create-order')
@@ -483,22 +482,20 @@ async function startUpload() {
       paymentUrl.value = result.data.paymentUrl
       paymentOrderNo.value = result.data.orderNo
       paymentAmount.value = result.data.amount || priceInfo.value?.currentPrice || 1
-      
-      // 直接打开支付链接
+
       if (result.data.paymentUrl) {
-        paymentOpened = openInNewTab(result.data.paymentUrl, preparedWindow)
-        if (!paymentOpened) {
-          cleanupPreparedTab(preparedWindow)
+        const { popup, isPopup } = openPaymentPopup(result.data.paymentUrl, preparedWindow)
+        if (!isPopup) cleanupPreparedTab(preparedWindow)
+        if (isPopup && popup) {
+          watchPaymentPopup(popup, () => {
+            checkPayment()
+          })
         }
       }
-      if (paymentOpened) {
-        toast.warning('请在支付完成后返回此页，点击“我已支付，立即检查”', 5000)
-      } else {
-        toast.warning('未能自动打开支付页，请点击上方“再次前往支付页”', 5000)
-      }
+      toast.info('支付窗口关闭后将自动检查支付状态', 5000)
     } else {
       cleanupPreparedTab(preparedWindow)
-      const errMsg = typeof result.error === 'object' 
+      const errMsg = typeof result.error === 'object'
         ? (result.error.message || result.error.code || '创建订单失败')
         : (result.error || '创建订单失败')
       toast.error(errMsg)
@@ -514,10 +511,13 @@ async function startUpload() {
 // 打开支付页面
 function openPayment() {
   if (paymentUrl.value) {
-    const preparedWindow = prepareNewTab()
-    const opened = openInNewTab(paymentUrl.value, preparedWindow)
-    if (!opened) {
-      cleanupPreparedTab(preparedWindow)
+    const preparedWindow = preparePaymentPopup()
+    const { popup, isPopup } = openPaymentPopup(paymentUrl.value, preparedWindow)
+    if (!isPopup) cleanupPreparedTab(preparedWindow)
+    if (isPopup && popup) {
+      watchPaymentPopup(popup, () => {
+        checkPayment()
+      })
     }
   }
 }

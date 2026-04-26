@@ -538,6 +538,7 @@ import AppSelect from '@/components/common/AppSelect.vue'
 import { api } from '@/utils/api'
 import { useToast } from '@/composables/useToast'
 import { useDialog } from '@/composables/useDialog'
+import { preparePaymentPopup, openPaymentPopup, watchPaymentPopup } from '@/utils/newTab'
 
 const route = useRoute()
 const router = useRouter()
@@ -950,6 +951,7 @@ async function submitOrder() {
   if (!confirmed) return
 
   submitting.value = true
+  const preparedWindow = preparePaymentPopup()
   try {
     const result = unwrap(await api.post('/api/shop/top-service/orders', {
       productId: Number(selectedProduct.value.id),
@@ -962,7 +964,13 @@ async function submitOrder() {
     }
     await loadOptions()
     await loadOrders(1)
-    window.location.href = result.paymentUrl
+    const { popup, isPopup } = openPaymentPopup(result.paymentUrl, preparedWindow)
+    if (isPopup && popup) {
+      watchPaymentPopup(popup, () => {
+        loadOrders(1)
+      })
+    }
+    toast.success('支付窗口已打开')
   } catch (error) {
     console.error('Create top service order failed:', error)
     toast.error(error?.message || '创建置顶订单失败')
@@ -978,7 +986,14 @@ async function repayOrder(order) {
       toast.error('支付链接不存在')
       return
     }
-    window.location.href = result.paymentUrl
+    const { popup, isPopup } = openPaymentPopup(result.paymentUrl)
+    if (isPopup && popup) {
+      const refOrder = order
+      watchPaymentPopup(popup, () => {
+        refreshOrder(refOrder)
+      })
+    }
+    toast.success('支付窗口已打开')
   } catch (error) {
     console.error('Repay top order failed:', error)
     toast.error(error?.message || '获取支付链接失败')
