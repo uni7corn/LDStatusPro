@@ -41,7 +41,7 @@
 
           <div class="shop-info">
             <h2 class="shop-name">{{ myShop.name }}</h2>
-            
+
             <div class="shop-owner">
               <AvatarImage
                 :candidates="ownerAvatarCandidates"
@@ -53,9 +53,21 @@
               <span class="owner-name">{{ myShop.owner_username }}</span>
             </div>
 
+            <p v-if="myShop.description" class="shop-description">{{ myShop.description }}</p>
+
+            <a
+              v-if="myShop.shop_url"
+              :href="myShop.shop_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="shop-url"
+            >
+              🔗 {{ myShop.shop_url }}
+            </a>
+
             <div class="shop-tags" v-if="parsedTags.length > 0">
-              <span 
-                v-for="tag in parsedTags" 
+              <span
+                v-for="tag in parsedTags"
                 :key="tag"
                 class="shop-tag"
                 :class="getTagClass(tag)"
@@ -146,6 +158,11 @@ import { api } from '@/utils/api'
 import AvatarImage from '@/components/common/AvatarImage.vue'
 import ShopForm from '@/components/shop/ShopForm.vue'
 import { buildAvatarCandidates } from '@/utils/avatar'
+import { useToast } from '@/composables/useToast'
+import { useDialog } from '@/composables/useDialog'
+
+const toast = useToast()
+const dialog = useDialog()
 
 const loading = ref(true)
 const submitting = ref(false)
@@ -240,13 +257,13 @@ async function handleSubmit(formData) {
   try {
     const result = await api.post('/api/shops', formData)
     if (result.success) {
-      alert('入驻申请已提交，请等待审核！')
+      toast.success('入驻申请已提交，请等待审核！')
       await loadMyShop()
     } else {
-      alert(result.error?.message || result.error || '提交失败')
+      toast.error(result.error?.message || result.error || '提交失败')
     }
   } catch (e) {
-    alert('提交失败: ' + e.message)
+    toast.error('提交失败: ' + e.message)
   } finally {
     submitting.value = false
   }
@@ -258,14 +275,14 @@ async function handleUpdate(formData) {
   try {
     const result = await api.put('/api/shops/my', formData)
     if (result.success) {
-      alert(result.message || '更新成功！')
+      toast.success(result.message || '更新成功！')
       showEditForm.value = false
       await loadMyShop()
     } else {
-      alert(result.error?.message || result.error || '更新失败')
+      toast.error(result.error?.message || result.error || '更新失败')
     }
   } catch (e) {
-    alert('更新失败: ' + e.message)
+    toast.error('更新失败: ' + e.message)
   } finally {
     submitting.value = false
   }
@@ -273,21 +290,22 @@ async function handleUpdate(formData) {
 
 // 下架小店
 async function handleOffline() {
-  if (!confirm('确定要下架小店吗？下架后将不再显示在小店集市中。')) {
-    return
-  }
-  
+  const confirmed = await dialog.confirmDanger('确定要下架小店吗？下架后将不再显示在小店集市中。', {
+    title: '下架小店'
+  })
+  if (!confirmed) return
+
   submitting.value = true
   try {
     const result = await api.post('/api/shops/my/offline')
     if (result.success) {
-      alert('小店已下架')
+      toast.success('小店已下架')
       await loadMyShop()
     } else {
-      alert(result.error?.message || result.error || '下架失败')
+      toast.error(result.error?.message || result.error || '下架失败')
     }
   } catch (e) {
-    alert('下架失败: ' + e.message)
+    toast.error('下架失败: ' + e.message)
   } finally {
     submitting.value = false
   }
@@ -481,6 +499,34 @@ onMounted(() => {
 .owner-name {
   font-size: 14px;
   color: var(--text-secondary);
+}
+
+.shop-description {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0 0 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.shop-url {
+  display: inline-block;
+  font-size: 13px;
+  color: var(--color-primary);
+  text-decoration: none;
+  margin-bottom: 14px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: break-all;
+  transition: opacity 0.2s;
+}
+
+.shop-url:hover {
+  opacity: 0.8;
+  text-decoration: underline;
 }
 
 .shop-tags {

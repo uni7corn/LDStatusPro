@@ -189,8 +189,9 @@
           </span>
         </div>
         
-        <div v-if="shopsInitialLoading" class="products-loading">
-          <Skeleton type="card" :count="4" :columns="gridColumns" />
+        <div v-if="shopsInitialLoading" class="shops-loading-state">
+          <div class="spinner"></div>
+          <span>加载中...</span>
         </div>
 
         <div v-else-if="shops.length > 0" class="products-grid stores-grid">
@@ -609,6 +610,7 @@ const shopsPageSize = 20
 const shopsHasMore = ref(false)
 const shopsSentinel = ref(null)
 let shopsObserver = null
+let shopsLoadPromise = null
 
 const buyRequests = ref([])
 const buyLoading = ref(false)
@@ -821,9 +823,7 @@ async function switchSection(section) {
   }
 
   if (section === 'stores') {
-    if (!shopsLoaded.value) {
-      await loadShops()
-    }
+    await ensureShopsLoaded()
     await nextTick()
     setupShopsInfiniteScroll()
   }
@@ -843,6 +843,7 @@ async function switchSection(section) {
 }
 
 async function loadShops(resetPage = true) {
+  if (shopsLoading.value) return
   if (resetPage) {
     shopsPage.value = 1
     shops.value = []
@@ -874,6 +875,17 @@ async function loadShops(resetPage = true) {
     shopsInitialLoading.value = false
     shopsLoaded.value = true
   }
+}
+
+async function ensureShopsLoaded() {
+  if (shopsLoaded.value) return
+  if (shopsLoadPromise) {
+    await shopsLoadPromise
+    return
+  }
+  shopsLoadPromise = loadShops()
+  await shopsLoadPromise
+  shopsLoadPromise = null
 }
 
 async function loadMoreShops() {
@@ -1170,13 +1182,18 @@ onMounted(async () => {
   }
 
   if (activeSection.value === 'stores') {
-    await loadShops()
+    await ensureShopsLoaded()
     await nextTick()
     setupShopsInfiniteScroll()
   } else if (activeSection.value === 'buy') {
     await loadBuyRequests(true)
   } else if (activeSection.value === 'hotboard') {
     await loadHotboard()
+  }
+
+  // Preload shops data in background for non-stores tabs
+  if (activeSection.value !== 'stores' && !shopsLoaded.value && !shopsLoadPromise) {
+    shopsLoadPromise = loadShops()
   }
 
   if (activeSection.value === 'products') {
@@ -1201,9 +1218,7 @@ onActivated(async () => {
     await nextTick()
     setupInfiniteScroll()
   } else if (activeSection.value === 'stores') {
-    if (!shopsLoaded.value) {
-      await loadShops()
-    }
+    await ensureShopsLoaded()
     await nextTick()
     setupShopsInfiniteScroll()
   } else if (activeSection.value === 'buy' && !buyInitialized.value) {
@@ -1671,6 +1686,27 @@ function trendCurve(catTrend) {
 .stores-grid {
   /* 小店网格使用默认样式 */
   grid-gap: 16px;
+}
+
+/* 小店加载状态 */
+.shops-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  gap: 10px;
+}
+
+.shops-loading-state .spinner {
+  width: 24px;
+  height: 24px;
+  border: 2.5px solid var(--border-medium);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 /* 物品网格 */

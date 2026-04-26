@@ -132,6 +132,9 @@
 
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
+import { useToast } from '@/composables/useToast'
+
+const toast = useToast()
 
 const props = defineProps({
   initialData: {
@@ -312,7 +315,7 @@ async function handleSubmit() {
   
   // 验证图片链接格式
   if (imageUrlError.value) {
-    alert(imageUrlError.value)
+    toast.error(imageUrlError.value)
     return
   }
   
@@ -323,7 +326,7 @@ async function handleSubmit() {
   
   // 图片加载失败
   if (imageLoadError.value) {
-    alert(imageLoadError.value)
+    toast.error(imageLoadError.value)
     return
   }
   
