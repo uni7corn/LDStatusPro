@@ -186,17 +186,15 @@
         <div class="stores-filter">
           <div class="stores-tag-filter">
             <button
-              class="stores-tag-btn"
-              :class="{ active: !shopsTagFilter }"
-              @click="shopsTagFilter = ''; loadShops(true)"
-            >全部</button>
-            <button
               v-for="tag in SHOPS_TAGS"
               :key="tag"
               class="stores-tag-btn"
-              :class="{ active: shopsTagFilter === tag, ['tag-' + tagClassMap[tag]]: true }"
-              @click="shopsTagFilter = tag; loadShops(true)"
-            >{{ tag }}</button>
+              :class="{ active: shopsTagFilter.includes(tag), ['tag-' + tagClassMap[tag]]: shopsTagFilter.includes(tag) }"
+              @click="toggleShopsTag(tag)"
+            >
+              <span>{{ tag }}</span>
+              <span v-if="shopsTagFilter.includes(tag)" class="tag-remove" @click.stop="removeShopsTag(tag)">×</span>
+            </button>
           </div>
           <div class="stores-search">
             <input
@@ -210,12 +208,17 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             </button>
           </div>
+          <button
+            v-if="shopsTagFilter.length || shopsSearchKeyword.trim()"
+            class="stores-reset-btn"
+            @click="resetShopsFilter"
+          >重置</button>
         </div>
         
         <!-- 小店统计 -->
         <div class="products-header">
           <span class="products-count">
-            <template v-if="shopsTagFilter || shopsSearchKeyword.trim()">
+            <template v-if="shopsTagFilter.length || shopsSearchKeyword.trim()">
               筛选结果 共 <strong>{{ shopsTotal }}</strong> 个小店
             </template>
             <template v-else>
@@ -644,7 +647,7 @@ const shopsPageSize = 20
 const shopsHasMore = ref(false)
 const shopsSentinel = ref(null)
 let shopsObserver = null
-const shopsTagFilter = ref('')
+const shopsTagFilter = ref([])
 const shopsSearchKeyword = ref('')
 const SHOPS_TAGS = ['订阅', '服务', '小鸡', 'AI', '娱乐', '公益站']
 const tagClassMap = { '订阅': 'subscription', '服务': 'service', '小鸡': 'vps', 'AI': 'ai', '娱乐': 'entertainment', '公益站': 'charity' }
@@ -881,6 +884,28 @@ async function switchSection(section) {
   }
 }
 
+function toggleShopsTag(tag) {
+  const idx = shopsTagFilter.value.indexOf(tag)
+  if (idx >= 0) {
+    shopsTagFilter.value.splice(idx, 1)
+  } else {
+    shopsTagFilter.value.push(tag)
+  }
+  loadShops(true)
+}
+
+function removeShopsTag(tag) {
+  const idx = shopsTagFilter.value.indexOf(tag)
+  if (idx >= 0) shopsTagFilter.value.splice(idx, 1)
+  loadShops(true)
+}
+
+function resetShopsFilter() {
+  shopsTagFilter.value = []
+  shopsSearchKeyword.value = ''
+  loadShops(true)
+}
+
 async function loadShops(resetPage = true) {
   if (resetPage) {
     shopsPage.value = 1
@@ -893,7 +918,11 @@ async function loadShops(resetPage = true) {
       page: String(shopsPage.value),
       pageSize: String(shopsPageSize)
     })
-    if (shopsTagFilter.value) params.set('tag', shopsTagFilter.value)
+    if (shopsTagFilter.value.length) {
+      for (const tag of shopsTagFilter.value) {
+        params.append('tag', tag)
+      }
+    }
     if (shopsSearchKeyword.value.trim()) params.set('search', shopsSearchKeyword.value.trim())
     const result = await api.get(`/api/shops?${params.toString()}`)
     if (result.success && result.data?.shops) {
@@ -1734,6 +1763,9 @@ function trendCurve(catTrend) {
 }
 
 .stores-tag-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 5px 12px;
   font-size: 12px;
   font-weight: 500;
@@ -1753,29 +1785,44 @@ function trendCurve(catTrend) {
 
 .stores-tag-btn.active {
   font-weight: 600;
+  border-color: transparent;
 }
 
-.stores-tag-btn.active:not([class*="tag-"]) {
-  background: var(--color-primary);
+/* 选中状态：各标签配色 */
+.stores-tag-btn.active.tag-subscription { background: var(--color-success-light); color: var(--color-success); }
+.stores-tag-btn.active.tag-service { background: var(--color-info-light); color: var(--color-info); }
+.stores-tag-btn.active.tag-vps { background: var(--color-warning-light); color: var(--color-warning); }
+.stores-tag-btn.active.tag-ai { background: #f3e8ff; color: #7c3aed; }
+.stores-tag-btn.active.tag-entertainment { background: #ffe4e6; color: #be123c; }
+.stores-tag-btn.active.tag-charity { background: #fce7f3; color: #be185d; }
+
+/* 选中标签的 × 按钮 */
+.tag-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: currentColor;
+  color: inherit;
+  font-size: 11px;
+  line-height: 1;
+  margin-right: -4px;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.tag-remove::after {
+  content: '×';
   color: white;
-  border-color: var(--color-primary);
+  font-size: 10px;
+  line-height: 1;
 }
 
-/* 非激活状态：轻量颜色 */
-.stores-tag-btn.tag-subscription { background: var(--color-success-light); color: var(--color-success); border-color: transparent; }
-.stores-tag-btn.tag-service { background: var(--color-info-light); color: var(--color-info); border-color: transparent; }
-.stores-tag-btn.tag-vps { background: var(--color-warning-light); color: var(--color-warning); border-color: transparent; }
-.stores-tag-btn.tag-ai { background: #f3e8ff; color: #7c3aed; border-color: transparent; }
-.stores-tag-btn.tag-entertainment { background: #ffe4e6; color: #be123c; border-color: transparent; }
-.stores-tag-btn.tag-charity { background: #fce7f3; color: #be185d; border-color: transparent; }
-
-/* 激活状态：加深背景+边框 */
-.stores-tag-btn.active.tag-subscription { box-shadow: inset 0 0 0 2px var(--color-success); }
-.stores-tag-btn.active.tag-service { box-shadow: inset 0 0 0 2px var(--color-info); }
-.stores-tag-btn.active.tag-vps { box-shadow: inset 0 0 0 2px var(--color-warning); }
-.stores-tag-btn.active.tag-ai { box-shadow: inset 0 0 0 2px #7c3aed; }
-.stores-tag-btn.active.tag-entertainment { box-shadow: inset 0 0 0 2px #be123c; }
-.stores-tag-btn.active.tag-charity { box-shadow: inset 0 0 0 2px #be185d; }
+.stores-tag-btn:hover .tag-remove {
+  opacity: 0.8;
+}
 
 .stores-search {
   flex: 1;
@@ -1825,6 +1872,25 @@ function trendCurve(catTrend) {
   -webkit-backdrop-filter: blur(8px);
   border: none;
   cursor: pointer;
+}
+
+.stores-reset-btn {
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.stores-reset-btn:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
 }
 
 /* 物品网格 */
@@ -2335,6 +2401,11 @@ function trendCurve(catTrend) {
 
   .stores-tag-btn {
     padding: 4px 10px;
+    font-size: 11px;
+  }
+
+  .stores-reset-btn {
+    padding: 7px 12px;
     font-size: 11px;
   }
 
