@@ -1791,12 +1791,12 @@ function trendCurve(catTrend) {
 }
 
 /* 选中状态：各标签配色 */
-.stores-tag-btn.active.tag-subscription { background: var(--color-success-light); color: var(--color-success); }
-.stores-tag-btn.active.tag-service { background: var(--color-info-light); color: var(--color-info); }
-.stores-tag-btn.active.tag-vps { background: var(--color-warning-light); color: var(--color-warning); }
-.stores-tag-btn.active.tag-ai { background: #f3e8ff; color: #7c3aed; }
-.stores-tag-btn.active.tag-entertainment { background: #ffe4e6; color: #be123c; }
-.stores-tag-btn.active.tag-charity { background: #fce7f3; color: #be185d; }
+.stores-tag-btn.active.tag-subscription { background: #e2e8df; color: #6d7f6d; }
+.stores-tag-btn.active.tag-service { background: #dde2ea; color: #5f6f80; }
+.stores-tag-btn.active.tag-vps { background: #e8e2d8; color: #7d7060; }
+.stores-tag-btn.active.tag-ai { background: #e3dfe8; color: #706480; }
+.stores-tag-btn.active.tag-entertainment { background: #e8dee0; color: #806068; }
+.stores-tag-btn.active.tag-charity { background: #e5dde3; color: #706070; }
 
 /* 选中标签的 × 按钮 */
 .tag-remove {
