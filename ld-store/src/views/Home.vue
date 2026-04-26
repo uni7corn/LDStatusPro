@@ -1801,27 +1801,20 @@ function trendCurve(catTrend) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: currentColor;
-  color: inherit;
-  font-size: 11px;
-  line-height: 1;
-  margin-right: -4px;
-  opacity: 0.5;
-  transition: opacity 0.15s;
-}
-
-.tag-remove::after {
-  content: '×';
+  background: rgba(0, 0, 0, 0.2);
   color: white;
   font-size: 10px;
   line-height: 1;
+  margin-left: 2px;
+  flex-shrink: 0;
+  transition: background 0.15s;
 }
 
 .stores-tag-btn:hover .tag-remove {
-  opacity: 0.8;
+  background: rgba(0, 0, 0, 0.35);
 }
 
 .stores-search {
