@@ -478,13 +478,14 @@ async function startUpload() {
 
   try {
     const result = await api.post('/api/image/create-order')
-    if (result.success && result.data) {
-      paymentUrl.value = result.data.paymentUrl
-      paymentOrderNo.value = result.data.orderNo
-      paymentAmount.value = result.data.amount || priceInfo.value?.currentPrice || 1
+    const orderData = result.data?.data || result.data
+    if (result.success && orderData) {
+      paymentUrl.value = orderData.paymentUrl || ''
+      paymentOrderNo.value = orderData.orderNo || ''
+      paymentAmount.value = orderData.amount || priceInfo.value?.currentPrice || 1
 
-      if (result.data.paymentUrl) {
-        const { popup, isPopup } = openPaymentPopup(result.data.paymentUrl, preparedWindow)
+      if (paymentUrl.value) {
+        const { popup, isPopup } = openPaymentPopup(paymentUrl.value, preparedWindow)
         if (!isPopup) cleanupPreparedTab(preparedWindow)
         if (isPopup && popup) {
           watchPaymentPopup(popup, () => {

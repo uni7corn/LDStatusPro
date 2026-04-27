@@ -11,6 +11,10 @@ export function useToast() {
     return uiStore.showToast(message, 'info', duration)
   }
 
+  function info(message, duration = 3000) {
+    return show(message, duration)
+  }
+
   // 显示成功消息
   function success(message, duration = 3000) {
     return uiStore.showToast(message, 'success', duration)
@@ -38,6 +42,7 @@ export function useToast() {
 
   return {
     show,
+    info,
     success,
     error,
     warning,
