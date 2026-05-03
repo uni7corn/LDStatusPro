@@ -146,6 +146,39 @@
         </div>
         
         <div class="modal-body">
+          <div v-if="currentProduct?.sharedCdkEnabled || Number(currentProduct?.shared_cdk_enabled || 0) === 1">
+            <div class="cdk-stats shared-mode">
+              <div class="stat-item">
+                <span class="stat-value">∞</span>
+                <span class="stat-label">共享库存</span>
+              </div>
+              <div class="stat-item sold">
+                <span class="stat-value">{{ cdkStats.sold || 0 }}</span>
+                <span class="stat-label">已售</span>
+              </div>
+            </div>
+            <div class="cdk-list-wrapper">
+              <div v-if="cdkLoading" class="cdk-loading">加载中...</div>
+              <div class="cdk-list" v-else-if="cdkList.length > 0">
+                <div
+                  v-for="cdk in cdkList"
+                  :key="cdk.id || cdk.code"
+                  class="cdk-item available"
+                >
+                  <code class="cdk-code">{{ cdk.code }}</code>
+                  <div class="cdk-actions">
+                    <span class="cdk-status available">共享卡密</span>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="cdk-empty">暂未配置共享卡密</div>
+            </div>
+            <div class="cdk-add">
+              <p class="form-hint">共享卡密模式下请前往编辑页修改共享 CDK，当前页面不支持批量增删。</p>
+              <button class="add-btn-primary" @click="editProduct(currentProduct)">前往编辑页</button>
+            </div>
+          </div>
+          <template v-else>
           <!-- CDK 统计 -->
           <div class="cdk-stats">
             <div class="stat-item">
@@ -165,7 +198,7 @@
               <span class="stat-label">已售</span>
             </div>
           </div>
-          
+
           <!-- CDK 筛选和操作 -->
           <div class="cdk-filter">
             <select v-model="cdkStatusFilter" class="filter-select" @change="loadCdkList">
@@ -185,7 +218,7 @@
               {{ clearingAllCdks ? '清空中...' : '🗑️ 一键清空全部可删CDK' }}
             </button>
           </div>
-          
+
           <!-- CDK 列表 -->
           <div class="cdk-list-wrapper">
             <div v-if="cdkLoading" class="cdk-loading">加载中...</div>
@@ -200,8 +233,8 @@
                   <span :class="['cdk-status', normalizeCdkStatus(cdk.status)]">
                     {{ getCdkStatusText(normalizeCdkStatus(cdk.status)) }}
                   </span>
-                  <button 
-                    v-if="isCdkDeletable(cdk)" 
+                  <button
+                    v-if="isCdkDeletable(cdk)"
                     class="cdk-delete-btn"
                     @click="deleteCdkItem(cdk)"
                     :disabled="isDeletingCdk(cdk)"
@@ -213,7 +246,7 @@
               暂无 CDK
             </div>
           </div>
-          
+
           <!-- 添加 CDK -->
           <div class="cdk-add">
             <h4 class="add-title">➕ 添加 CDK</h4>
@@ -234,6 +267,7 @@
               </button>
             </div>
           </div>
+          </template>
         </div>
       </div>
     </div>
@@ -255,7 +289,6 @@ import {
   getProductTypeIcon,
   getProductTypeText,
   getStockDisplay as resolveStockDisplay,
-  isCdkProduct,
   isLegacyLinkProduct,
   isLowStock as hasLowStock,
   isPlatformOrderProduct
@@ -501,7 +534,10 @@ async function deleteProduct(product) {
 
 // CDK 管理
 async function manageCdk(product) {
-  currentProduct.value = product
+  currentProduct.value = {
+    ...product,
+    sharedCdkEnabled: isSharedCdkProduct(product)
+  }
   showCdkModal.value = true
   cdkStatusFilter.value = 'available'
   await loadCdkList()
@@ -626,10 +662,6 @@ function getProductStatus(product) {
 // 获取物品类型（处理多种字段名）
 function getProductType(product) {
   return resolveProductType(product)
-}
-
-function isCdkItem(product) {
-  return isCdkProduct(product)
 }
 
 function isPlatformOrderProductItem(product) {
@@ -815,6 +847,9 @@ async function loadCdkList() {
     const result = await shopStore.fetchCdkList(currentProduct.value.id, { status: cdkStatusFilter.value })
     cdkList.value = sortCdkListByStatus(result?.cdks || [])
     cdkStats.value = result?.stats || { total: 0, available: 0, locked: 0, sold: 0 }
+    if (result?.sharedMode && currentProduct.value) {
+      currentProduct.value.sharedCdkEnabled = true
+    }
   } catch (error) {
     toast.error('加载 CDK 列表失败')
   } finally {

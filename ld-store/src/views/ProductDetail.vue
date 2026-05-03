@@ -962,6 +962,10 @@ const canPurchase = computed(() => {
 })
 const soldCount = computed(() => parseInt(product.value?.sold_count) || 0)
 const maxPurchaseQuantity = computed(() => {
+  const sharedCdkEnabled = !!(product.value?.sharedCdkEnabled || Number(product.value?.shared_cdk_enabled || 0) === 1)
+  if (sharedCdkEnabled && getProductType(product.value) === 'cdk') {
+    return 1
+  }
   const raw = Number(product.value?.max_purchase_quantity ?? product.value?.maxPurchaseQuantity ?? 0)
   if (!Number.isInteger(raw) || raw < 0) return 0
   return raw

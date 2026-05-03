@@ -73,12 +73,16 @@ export function getAvailableStock(source) {
     ?? source?.product?.available_stock
 
   if (directValue !== null && directValue !== undefined && directValue !== '') {
-    return Math.max(0, toSafeInt(directValue, 0))
+    const parsed = toSafeInt(directValue, 0)
+    if (parsed === -1) return -1
+    return Math.max(0, parsed)
   }
 
   const cdkAvailable = source?.cdkStats?.available ?? source?.product?.cdkStats?.available
   if (cdkAvailable !== null && cdkAvailable !== undefined && cdkAvailable !== '') {
-    return Math.max(0, toSafeInt(cdkAvailable, 0))
+    const parsed = toSafeInt(cdkAvailable, 0)
+    if (parsed === -1) return -1
+    return Math.max(0, parsed)
   }
 
   const stock = getRawStockValue(source)

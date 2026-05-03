@@ -376,8 +376,22 @@
           </div>
           
           <div class="form-group">
-            <label class="form-label required">CDK 卡密</label>
+            <label class="toggle-switch limit-toggle" @click.prevent="form.sharedCdkEnabled = !form.sharedCdkEnabled">
+              <span class="toggle-track" :class="{ active: form.sharedCdkEnabled }">
+                <span class="toggle-thumb"></span>
+              </span>
+              <span class="toggle-label">
+                共享卡密模式
+                <span class="toggle-help" v-if="form.sharedCdkEnabled">（同一 CDK 重复发货）</span>
+              </span>
+            </label>
+            <p class="form-hint">开启后只需填写 1 个 CDK，库存为无限，且单次下单固定只能购买 1 个。</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label required">{{ form.sharedCdkEnabled ? '共享 CDK 卡密' : 'CDK 卡密' }}</label>
             <textarea
+              v-if="!form.sharedCdkEnabled"
               v-model="form.cdkCodes"
               class="form-textarea code"
               :class="{ 'input-error': showError('cdkCodes', cdkCodesError) }"
@@ -386,26 +400,38 @@
               ref="cdkCodesInput"
               @input="markTouched('cdkCodes')"
             ></textarea>
+            <textarea
+              v-else
+              v-model="form.sharedCdkCode"
+              class="form-textarea code"
+              :class="{ 'input-error': showError('cdkCodes', cdkCodesError) }"
+              placeholder="请输入 1 个共享 CDK"
+              rows="3"
+              ref="cdkCodesInput"
+              @input="markTouched('cdkCodes')"
+            ></textarea>
             <p v-if="showError('cdkCodes', cdkCodesError)" class="form-error">{{ cdkCodesError }}</p>
             <p v-else class="form-hint">
-              <span v-if="cdkCount > 0">已输入 {{ cdkCount }} 个 CDK</span>
+              <span v-if="form.sharedCdkEnabled">共享卡密模式下只允许填写 1 个 CDK</span>
+              <span v-else-if="cdkCount > 0">已输入 {{ cdkCount }} 个 CDK</span>
               <span v-else>至少填写 1 个 CDK 卡密</span>
             </p>
           </div>
 
           <div class="form-group">
-            <label class="toggle-switch limit-toggle" @click.prevent="form.limitEnabled = !form.limitEnabled">
-              <span class="toggle-track" :class="{ active: form.limitEnabled }">
+            <label class="toggle-switch limit-toggle" @click.prevent="!form.sharedCdkEnabled && (form.limitEnabled = !form.limitEnabled)">
+              <span class="toggle-track" :class="{ active: form.sharedCdkEnabled ? true : form.limitEnabled }">
                 <span class="toggle-thumb"></span>
               </span>
               <span class="toggle-label">
                 设置单人单次购买上限
-                <span class="toggle-help" v-if="!form.limitEnabled">（默认不限制）</span>
+                <span class="toggle-help" v-if="form.sharedCdkEnabled">（共享模式固定为 1）</span>
+                <span class="toggle-help" v-else-if="!form.limitEnabled">（默认不限制）</span>
               </span>
             </label>
             <p class="form-hint">开启后，每位用户单次下单最多只能购买您设置的数量。</p>
 
-            <div v-if="form.limitEnabled" class="limit-input-row">
+            <div v-if="form.limitEnabled || form.sharedCdkEnabled" class="limit-input-row">
               <input
                 v-model="form.maxPurchaseQuantity"
                 ref="maxPurchaseQuantityInput"
@@ -416,6 +442,7 @@
                 max="1000"
                 step="1"
                 placeholder="例如：5"
+                :disabled="form.sharedCdkEnabled"
               />
               <span class="limit-unit">个 / 单</span>
             </div>
@@ -665,10 +692,13 @@ const form = ref({
   stock: '',
   purchaseTrustLevel: 0,
   cdkCodes: '',
-  isTestMode: false,   // 测试模式（仅 CDK 类型可用）
+  sharedCdkEnabled: false,
+  sharedCdkCode: '',
+  isTestMode: false,
   limitEnabled: false,
   maxPurchaseQuantity: ''
 })
+
 
 // 测试模式弹窗提示
 const showTestModeModal = ref(false)
@@ -735,11 +765,15 @@ const productTypes = [
   { id: 'cdk', name: '自动发卡', desc: '平台内支付+自动发放 CDK', icon: '🎫' }
 ]
 const purchaseTrustLevelOptions = [0, 1, 2, 3, 4]
+const isSharedCdkMode = computed(() => form.value.productType === 'cdk' && !!form.value.sharedCdkEnabled)
 
 // CDK 数量
 const cdkCount = computed(() => {
-  if (!form.value.cdkCodes.trim()) return 0
-  return form.value.cdkCodes.split('\n').filter(line => line.trim()).length
+  const source = isSharedCdkMode.value ? form.value.sharedCdkCode : form.value.cdkCodes
+  if (!String(source || '').trim()) return 0
+  return String(source)
+    .split('\n')
+    .filter(line => line.trim()).length
 })
 
 // 入站分类价格限制
@@ -780,7 +814,7 @@ const publishOverlayVisible = computed(() => productSubmittingBusy.value || buyS
 const publishOverlayTitle = computed(() => {
   if (publishMode.value === 'buy') return '正在发布求购'
   if (submitConfirming.value) return '正在确认发布结果'
-  if (submitting.value && form.value.productType === 'cdk' && form.value.cdkCodes.trim()) {
+  if (submitting.value && form.value.productType === 'cdk' && (form.value.cdkCodes.trim() || form.value.sharedCdkCode.trim())) {
     return '正在发布并上传 CDK'
   }
   return '正在提交发布信息'
@@ -798,8 +832,8 @@ const submitButtonText = computed(() => {
     return '正在确认发布结果...'
   }
   if (submitting.value) {
-    return form.value.productType === 'cdk' && form.value.cdkCodes.trim() 
-      ? '发布并上传CDK...' 
+    return form.value.productType === 'cdk' && (form.value.cdkCodes.trim() || form.value.sharedCdkCode.trim())
+      ? '发布并上传CDK...'
       : '提交中...'
   }
   return form.value.productType === 'cdk' ? '发布并上传CDK' : '发布物品'
@@ -933,18 +967,26 @@ const stockError = computed(() => {
 })
 
 const maxPurchaseQuantityError = computed(() => {
-  if (form.value.productType !== 'cdk' || !form.value.limitEnabled) return ''
+  if (form.value.productType !== 'cdk' || (!form.value.limitEnabled && !form.value.sharedCdkEnabled)) return ''
   const raw = String(form.value.maxPurchaseQuantity ?? '').trim()
   if (!raw) return '请输入单人单次购买上限'
   const value = Number(raw)
   if (!Number.isInteger(value) || value < 1) return '单人单次购买上限必须是大于 0 的整数'
+  if (form.value.sharedCdkEnabled && value !== 1) return '共享卡密模式下单次购买上限固定为 1'
   if (value > 1000) return '单人单次购买上限不能超过 1000'
   return ''
 })
 
 const cdkCodesError = computed(() => {
   if (form.value.productType !== 'cdk') return ''
-  return cdkCount.value > 0 ? '' : '请至少填写 1 个 CDK 卡密'
+  const source = form.value.sharedCdkEnabled ? form.value.sharedCdkCode : form.value.cdkCodes
+  const lines = String(source || '')
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+  if (lines.length === 0) return '请至少填写 1 个 CDK 卡密'
+  if (form.value.sharedCdkEnabled && lines.length !== 1) return '共享卡密模式下只能填写 1 个 CDK 卡密'
+  return ''
 })
 const buyTitleError = computed(() => {
   const value = buyForm.value.title?.trim() || ''
@@ -1044,6 +1086,8 @@ function buildProductFingerprint(productData) {
     purchaseTrustLevel: Number(productData.purchaseTrustLevel || 0),
     maxPurchaseQuantity: Number(productData.maxPurchaseQuantity || 0),
     cdkCodes: productData.cdkCodes || '',
+    sharedCdkEnabled: !!productData.sharedCdkEnabled,
+    sharedCdkCode: productData.sharedCdkCode || '',
     isTestMode: !!productData.isTestMode
   })
 }
@@ -1233,11 +1277,14 @@ async function submitForm() {
     if (form.value.productType === 'normal') {
       productData.stock = Number(form.value.stock)
     } else if (form.value.productType === 'cdk') {
-      productData.maxPurchaseQuantity = form.value.limitEnabled
-        ? Number(form.value.maxPurchaseQuantity)
-        : 0
-      // CDK 可以直接在创建时填入
-      if (form.value.cdkCodes.trim()) {
+      productData.maxPurchaseQuantity = form.value.sharedCdkEnabled
+        ? 1
+        : (form.value.limitEnabled ? Number(form.value.maxPurchaseQuantity) : 0)
+      productData.sharedCdkEnabled = form.value.sharedCdkEnabled
+      productData.sharedCdkCode = form.value.sharedCdkEnabled ? form.value.sharedCdkCode.trim() : ''
+      if (form.value.sharedCdkEnabled) {
+        productData.cdkCodes = form.value.sharedCdkCode.trim()
+      } else if (form.value.cdkCodes.trim()) {
         productData.cdkCodes = form.value.cdkCodes.trim()
       }
       // 测试模式
@@ -1326,7 +1373,25 @@ watch(
   () => form.value.productType,
   (type) => {
     if (type !== 'cdk') {
+      form.value.sharedCdkEnabled = false
+      form.value.sharedCdkCode = ''
       form.value.isTestMode = false
+      form.value.limitEnabled = false
+      form.value.maxPurchaseQuantity = ''
+    }
+  }
+)
+
+watch(
+  () => form.value.sharedCdkEnabled,
+  enabled => {
+    if (form.value.productType !== 'cdk') return
+    if (enabled) {
+      form.value.limitEnabled = true
+      form.value.maxPurchaseQuantity = 1
+    } else if (String(form.value.maxPurchaseQuantity) === '1') {
+      form.value.limitEnabled = false
+      form.value.maxPurchaseQuantity = ''
     }
   }
 )
