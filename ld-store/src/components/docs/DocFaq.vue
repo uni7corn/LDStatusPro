@@ -268,7 +268,7 @@
         <div class="faq-answer" v-show="openFaq === 'contact'">
           <p>可以通过以下方式联系：</p>
           <ul>
-            <li>LinuxDo 论坛私信 <code>@JackyLiii</code></li>
+            <li>LinuxDo 论坛私信 <a href="https://linux.do/u/JackyLiii" target="_blank" rel="noopener"><code>@JackyLiii</code></a></li>
             <li>在相关帖子下方留言</li>
           </ul>
         </div>
