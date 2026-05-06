@@ -135,8 +135,23 @@
                 class="seller-avatar"
               />
               <div class="seller-content">
-                <div class="seller-name">@{{ product.seller_username || '未知' }}</div>
-                <div class="seller-hint">点击查看商家主页</div>
+                <div class="seller-meta">
+                  <div class="seller-texts">
+                    <div v-if="sellerDisplayName" class="seller-display-name">{{ sellerDisplayName }}</div>
+                    <div :class="['seller-name', { 'seller-name--secondary': sellerDisplayName }]">
+                      @{{ sellerUsernameLabel }}
+                    </div>
+                  </div>
+                  <div class="seller-side">
+                    <span
+                      v-if="sellerTrustLevelLabel"
+                      :class="['seller-trust-badge', sellerTrustBadgeClass]"
+                    >
+                      {{ sellerTrustLevelLabel }}
+                    </span>
+                    <div class="seller-hint">点击查看商家主页</div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -934,6 +949,27 @@ const viewerTrustLevel = computed(() => {
   const parsed = Number.parseInt(raw, 10)
   return Number.isInteger(parsed) ? parsed : 0
 })
+const sellerUsernameLabel = computed(() => {
+  const username = String(product.value?.seller_username || '').trim()
+  return username || '未知'
+})
+const sellerDisplayName = computed(() => {
+  const nickname = String(product.value?.seller_name || '').trim()
+  if (!nickname || nickname === sellerUsernameLabel.value) return ''
+  return nickname
+})
+const sellerTrustLevelValue = computed(() => {
+  const parsed = Number.parseInt(product.value?.seller_trust_level ?? product.value?.sellerTrustLevel, 10)
+  return Number.isInteger(parsed) && parsed >= 0 ? Math.min(parsed, 4) : null
+})
+const sellerTrustLevelLabel = computed(() => (
+  sellerTrustLevelValue.value === null ? '' : `TL${sellerTrustLevelValue.value}`
+))
+const sellerTrustBadgeClass = computed(() => {
+  if (sellerTrustLevelValue.value === null) return ''
+  return `seller-trust-badge--${sellerTrustLevelValue.value}`
+})
+
 
 // 价格计算
 const price = computed(() => parseFloat(product.value?.price) || 0)
@@ -3123,8 +3159,8 @@ async function handleOpenStore() {
 .seller-card {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 16px;
+  gap: 12px;
+  padding: 14px 15px;
   background: var(--bg-secondary);
   border-radius: 14px;
   cursor: pointer;
@@ -3158,19 +3194,95 @@ async function handleOpenStore() {
   min-width: 0;
 }
 
-.seller-name {
+.seller-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.seller-texts {
+  min-width: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  padding: 1px 0;
+}
+
+.seller-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+  align-self: stretch;
+  flex-shrink: 0;
+  padding: 1px 0;
+}
+
+.seller-display-name {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-primary);
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.seller-hint {
+.seller-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.seller-name--secondary {
   font-size: 12px;
+  font-weight: 600;
   color: var(--text-tertiary);
-  margin-top: 0;
+}
+
+.seller-trust-badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-end;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+
+.seller-trust-badge--0 { background: linear-gradient(135deg, #eef1f5, #e4e8ed); color: #596172; }
+.seller-trust-badge--1 { background: linear-gradient(135deg, #edf4ff, #dbeafe); color: #1d4ed8; }
+.seller-trust-badge--2 { background: linear-gradient(135deg, #edf9f1, #dcfce7); color: #15803d; }
+.seller-trust-badge--3 { background: linear-gradient(135deg, #fbf4e6, #fef3c7); color: #a16207; }
+.seller-trust-badge--4 { background: linear-gradient(135deg, #fbecec, #fee2e2); color: #b91c1c; }
+
+:global(html.dark .detail-page .seller-trust-badge) {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+:global(html.dark .detail-page .seller-trust-badge--0) { background: linear-gradient(135deg, #2f3134, #3a3d42); color: #d5d9e1; }
+:global(html.dark .detail-page .seller-trust-badge--1) { background: linear-gradient(135deg, #243149, #1e3a5f); color: #bfdbfe; }
+:global(html.dark .detail-page .seller-trust-badge--2) { background: linear-gradient(135deg, #21352c, #1f4d34); color: #bbf7d0; }
+:global(html.dark .detail-page .seller-trust-badge--3) { background: linear-gradient(135deg, #3a3123, #57441c); color: #fde68a; }
+:global(html.dark .detail-page .seller-trust-badge--4) { background: linear-gradient(135deg, #3d2428, #5b1d22); color: #fecaca; }
+
+.seller-hint {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: auto;
+  line-height: 1.2;
+  text-align: right;
 }
 
 /* 妗岄潰绔喘涔版寜閽?*/
