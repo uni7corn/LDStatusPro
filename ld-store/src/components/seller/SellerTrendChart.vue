@@ -59,12 +59,18 @@ const chartAriaLabel = computed(() => `${chartCopy.value.title}，共 ${props.tr
 function getPalette() {
   const shell = chartElement.value?.closest('.seller-shell')
   const styles = shell ? getComputedStyle(shell) : getComputedStyle(document.documentElement)
+  const fallbackText = styles.color || 'currentColor'
+  const readColor = (domainToken, semanticToken, fallback = fallbackText) => (
+    styles.getPropertyValue(domainToken).trim()
+    || styles.getPropertyValue(semanticToken).trim()
+    || fallback
+  )
   return {
-    text: styles.getPropertyValue('--seller-muted').trim() || '#68737c',
-    line: styles.getPropertyValue('--seller-jade').trim() || '#718d7a',
-    border: styles.getPropertyValue('--seller-border').trim() || '#d8d2c7',
-    surface: styles.getPropertyValue('--seller-surface').trim() || '#fcfbf7',
-    navy: styles.getPropertyValue('--seller-navy').trim() || '#10243e'
+    text: readColor('--seller-muted', '--text-paper-secondary'),
+    line: readColor('--seller-jade', '--action-paper-accent'),
+    border: readColor('--seller-border', '--border-paper-default'),
+    surface: readColor('--seller-surface', '--surface-paper-card', 'transparent'),
+    navy: readColor('--seller-navy', '--action-paper-primary')
   }
 }
 
@@ -95,7 +101,14 @@ async function renderChart() {
       animationDuration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 220,
       color: [palette.line, palette.navy],
       aria: { enabled: true, decal: { show: true } },
-      tooltip: { trigger: 'axis', backgroundColor: palette.surface, borderColor: palette.border, textStyle: { color: palette.text } },
+      tooltip: {
+        trigger: 'axis',
+        confine: true,
+        appendToBody: false,
+        backgroundColor: palette.surface,
+        borderColor: palette.border,
+        textStyle: { color: palette.text }
+      },
       legend: { top: 0, right: 0, icon: 'roundRect', textStyle: { color: palette.text } },
       grid: { left: 16, right: 12, top: 42, bottom: 8, containLabel: true },
       xAxis: {
@@ -141,7 +154,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .seller-chart-wrap { min-height: 300px; }
-.seller-chart { width: 100%; height: 300px; }
+.seller-chart { width: 100%; height: 300px; overflow: hidden; }
 .seller-chart-empty { min-height: 280px; display: grid; place-items: center; align-content: center; gap: 8px; color: var(--seller-muted); text-align: center; }
 .seller-chart-empty strong { color: var(--seller-ink); font-size: 15px; }
 .seller-chart-empty span { max-width: 360px; font-size: 13px; }

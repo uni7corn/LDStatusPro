@@ -2,7 +2,7 @@
  * 主题切换 composable
  * 支持：跟随系统、浅色模式、深色模式
  */
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 // 主题模式
 export const THEME_MODES = {
@@ -20,6 +20,7 @@ const isDark = ref(false)
 
 // 系统主题查询
 let mediaQuery = null
+let transitionTimer = null
 
 /**
  * 获取系统主题偏好
@@ -34,7 +35,12 @@ function getSystemTheme() {
 function applyTheme(dark, withTransition = true) {
   // 添加过渡类实现平滑切换
   if (withTransition) {
+    if (transitionTimer) window.clearTimeout(transitionTimer)
     document.documentElement.classList.add('theme-transition')
+  } else {
+    if (transitionTimer) window.clearTimeout(transitionTimer)
+    transitionTimer = null
+    document.documentElement.classList.remove('theme-transition')
   }
   
   isDark.value = dark
@@ -46,8 +52,9 @@ function applyTheme(dark, withTransition = true) {
   
   // 过渡结束后移除过渡类
   if (withTransition) {
-    setTimeout(() => {
+    transitionTimer = window.setTimeout(() => {
       document.documentElement.classList.remove('theme-transition')
+      transitionTimer = null
     }, 300)
   }
 }
@@ -94,7 +101,7 @@ export function useTheme() {
   // 系统主题变化处理
   function handleSystemChange() {
     if (themeMode.value === THEME_MODES.SYSTEM) {
-      updateTheme()
+      updateTheme(false)
     }
   }
   
@@ -154,7 +161,7 @@ export function initTheme() {
   mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
   mediaQuery.addEventListener('change', () => {
     if (themeMode.value === THEME_MODES.SYSTEM) {
-      updateTheme(true)
+      updateTheme(false)
     }
   })
 }

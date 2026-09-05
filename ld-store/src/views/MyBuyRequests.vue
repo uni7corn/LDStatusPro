@@ -94,7 +94,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { api } from '@/utils/api'
+import { fetchMyBuyRequestsRequest, updateBuyRequestStatusRequest } from '@/services/shop/buyRequestService'
 import { useToast } from '@/composables/useToast'
 import { useDialog } from '@/composables/useDialog'
 import { formatPrice, formatRelativeTime } from '@/utils/format'
@@ -133,14 +133,12 @@ function statusText(status) {
 async function loadRequests() {
   loading.value = true
   try {
-    const params = new URLSearchParams({
-      page: '1',
-      pageSize: '100'
+    const result = await fetchMyBuyRequestsRequest({
+      page: 1,
+      pageSize: 100,
+      status: statusFilter.value,
+      search: searchKeyword.value
     })
-    if (statusFilter.value) params.set('status', statusFilter.value)
-    if (searchKeyword.value.trim()) params.set('search', searchKeyword.value.trim())
-
-    const result = await api.get(`/api/shop/buy-requests/my?${params.toString()}`)
     if (result.success) {
       requests.value = result.data?.requests || []
     } else {
@@ -165,7 +163,7 @@ async function updateStatus(item, status) {
   if (!confirmed) return
 
   try {
-    const result = await api.post(`/api/shop/buy-requests/${item.id}/status`, { status })
+    const result = await updateBuyRequestStatusRequest(item.id, status)
     if (!result.success) {
       toast.error(result.error || '状态更新失败')
       return
@@ -260,7 +258,7 @@ onMounted(loadRequests)
   border: none;
   border-radius: 10px;
   background: var(--color-success);
-  color: #fff;
+  color: var(--palette-hex-ffffff);
   font-weight: 600;
 }
 
@@ -316,8 +314,8 @@ onMounted(loadRequests)
 }
 
 .status-pending_review {
-  background: #fef3c7;
-  color: #b45309;
+  background: var(--palette-hex-fef3c7);
+  color: var(--palette-hex-b45309);
 }
 
 .status-open {
@@ -331,8 +329,8 @@ onMounted(loadRequests)
 }
 
 .status-matched {
-  background: #dbeafe;
-  color: #2563eb;
+  background: var(--palette-hex-dbeafe);
+  color: var(--palette-hex-2563eb);
 }
 
 .status-closed,
@@ -383,13 +381,13 @@ onMounted(loadRequests)
 .action-btn.primary {
   background: var(--color-success);
   border-color: var(--color-success);
-  color: #fff;
+  color: var(--palette-hex-ffffff);
 }
 
 .action-btn.danger {
-  background: #fee2e2;
-  border-color: #f5c6d0;
-  color: #dc2626;
+  background: var(--palette-hex-fee2e2);
+  border-color: var(--palette-hex-f5c6d0);
+  color: var(--palette-hex-dc2626);
 }
 
 @media (max-width: 720px) {
@@ -404,15 +402,15 @@ onMounted(loadRequests)
 
 /* Dark mode overrides */
 :global(html.dark) .status-pending_review {
-  background: #363024;
+  background: var(--palette-hex-363024);
 }
 
 :global(html.dark) .status-matched {
-  background: #2a3040;
+  background: var(--palette-hex-2a3040);
 }
 
 :global(html.dark) .action-btn.danger {
-  background: #3a2225;
-  border-color: #4a2c30;
+  background: var(--palette-hex-3a2225);
+  border-color: var(--palette-hex-4a2c30);
 }
 </style>

@@ -78,25 +78,25 @@
                   :aria-label="`查看 ${item.name} 的详情`"
                 >
                   <img
-                    v-if="item.image_url"
-                    :src="item.image_url"
+                    v-if="item.imageUrl"
+                    :src="item.imageUrl"
                     :alt="item.name"
                     class="cover-image"
                     loading="lazy"
                     @error="handleImageError"
                   />
-                  <span v-else class="cover-placeholder">{{ item.category_icon || '□' }}</span>
+                  <span v-else class="cover-placeholder">{{ item.categoryIcon || '□' }}</span>
                 </router-link>
                 <div v-else class="card-cover" :style="getCoverStyle(item)" aria-hidden="true">
                   <img
-                    v-if="item.image_url"
-                    :src="item.image_url"
+                    v-if="item.imageUrl"
+                    :src="item.imageUrl"
                     alt=""
                     class="cover-image is-muted"
                     loading="lazy"
                     @error="handleImageError"
                   />
-                  <span v-else class="cover-placeholder">{{ item.category_icon || '□' }}</span>
+                  <span v-else class="cover-placeholder">{{ item.categoryIcon || '□' }}</span>
                 </div>
 
                 <div class="card-content">
@@ -106,7 +106,7 @@
                   <h2 v-else class="card-title">{{ item.name }}</h2>
                   <p class="card-desc">{{ stripMarkdown(item.description) || '暂无描述' }}</p>
                   <div class="card-meta">
-                    <span class="meta-tag">{{ item.category_icon || '□' }} {{ item.category_name || '其他' }}</span>
+                    <span class="meta-tag">{{ item.categoryIcon || '□' }} {{ item.categoryName || '其他' }}</span>
                     <span :class="['meta-status', `status-${normalizeProductStatus(item.status) || 'unknown'}`]">
                       {{ getStatusText(item.status) }}
                     </span>
@@ -171,7 +171,7 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { EyeOff, Heart, RotateCcw, Search } from '@lucide/vue'
-import { useShopStore } from '@/stores/shop'
+import { useProductStore } from '@/stores/product'
 import { useToast } from '@/composables/useToast'
 import { useDialog } from '@/composables/useDialog'
 import { formatPrice, formatRelativeTime } from '@/utils/format'
@@ -180,7 +180,7 @@ import EmptyState from '@/components/common/EmptyState.vue'
 
 const route = useRoute()
 const router = useRouter()
-const shopStore = useShopStore()
+const productStore = useProductStore()
 const toast = useToast()
 const dialog = useDialog()
 
@@ -223,15 +223,15 @@ const emptyContent = computed(() => {
 })
 
 const coverColors = [
-  'linear-gradient(135deg, #fef3c7, #fde68a)',
-  'linear-gradient(135deg, #dbeafe, #bfdbfe)',
-  'linear-gradient(135deg, #dcfce7, #bbf7d0)',
-  'linear-gradient(135deg, #fce7f3, #fbcfe8)',
-  'linear-gradient(135deg, #ede9fe, #ddd6fe)'
+  'linear-gradient(135deg, var(--palette-hex-fef3c7), var(--palette-hex-fde68a))',
+  'linear-gradient(135deg, var(--palette-hex-dbeafe), var(--palette-hex-bfdbfe))',
+  'linear-gradient(135deg, var(--palette-hex-dcfce7), var(--palette-hex-bbf7d0))',
+  'linear-gradient(135deg, var(--palette-hex-fce7f3), var(--palette-hex-fbcfe8))',
+  'linear-gradient(135deg, var(--palette-hex-ede9fe), var(--palette-hex-ddd6fe))'
 ]
 
 function getCoverStyle(item) {
-  if (item.image_url) return {}
+  if (item.imageUrl) return {}
   const index = Math.abs(Number(item.id) || 0) % coverColors.length
   return { background: coverColors[index] }
 }
@@ -273,17 +273,17 @@ function getStatusText(status) {
 }
 
 function getSellerText(item) {
-  const username = String(item?.seller_username || item?.sellerUsername || '').trim()
+  const username = String(item?.sellerUsername || '').trim()
   return username ? `@${username}` : '@未知'
 }
 
 function getStockText(item) {
   const stock = Number.parseInt(item?.stock, 10)
-  const available = Number.parseInt(item?.availableStock ?? item?.available_stock ?? item?.cdkStats?.available, 10)
-  if (stock === -1 || available === -1 || item?.sharedCdkEnabled || Number(item?.shared_cdk_enabled || 0) === 1) {
+  const available = Number.parseInt(item?.availableStock ?? item?.cdkStats?.available, 10)
+  if (stock === -1 || available === -1 || item?.sharedCdkEnabled) {
     return '不限量'
   }
-  if (String(item?.product_type || item?.productType || '').toLowerCase() === 'cdk' && Number.isFinite(available)) {
+  if (String(item?.productType || '').toLowerCase() === 'cdk' && Number.isFinite(available)) {
     return String(Math.max(available, 0))
   }
   return Number.isFinite(stock) ? String(Math.max(stock, 0)) : '0'
@@ -291,8 +291,8 @@ function getStockText(item) {
 
 function getPreferenceTime(item) {
   return activeTab.value === 'favorites'
-    ? (item.favorited_at || item.updated_at || item.created_at)
-    : (item.blocked_at || item.updated_at || item.created_at)
+    ? (item.favoritedAt || item.updatedAt || item.createdAt)
+    : (item.blockedAt || item.updatedAt || item.createdAt)
 }
 
 function isItemBusy(_itemId) {
@@ -307,15 +307,16 @@ async function loadCollection(tabId, { append = false, page: requestedPage } = {
 
   try {
     const loader = tabId === 'favorites'
-      ? shopStore.fetchMyFavorites
-      : shopStore.fetchBlockedProducts
+      ? productStore.fetchFavorites
+      : productStore.fetchBlocked
     const result = await loader({
       page: targetPage,
       pageSize,
       search: searchTerms[tabId]
     })
-    const items = Array.isArray(result?.products) ? result.products : []
-    const total = Number(result?.pagination?.total || 0)
+    if (!result.success) throw new Error(result.error || '列表加载失败')
+    const items = Array.isArray(result.data?.products) ? result.data.products : []
+    const total = Number(result.data?.pagination?.total || 0)
 
     state.items = append ? [...state.items, ...items] : items
     state.page = targetPage
@@ -387,7 +388,7 @@ async function removeFavorite(item) {
 
   currentAction.value = `favorite:${item.id}`
   try {
-    const result = await shopStore.removeFavorite(item.id)
+    const result = await productStore.removeFavorite(item.id)
     if (!result?.success) throw new Error(getErrorMessage(result, '移除收藏失败'))
     await removeCurrentItem('favorites', item.id)
     toast.success(result?.message || result?.data?.message || '已取消收藏')
@@ -408,7 +409,7 @@ async function blockFavorite(item) {
 
   currentAction.value = `block:${item.id}`
   try {
-    const result = await shopStore.blockProduct(item.id)
+    const result = await productStore.blockProduct(item.id)
     if (!result?.success) throw new Error(getErrorMessage(result, '设置不感兴趣失败'))
     await removeCurrentItem('favorites', item.id)
     lists.blocked.loaded = false
@@ -424,7 +425,7 @@ async function restoreProduct(item) {
   if (!item?.id || isItemBusy(item.id)) return
   currentAction.value = `restore:${item.id}`
   try {
-    const result = await shopStore.unblockProduct(item.id)
+    const result = await productStore.unblockProduct(item.id)
     if (!result?.success) throw new Error(getErrorMessage(result, '恢复展示失败'))
     await removeCurrentItem('blocked', item.id)
     toast.success(result?.message || result?.data?.message || '已恢复展示')
@@ -461,8 +462,8 @@ onMounted(async () => {
 .collection-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 7px; border-bottom: 1px solid var(--border-light); background: var(--bg-secondary); }
 .collection-tab { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: var(--text-tertiary); font: inherit; font-size: 14px; font-weight: 650; cursor: pointer; transition: background .2s, border-color .2s, color .2s, transform .2s; }
 .collection-tab:hover { color: var(--text-primary); }
-.collection-workspace[data-mode='favorites'] .collection-tab.is-active { border-color: rgba(217, 119, 6, .24); background: var(--bg-card); color: var(--color-warning); }
-.collection-workspace[data-mode='blocked'] .collection-tab.is-active { border-color: rgba(220, 38, 38, .22); background: var(--bg-card); color: var(--color-danger); }
+.collection-workspace[data-mode='favorites'] .collection-tab.is-active { border-color: var(--palette-rgba-217-119-6-p24); background: var(--bg-card); color: var(--color-warning); }
+.collection-workspace[data-mode='blocked'] .collection-tab.is-active { border-color: var(--palette-rgba-220-38-38-p22); background: var(--bg-card); color: var(--color-danger); }
 .collection-tab:focus-visible, .browse-link:focus-visible, .action-btn:focus-visible, .load-more-btn:focus-visible, .search-button:focus-visible, .search-field:focus-within { outline: 3px solid var(--color-primary-light); outline-offset: 2px; }
 .tab-count { min-width: 24px; padding: 2px 7px; border-radius: 999px; background: var(--bg-tertiary); color: currentColor; font-size: 11px; text-align: center; }
 .collection-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 14px; border-bottom: 1px solid var(--border-light); }
@@ -488,12 +489,12 @@ onMounted(async () => {
 .meta-price { color: var(--color-warning); font-size: 13px; font-weight: 700; }
 .meta-info, .meta-status { padding: 2px 8px; border-radius: 999px; background: var(--bg-tertiary); color: var(--text-secondary); font-size: 11px; }
 .meta-status.status-ai_approved, .meta-status.status-manual_approved { background: var(--color-success-bg); color: var(--color-success); }
-.meta-status.status-offline_manual, .meta-status.status-ai_rejected, .meta-status.status-manual_rejected { background: rgba(220, 38, 38, .1); color: var(--color-danger); }
+.meta-status.status-offline_manual, .meta-status.status-ai_rejected, .meta-status.status-manual_rejected { background: var(--palette-rgba-220-38-38-p1); color: var(--color-danger); }
 .meta-time { margin-left: auto; }
 .card-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border-light); background: var(--bg-secondary); }
 .action-btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 14px; border: 1px solid var(--border-color); border-radius: 11px; background: var(--bg-card); color: var(--text-secondary); font-size: 13px; text-decoration: none; cursor: pointer; }
-.action-btn.quiet-danger { border-color: rgba(220, 38, 38, .22); color: var(--color-danger); }
-.action-btn.restore { border-color: rgba(34, 197, 94, .28); color: var(--color-success); }
+.action-btn.quiet-danger { border-color: var(--palette-rgba-220-38-38-p22); color: var(--color-danger); }
+.action-btn.restore { border-color: var(--palette-rgba-34-197-94-p28); color: var(--color-success); }
 .action-btn:disabled, .search-button:disabled, .load-more-btn:disabled { opacity: .56; cursor: not-allowed; }
 .load-more { padding: 4px 14px 18px; text-align: center; }
 .load-more-btn { min-height: 44px; padding: 0 22px; border: 1px solid var(--border-color); border-radius: 999px; background: var(--bg-card); color: var(--text-secondary); cursor: pointer; }

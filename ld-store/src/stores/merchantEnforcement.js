@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { api } from '@/utils/api'
+import { fetchMerchantEnforcementRequest } from '@/services/shop/merchantService'
 
 const ACTIVE_STATE = Object.freeze({
   status: 'active',
@@ -11,12 +11,6 @@ const ACTIVE_STATE = Object.freeze({
   changedByName: null,
   changedAt: null
 })
-
-function resolvePayload(result) {
-  if (result?.data?.enforcement) return result.data
-  if (result?.enforcement) return result
-  return null
-}
 
 export const useMerchantEnforcementStore = defineStore('merchantEnforcement', () => {
   const enforcement = ref({ ...ACTIVE_STATE })
@@ -36,8 +30,8 @@ export const useMerchantEnforcementStore = defineStore('merchantEnforcement', ()
     loading.value = true
     error.value = ''
     pendingRequest = (async () => {
-      const result = await api.get('/api/shop/merchant/enforcement')
-      const payload = resolvePayload(result)
+      const result = await fetchMerchantEnforcementRequest()
+      const payload = result?.success ? result.data : null
       if (result?.success === false || !payload?.enforcement) {
         error.value = result?.error || '卖家权限状态加载失败'
         return false

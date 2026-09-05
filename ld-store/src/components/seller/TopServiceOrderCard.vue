@@ -75,7 +75,7 @@ dd strong { font-size:22px; font-weight:650; }
 .order-actions { display:grid; gap:9px; }
 button,a.primary { display:flex; align-items:center; justify-content:center; gap:7px; min-height:44px; padding:10px 12px; border:1px solid var(--seller-border); border-radius:9px; font-size:13px; font-weight:600; background:var(--seller-surface); color:var(--seller-ink); }
 button:disabled { opacity:.55; cursor:not-allowed; }
-.order-actions .primary { background:var(--seller-navy); color:#fff; border-color:var(--seller-navy); text-decoration:none; }
+.order-actions .primary { background:var(--seller-navy); color:var(--palette-hex-ffffff); border-color:var(--seller-navy); text-decoration:none; }
 button.cancel { border-color:var(--seller-danger); color:var(--seller-danger); background:color-mix(in srgb,var(--seller-danger) 8%,var(--seller-surface-strong)); font-weight:650; }
 button.cancel:hover:not(:disabled) { background:color-mix(in srgb,var(--seller-danger) 14%,var(--seller-surface-strong)); }
 .product-link { display:flex; justify-content:center; align-items:center; gap:5px; min-height:44px; margin-top:12px; color:var(--seller-jade-strong); font-size:13px; }

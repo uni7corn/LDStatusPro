@@ -153,7 +153,7 @@ onBeforeUnmount(removeMenuListeners)
 <style scoped>
 .product-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
 .product-row-actions button, .row-action-menu-panel button { min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 6px; border: 1px solid var(--seller-border); border-radius: 9px; color: var(--seller-muted); background: var(--seller-surface); font-size: 12px; font-weight: 650; white-space: nowrap; cursor: pointer; }
-.row-action-primary { color: #fff !important; border-color: var(--seller-navy) !important; background: var(--seller-navy) !important; }
+.row-action-primary { color: var(--palette-hex-ffffff) !important; border-color: var(--seller-navy) !important; background: var(--seller-navy) !important; }
 .row-action-primary, .row-action-secondary { min-width: 48px; }
 .row-action-menu { position: relative; }
 .row-action-menu-trigger { width: 36px; padding: 0 !important; }

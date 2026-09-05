@@ -39,8 +39,8 @@
           <div class="hero-top">
             <div class="hero-main">
               <p class="eyebrow">Report Detail</p>
-              <h1 class="page-title">{{ report.current_product_name || report.product_name || '商品已删除' }}</h1>
-              <p class="page-subtitle">举报 #{{ report.id }} · {{ categoryText(report.report_category, report.report_category_label) }}</p>
+              <h1 class="page-title">{{ report.currentProductName || report.productName || '商品已删除' }}</h1>
+              <p class="page-subtitle">举报 #{{ report.id }} · {{ categoryText(report.reportCategory, report.reportCategoryLabel) }}</p>
             </div>
             <span :class="['status-badge', report.status]">{{ statusText(report.status) }}</span>
           </div>
@@ -53,17 +53,17 @@
             </article>
             <article class="summary-card">
               <span class="summary-label">提交时间</span>
-              <strong class="summary-value small">{{ formatDate(report.created_at) }}</strong>
+              <strong class="summary-value small">{{ formatDate(report.createdAt) }}</strong>
               <span class="summary-meta">首次提交举报的时间</span>
             </article>
             <article class="summary-card">
               <span class="summary-label">最近更新</span>
-              <strong class="summary-value small">{{ formatDate(report.updated_at) }}</strong>
+              <strong class="summary-value small">{{ formatDate(report.updatedAt) }}</strong>
               <span class="summary-meta">平台最近一次更新记录</span>
             </article>
             <article class="summary-card">
               <span class="summary-label">处理时间</span>
-              <strong class="summary-value small">{{ formatDate(report.handled_at) }}</strong>
+              <strong class="summary-value small">{{ formatDate(report.handledAt) }}</strong>
               <span class="summary-meta">若未处理则显示为 -</span>
             </article>
           </div>
@@ -76,7 +76,7 @@
               <p class="section-hint">这是你提交给平台的原始说明。</p>
             </div>
           </div>
-          <div class="content-block reason-block">{{ report.report_reason || '未填写举报原因' }}</div>
+          <div class="content-block reason-block">{{ report.reportReason || '未填写举报原因' }}</div>
         </section>
 
         <section :class="['content-card', 'note-card', noteToneClass]">
@@ -86,7 +86,7 @@
               <p class="section-hint">平台对该举报的处理结果或补充说明。</p>
             </div>
           </div>
-          <div v-if="report.admin_note" class="content-block">{{ report.admin_note }}</div>
+          <div v-if="report.adminNote" class="content-block">{{ report.adminNote }}</div>
           <div v-else class="soft-empty">暂未填写处理备注，处理进展会在这里更新。</div>
         </section>
 
@@ -101,11 +101,11 @@
           <div v-if="logs.length === 0" class="soft-empty">暂无处理历史，平台后续跟进会记录在这里。</div>
 
           <div v-else class="timeline">
-            <article v-for="(item, index) in logs" :key="`${item.created_at}-${index}`" class="timeline-item">
+            <article v-for="(item, index) in logs" :key="`${item.createdAt}-${index}`" class="timeline-item">
               <div class="timeline-dot" />
               <div class="timeline-body">
-                <div class="timeline-time">{{ formatDate(item.created_at) }}</div>
-                <div class="timeline-note">{{ item.note || `${statusText(item.from_status)} → ${statusText(item.to_status)}` }}</div>
+                <div class="timeline-time">{{ formatDate(item.createdAt) }}</div>
+                <div class="timeline-note">{{ item.note || `${statusText(item.fromStatus)} → ${statusText(item.toStatus)}` }}</div>
               </div>
             </article>
           </div>
@@ -118,12 +118,12 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useShopStore } from '@/stores/shop'
+import { useProductStore } from '@/stores/product'
 import EmptyState from '@/components/common/EmptyState.vue'
 
 const route = useRoute()
 const router = useRouter()
-const shopStore = useShopStore()
+const productStore = useProductStore()
 
 const loading = ref(false)
 const report = ref(null)
@@ -173,7 +173,7 @@ function formatDate(value) {
 async function loadDetail() {
   loading.value = true
   try {
-    const result = await shopStore.fetchMyReportDetail(route.params.id)
+    const result = await productStore.fetchMyReportDetail(route.params.id)
     report.value = result?.data?.report || null
     logs.value = result?.data?.logs || []
   } finally {
@@ -215,7 +215,7 @@ onMounted(() => {
   font-weight: 500;
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .back-btn:hover {
@@ -224,17 +224,17 @@ onMounted(() => {
 }
 
 .back-btn:focus-visible {
-  outline: 2px solid rgba(98, 125, 102, 0.42);
+  outline: 2px solid var(--palette-rgba-98-125-102-0p42);
   outline-offset: 2px;
 }
 
 .hero-card,
 .content-card,
 .empty-wrap {
-  border: 1px solid rgba(176, 154, 124, 0.18);
+  border: 1px solid var(--palette-rgba-176-154-124-0p18);
   border-radius: 24px;
-  background: rgba(255, 252, 247, 0.94);
-  box-shadow: 0 18px 40px rgba(113, 86, 54, 0.08);
+  background: var(--palette-rgba-255-252-247-0p94);
+  box-shadow: 0 18px 40px var(--palette-rgba-113-86-54-0p08);
 }
 
 .hero-card {
@@ -250,7 +250,7 @@ onMounted(() => {
   width: 180px;
   height: 180px;
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(146, 170, 150, 0.22), transparent 66%);
+  background: radial-gradient(circle, var(--palette-rgba-146-170-150-0p22), transparent 66%);
 }
 
 .hero-top {
@@ -271,7 +271,7 @@ onMounted(() => {
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #8d7760;
+  color: var(--palette-hex-8d7760);
 }
 
 .page-title {
@@ -279,13 +279,13 @@ onMounted(() => {
   font-size: 30px;
   line-height: 1.2;
   font-weight: 800;
-  color: #2f2418;
+  color: var(--palette-hex-2f2418);
 }
 
 .page-subtitle {
   margin: 10px 0 0;
   font-size: 14px;
-  color: #7b644f;
+  color: var(--palette-hex-7b644f);
 }
 
 .status-badge {
@@ -301,23 +301,23 @@ onMounted(() => {
 }
 
 .status-badge.pending {
-  background: rgba(255, 241, 204, 0.95);
-  color: #9a6312;
+  background: var(--palette-rgba-255-241-204-0p95);
+  color: var(--palette-hex-9a6312);
 }
 
 .status-badge.processing {
-  background: rgba(220, 235, 255, 0.96);
-  color: #2b66b1;
+  background: var(--palette-rgba-220-235-255-0p96);
+  color: var(--palette-hex-2b66b1);
 }
 
 .status-badge.resolved {
-  background: rgba(225, 243, 228, 0.96);
-  color: #2d7a43;
+  background: var(--palette-rgba-225-243-228-0p96);
+  color: var(--palette-hex-2d7a43);
 }
 
 .status-badge.rejected {
-  background: rgba(250, 226, 226, 0.96);
-  color: #b14c4c;
+  background: var(--palette-rgba-250-226-226-0p96);
+  color: var(--palette-hex-b14c4c);
 }
 
 .summary-grid {
@@ -331,14 +331,14 @@ onMounted(() => {
 .summary-card {
   padding: 16px;
   border-radius: 18px;
-  border: 1px solid rgba(176, 154, 124, 0.16);
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--palette-rgba-176-154-124-0p16);
+  background: var(--palette-rgba-255-255-255-0p72);
 }
 
 .summary-label {
   display: block;
   font-size: 12px;
-  color: #8a735e;
+  color: var(--palette-hex-8a735e);
 }
 
 .summary-value {
@@ -347,7 +347,7 @@ onMounted(() => {
   font-size: 20px;
   font-weight: 800;
   line-height: 1.4;
-  color: #2f2418;
+  color: var(--palette-hex-2f2418);
 }
 
 .summary-value.small {
@@ -360,7 +360,7 @@ onMounted(() => {
   margin-top: 8px;
   font-size: 12px;
   line-height: 1.6;
-  color: #8a735e;
+  color: var(--palette-hex-8a735e);
 }
 
 .content-card {
@@ -380,20 +380,20 @@ onMounted(() => {
   margin: 0;
   font-size: 18px;
   font-weight: 800;
-  color: #2f2418;
+  color: var(--palette-hex-2f2418);
 }
 
 .section-hint {
   margin: 6px 0 0;
   font-size: 13px;
-  color: #8a735e;
+  color: var(--palette-hex-8a735e);
 }
 
 .content-block {
   padding: 16px 18px;
   border-radius: 18px;
-  background: rgba(250, 245, 237, 0.9);
-  color: #4f3f30;
+  background: var(--palette-rgba-250-245-237-0p9);
+  color: var(--palette-hex-4f3f30);
   font-size: 14px;
   line-height: 1.9;
   white-space: pre-wrap;
@@ -405,19 +405,19 @@ onMounted(() => {
 }
 
 .note-card.tone-resolved .content-block {
-  background: rgba(232, 243, 234, 0.92);
+  background: var(--palette-rgba-232-243-234-0p92);
 }
 
 .note-card.tone-rejected .content-block {
-  background: rgba(249, 234, 234, 0.92);
+  background: var(--palette-rgba-249-234-234-0p92);
 }
 
 .soft-empty {
   padding: 16px 18px;
   border-radius: 18px;
-  border: 1px dashed rgba(176, 154, 124, 0.22);
-  background: rgba(252, 248, 241, 0.72);
-  color: #8a735e;
+  border: 1px dashed var(--palette-rgba-176-154-124-0p22);
+  background: var(--palette-rgba-252-248-241-0p72);
+  color: var(--palette-hex-8a735e);
   font-size: 14px;
   line-height: 1.8;
 }
@@ -436,7 +436,7 @@ onMounted(() => {
   bottom: 8px;
   left: 8px;
   width: 1px;
-  background: rgba(176, 154, 124, 0.2);
+  background: var(--palette-rgba-176-154-124-0p2);
 }
 
 .timeline-item {
@@ -452,29 +452,29 @@ onMounted(() => {
   width: 16px;
   height: 16px;
   margin-top: 5px;
-  border: 3px solid rgba(116, 143, 120, 0.4);
+  border: 3px solid var(--palette-rgba-116-143-120-0p4);
   border-radius: 999px;
-  background: #fffdf8;
+  background: var(--palette-hex-fffdf8);
 }
 
 .timeline-body {
   flex: 1;
   padding: 14px 16px;
   border-radius: 18px;
-  background: rgba(250, 245, 237, 0.9);
+  background: var(--palette-rgba-250-245-237-0p9);
 }
 
 .timeline-time {
   font-size: 12px;
   font-weight: 700;
-  color: #8a735e;
+  color: var(--palette-hex-8a735e);
 }
 
 .timeline-note {
   margin-top: 8px;
   font-size: 14px;
   line-height: 1.8;
-  color: #4f3f30;
+  color: var(--palette-hex-4f3f30);
 }
 
 .empty-wrap {
@@ -495,7 +495,7 @@ onMounted(() => {
   overflow: hidden;
   display: inline-block;
   border-radius: 999px;
-  background: rgba(219, 210, 197, 0.5);
+  background: var(--palette-rgba-219-210-197-0p5);
 }
 
 .skeleton::after {
@@ -503,7 +503,7 @@ onMounted(() => {
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  background: linear-gradient(90deg, transparent, var(--palette-rgba-255-255-255-0p6), transparent);
   animation: shimmer 1.4s infinite;
 }
 
@@ -564,8 +564,8 @@ onMounted(() => {
 
 :global(.dark) .my-report-detail-page {
   background:
-    radial-gradient(circle at top right, rgba(96, 122, 104, 0.2), transparent 28%),
-    linear-gradient(180deg, #181410, #221c16);
+    radial-gradient(circle at top right, var(--palette-rgba-96-122-104-0p2), transparent 28%),
+    linear-gradient(180deg, var(--palette-hex-181410), var(--palette-hex-221c16));
 }
 
 :global(.dark) .back-btn,
@@ -573,15 +573,15 @@ onMounted(() => {
 :global(.dark) .hero-card,
 :global(.dark) .content-card,
 :global(.dark) .empty-wrap {
-  border-color: rgba(255, 232, 205, 0.08);
-  background: rgba(44, 35, 26, 0.92);
-  color: #eadbc9;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
+  border-color: var(--palette-rgba-255-232-205-0p08);
+  background: var(--palette-rgba-44-35-26-0p92);
+  color: var(--palette-hex-eadbc9);
+  box-shadow: 0 18px 40px var(--palette-rgba-0-0-0-0p24);
 }
 
 :global(.dark) .back-btn:focus-visible,
 :global(.dark) .back-home-btn:focus-visible {
-  outline-color: rgba(186, 214, 190, 0.46);
+  outline-color: var(--palette-rgba-186-214-190-0p46);
 }
 
 :global(.dark) .eyebrow,
@@ -591,67 +591,67 @@ onMounted(() => {
 :global(.dark) .section-hint,
 :global(.dark) .soft-empty,
 :global(.dark) .timeline-time {
-  color: #c8b39a;
+  color: var(--palette-hex-c8b39a);
 }
 
 :global(.dark) .page-title,
 :global(.dark) .summary-value,
 :global(.dark) .section-title {
-  color: #f8ead7;
+  color: var(--palette-hex-f8ead7);
 }
 
 :global(.dark) .summary-card,
 :global(.dark) .content-block,
 :global(.dark) .timeline-body {
-  border-color: rgba(255, 232, 205, 0.08);
-  background: rgba(73, 58, 44, 0.72);
-  color: #e4cfb7;
+  border-color: var(--palette-rgba-255-232-205-0p08);
+  background: var(--palette-rgba-73-58-44-0p72);
+  color: var(--palette-hex-e4cfb7);
 }
 
 :global(.dark) .soft-empty {
-  border-color: rgba(255, 232, 205, 0.08);
-  background: rgba(73, 58, 44, 0.52);
+  border-color: var(--palette-rgba-255-232-205-0p08);
+  background: var(--palette-rgba-73-58-44-0p52);
 }
 
 :global(.dark) .note-card.tone-resolved .content-block {
-  background: rgba(53, 88, 63, 0.42);
+  background: var(--palette-rgba-53-88-63-0p42);
 }
 
 :global(.dark) .note-card.tone-rejected .content-block {
-  background: rgba(101, 55, 55, 0.42);
+  background: var(--palette-rgba-101-55-55-0p42);
 }
 
 :global(.dark) .timeline::before {
-  background: rgba(255, 232, 205, 0.08);
+  background: var(--palette-rgba-255-232-205-0p08);
 }
 
 :global(.dark) .timeline-dot {
-  border-color: rgba(152, 183, 156, 0.42);
-  background: #3c3024;
+  border-color: var(--palette-rgba-152-183-156-0p42);
+  background: var(--palette-hex-3c3024);
 }
 
 :global(.dark) .status-badge.pending {
-  background: rgba(133, 98, 40, 0.35);
-  color: #ffd78a;
+  background: var(--palette-rgba-133-98-40-0p35);
+  color: var(--palette-hex-ffd78a);
 }
 
 :global(.dark) .status-badge.processing {
-  background: rgba(57, 86, 132, 0.42);
-  color: #b8d7ff;
+  background: var(--palette-rgba-57-86-132-0p42);
+  color: var(--palette-hex-b8d7ff);
 }
 
 :global(.dark) .status-badge.resolved {
-  background: rgba(47, 98, 62, 0.42);
-  color: #b8ecc5;
+  background: var(--palette-rgba-47-98-62-0p42);
+  color: var(--palette-hex-b8ecc5);
 }
 
 :global(.dark) .status-badge.rejected {
-  background: rgba(117, 58, 58, 0.42);
-  color: #ffc0c0;
+  background: var(--palette-rgba-117-58-58-0p42);
+  color: var(--palette-hex-ffc0c0);
 }
 
 :global(.dark) .skeleton {
-  background: rgba(117, 98, 78, 0.44);
+  background: var(--palette-rgba-117-98-78-0p44);
 }
 
 @media (max-width: 760px) {

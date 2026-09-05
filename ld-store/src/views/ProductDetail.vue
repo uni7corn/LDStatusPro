@@ -29,67 +29,31 @@
                 <span>友情小店</span>
               </span>
             </div>
-            <button
-              class="nav-favorite-btn"
-              :class="{ active: isFavorited }"
-              :disabled="favoriteSubmitting"
-              @click="toggleFavorite"
-            >
-              <Heart :size="16" :fill="isFavorited ? 'currentColor' : 'none'" aria-hidden="true" />
-              <span>{{ isFavorited ? '已收藏' : '收藏' }}</span>
-            </button>
-            <button
-              class="nav-block-btn"
-              :disabled="favoriteSubmitting"
-              title="以后不再向我展示这件商品"
-              aria-label="将这件商品标记为不感兴趣"
-              @click="markNotInterested"
-            >
-              <EyeOff :size="16" aria-hidden="true" />
-              <span>不感兴趣</span>
-            </button>
-            <button
-              class="nav-report-btn"
-              :disabled="reportSubmitting"
-              @click="openReportModal"
-            >
-              <Flag :size="16" aria-hidden="true" />
-              <span>举报</span>
-            </button>
+            <ProductInteractionPanel
+              :favorited="isFavorited"
+              :busy="favoriteSubmitting"
+              :reporting="reportSubmitting"
+              @favorite="toggleFavorite"
+              @block="markNotInterested"
+              @report="openReportModal"
+            />
           </div>
         </div>
         
         <!-- 主内容区 -->
         <div :class="['detail-main', { 'detail-main--landscape': isLandscapeDetailLayout }]">
           <!-- 左侧：图片 -->
-          <div class="detail-media">
-            <div class="media-wrapper" :style="coverStyle" @click="openImagePreview">
-              <img
-                v-if="product.image_url"
-                :src="product.image_url"
-                :alt="product.name"
-                class="media-image"
-                @load="handleCoverImageLoad"
-                @error="handleImageError"
-              />
-              <component
-                :is="categoryIconComponent"
-                v-else
-                class="media-placeholder"
-                :size="80"
-                :stroke-width="1.5"
-                aria-hidden="true"
-              />
-              <!-- 折扣标签 -->
-              <span v-if="hasDiscount" class="discount-tag">
-                -{{ discountPercent }}%
-              </span>
-              <span v-if="product.image_url" class="media-zoom-hint" aria-hidden="true">
-                <Search :size="14" />
-                点击查看大图
-              </span>
-            </div>
-          </div>
+          <ProductMedia
+            :product="product"
+            :category-icon="categoryIconComponent"
+            :cover-style="coverStyle"
+            :has-discount="hasDiscount"
+            :discount-percent="discountPercent"
+            :landscape="isLandscapeDetailLayout"
+            @open="openImagePreview"
+            @load="handleCoverImageLoad"
+            @error="handleImageError"
+          />
           
           <!-- 右侧：信息 -->
           <div class="detail-info-panel">
@@ -122,7 +86,7 @@
               </div>
               <div class="status-item">
                 <Eye class="status-icon" :size="16" aria-hidden="true" />
-                <span class="status-text">{{ product.view_count || 0 }} 浏览</span>
+                <span class="status-text">{{ product.viewCount || 0 }} 浏览</span>
               </div>
               <div class="status-item">
                 <CalendarClock class="status-icon" :size="16" aria-hidden="true" />
@@ -140,7 +104,7 @@
               </div>
 
             <div
-              :class="['seller-card', { disabled: !product.seller_username }]"
+              :class="['seller-card', { disabled: !product.sellerUsername }]"
               @click="goToSeller"
             >
               <AvatarImage
@@ -227,109 +191,7 @@
             
             
             <div class="action-section desktop-only">
-              <template v-if="isStore">
-                                            <button
-                                              type="button"
-                                              class="buy-btn store"
-                                              @click="handleOpenStore"
-                                            >
-                                              <Store :size="18" aria-hidden="true" />
-                                              <span>立即前往</span>
-                                            </button>
-                                          </template>
-                  <template v-else-if="isPlatformOrder">
-                    <div v-if="isOutOfStock" class="buy-action-row">
-                      <button
-                                                class="buy-btn disabled"
-                                                disabled
-                                              >
-                                                <PackageX :size="18" aria-hidden="true" />
-                                                <span>已售罄</span>
-                                              </button>
-                                              <button
-                                                v-if="isCdk"
-                                                class="buy-btn restock"
-                                                :class="{ subscribed: restockSubscribed }"
-                                                :disabled="restockStatusLoading || restockSubscribeLoading || restockSubscribed"
-                                                @click="handleSubscribeRestock"
-                                              >
-                                                <component :is="restockButtonIcon" :size="18" aria-hidden="true" />
-                                                <span>{{ restockButtonText }}</span>
-                                              </button>
-                                            </div>
-                      <button
-                        v-else-if="isCdk && isTestMode && !isSeller"
-                        class="buy-btn disabled test-only"
-                        disabled
-                      >
-                                              <FlaskConical :size="18" aria-hidden="true" />
-                                              <span>测试物品</span>
-                                            </button>
-                                            <button
-                                              v-else-if="isOrderCreationMaintenanceBlocked"
-                                              class="buy-btn disabled"
-                                              disabled
-                                            >
-                                              维护中暂不可下单
-                                            </button>
-                                            <button
-                                              v-else-if="isOwnProductPurchaseBlocked"
-                                              class="buy-btn disabled"
-                                              disabled
-                                            >
-                                              不能兑换自己的物品
-                                            </button>
-                                            <button
-                                              v-else-if="purchaseLimitReached"
-                                              class="buy-btn disabled"
-                                              disabled
-                                            >
-                                              <CircleOff :size="18" aria-hidden="true" />
-                                              <span>已达限购</span>
-                                            </button>
-                                            <button
-                                              v-else-if="!canPurchase"
-                                              class="buy-btn disabled"
-                                              disabled
-                                            >
-                                              <CircleOff :size="18" aria-hidden="true" />
-                                              <span>暂停销售</span>
-                                            </button>
-                                            <button
-                                              v-else-if="userStore.isLoggedIn && !canPurchaseByTrustLevel"
-                                              class="buy-btn disabled"
-                                              disabled
-                                            >
-                                              需达到 TL{{ purchaseTrustLevel }}
-                                            </button>
-                                            <button
-                                              v-else
-                        class="buy-btn"
-                        :class="{ test: isTestMode && isSeller }"
-                        :disabled="purchasing"
-                        @click="handleBuyProduct"
-                      >
-                        {{ purchasing ? '正在进入确认页…' : '立即兑换' }}
-                      </button>
-                      <p v-if="canEnterCheckout" class="purchase-next-step-hint">数量与优惠券将在下一步确认</p>
-                    </template>
-                  <template v-else-if="isLegacyLink">
-                    <button
-                      class="buy-btn disabled"
-                      disabled
-                    >
-                      外链已停用
-                    </button>
-                  </template>
-                  <template v-else>
-                    <button
-                      class="buy-btn"
-                      @click="handleOpenStore"
-                    >
-                      <Store :size="18" aria-hidden="true" />
-                      <span>立即前往</span>
-                    </button>
-                  </template>
+              <ProductPurchasePanel v-bind="purchasePanelProps" @buy="handleBuyProduct" @open-store="handleOpenStore" @subscribe-restock="handleSubscribeRestock" />
             </div>
           </div>
         </div>
@@ -345,8 +207,8 @@
           <div class="description-content markdown-content" v-html="renderedDescription || '暂无描述'"></div>
         </div>
 
+        <ProductComments v-if="supportsComments" :active="detailInteractionsActive" :loading="commentLoading">
         <div
-          v-if="supportsComments"
           class="detail-comment-summary"
         >
           <div class="comment-summary-main">
@@ -413,14 +275,14 @@
                     />
                     <span class="comment-name">{{ item.user?.nickname || item.user?.username || '匿名用户' }}</span>
                     <span class="comment-username">@{{ item.user?.username || 'unknown' }}</span>
-                    <span v-if="item.is_seller" class="comment-seller-tag">卖家</span>
-                    <span v-if="item.is_purchased" class="comment-purchased-tag">已购</span>
+                    <span v-if="item.isSeller" class="comment-seller-tag">卖家</span>
+                    <span v-if="item.isPurchased" class="comment-purchased-tag">已购</span>
                     <span
-                      v-if="item.is_purchased && item.rating_value !== null"
+                      v-if="item.isPurchased && item.ratingValue !== null"
                       class="comment-rating-tag"
                     >
-                      <StarRatingDisplay :value="item.rating_value" size="xs" />
-                      <span>{{ formatRatingLabel(item.rating_value) }}</span>
+                      <StarRatingDisplay :value="item.ratingValue" size="xs" />
+                      <span>{{ formatRatingLabel(item.ratingValue) }}</span>
                     </span>
                   </div>
 
@@ -448,7 +310,7 @@
                           {{ commentReportingId === item.id ? '举报中...' : '举报' }}
                         </button>
                         <button
-                          v-if="item.can_delete"
+                          v-if="item.canDelete"
                           class="comment-action-item danger"
                           :disabled="commentDeletingId === item.id"
                           @click.stop="deleteComment(item)"
@@ -470,46 +332,46 @@
                   <span
                     v-else-if="isCommentRejectedStatus(item.status)"
                     class="comment-inline-status-tag comment-inline-status-tag--rejected"
-                    :title="item.review_reason || '该评论未通过审核'"
+                    :title="item.reviewReason || '该评论未通过审核'"
                   >
                     审核未通过，仅自己可见
                   </span>
                 </div>
                 <div class="comment-footer">
-                  <time class="comment-time">{{ formatCommentTime(item.created_at) }}</time>
+                  <time class="comment-time">{{ formatCommentTime(item.createdAt) }}</time>
                   <div v-if="isCommentPublicStatus(item.status)" class="comment-footer-actions">
                     <button
                       class="comment-footer-btn comment-reply-btn"
                       :class="{ active: isCommentReplyComposerOpen(item.id) }"
                       @click="toggleCommentReplyComposer(item.id)"
                     >
-                      {{ isCommentReplyComposerOpen(item.id) ? '收起输入' : '回复' }} {{ Number(item.reply_count || 0) }}
+                      {{ isCommentReplyComposerOpen(item.id) ? '收起输入' : '回复' }} {{ Number(item.replyCount || 0) }}
                     </button>
                     <button
                       class="comment-footer-btn comment-vote-btn"
-                      :class="{ active: normalizeCommentVoteType(item.viewer_vote) === COMMENT_VOTE_UP }"
+                      :class="{ active: normalizeCommentVoteType(item.viewerVote) === COMMENT_VOTE_UP }"
                       :disabled="isCommentVoting(item.id)"
-                      :aria-label="`赞同，当前 ${Number(item.upvote_count || 0)} 票`"
-                      :aria-pressed="normalizeCommentVoteType(item.viewer_vote) === COMMENT_VOTE_UP"
+                      :aria-label="`赞同，当前 ${Number(item.upvoteCount || 0)} 票`"
+                      :aria-pressed="normalizeCommentVoteType(item.viewerVote) === COMMENT_VOTE_UP"
                       @click="voteComment(item, COMMENT_VOTE_UP)"
                     >
                       <ThumbsUp class="comment-vote-icon" :size="14" aria-hidden="true" />
-                      <span>{{ Number(item.upvote_count || 0) }}</span>
+                      <span>{{ Number(item.upvoteCount || 0) }}</span>
                     </button>
                     <button
                       class="comment-footer-btn comment-vote-btn"
-                      :class="{ active: normalizeCommentVoteType(item.viewer_vote) === COMMENT_VOTE_DOWN }"
+                      :class="{ active: normalizeCommentVoteType(item.viewerVote) === COMMENT_VOTE_DOWN }"
                       :disabled="isCommentVoting(item.id)"
-                      :aria-label="`反对，当前 ${Number(item.downvote_count || 0)} 票`"
-                      :aria-pressed="normalizeCommentVoteType(item.viewer_vote) === COMMENT_VOTE_DOWN"
+                      :aria-label="`反对，当前 ${Number(item.downvoteCount || 0)} 票`"
+                      :aria-pressed="normalizeCommentVoteType(item.viewerVote) === COMMENT_VOTE_DOWN"
                       @click="voteComment(item, COMMENT_VOTE_DOWN)"
                     >
                       <ThumbsDown class="comment-vote-icon" :size="14" aria-hidden="true" />
-                      <span>{{ Number(item.downvote_count || 0) }}</span>
+                      <span>{{ Number(item.downvoteCount || 0) }}</span>
                     </button>
                   </div>
                 </div>
-                <div v-if="Number(item.reply_count || 0) > 0 || isCommentReplyComposerOpen(item.id) || isCommentReplyLoading(item.id)" class="comment-reply-panel">
+                <div v-if="Number(item.replyCount || 0) > 0 || isCommentReplyComposerOpen(item.id) || isCommentReplyLoading(item.id)" class="comment-reply-panel">
                   <div class="comment-reply-list">
                     <div v-if="isCommentReplyLoading(item.id)" class="comment-reply-empty">回复加载中...</div>
                     <template v-else>
@@ -530,8 +392,8 @@
                           <div class="comment-reply-meta">
                             <span class="comment-reply-name">{{ reply.user?.nickname || reply.user?.username || '匿名用户' }}</span>
                             <span class="comment-reply-username">@{{ reply.user?.username || 'unknown' }}</span>
-                            <span v-if="reply.is_seller" class="comment-seller-tag comment-seller-tag--reply">卖家</span>
-                            <time class="comment-reply-time">{{ formatCommentTime(reply.created_at) }}</time>
+                            <span v-if="reply.isSeller" class="comment-seller-tag comment-seller-tag--reply">卖家</span>
+                            <time class="comment-reply-time">{{ formatCommentTime(reply.createdAt) }}</time>
                           </div>
                           <div class="comment-reply-content">
                             <span>{{ reply.content }}</span>
@@ -544,7 +406,7 @@
                             <span
                               v-else-if="isCommentRejectedStatus(reply.status)"
                               class="comment-inline-status-tag comment-inline-status-tag--rejected"
-                              :title="reply.review_reason || '该回复未通过审核'"
+                              :title="reply.reviewReason || '该回复未通过审核'"
                             >
                               审核未通过，仅自己可见
                             </span>
@@ -669,112 +531,11 @@
             </div>
           </template>
         </div>
+        </ProductComments>
         
         <!-- 底部购买按钮（移动端固定底部） -->
-                <div class="action-bottom mobile-only">
-          <template v-if="isStore">
-                                <button
-                                  type="button"
-                                  class="buy-btn store"
-                                  @click="handleOpenStore"
-                                >
-                                  <Store :size="18" aria-hidden="true" />
-                                  <span>立即前往</span>
-                                </button>
-                              </template>
-                              <template v-else-if="isPlatformOrder">
-                                <div v-if="isOutOfStock" class="buy-action-row">
-                                  <button
-                                    class="buy-btn disabled"
-                                    disabled
-                                  >
-                                    <PackageX :size="18" aria-hidden="true" />
-                                    <span>已售罄</span>
-                                  </button>
-                                  <button
-                                    v-if="isCdk"
-                                    class="buy-btn restock"
-                                    :class="{ subscribed: restockSubscribed }"
-                                    :disabled="restockStatusLoading || restockSubscribeLoading || restockSubscribed"
-                                    @click="handleSubscribeRestock"
-                                  >
-                                    <component :is="restockButtonIcon" :size="18" aria-hidden="true" />
-                                    <span>{{ restockButtonText }}</span>
-                                  </button>
-                                </div>
-                                <button
-                                  v-else-if="isCdk && isTestMode && !isSeller"
-                                  class="buy-btn disabled test-only"
-                                  disabled
-                                >
-                                  <FlaskConical :size="18" aria-hidden="true" />
-                                  <span>测试物品</span>
-                                </button>
-                                <button
-                                  v-else-if="isOrderCreationMaintenanceBlocked"
-                                  class="buy-btn disabled"
-                                  disabled
-                                >
-                                  维护中暂不可下单
-                                </button>
-                                <button
-                                  v-else-if="isOwnProductPurchaseBlocked"
-                                  class="buy-btn disabled"
-                                  disabled
-                                >
-                                  不能兑换自己的物品
-                                </button>
-                                <button
-                                  v-else-if="purchaseLimitReached"
-                                  class="buy-btn disabled"
-                                  disabled
-                                >
-                                  <CircleOff :size="18" aria-hidden="true" />
-                                  <span>已达限购</span>
-                                </button>
-                                <button
-                                  v-else-if="!canPurchase"
-                                  class="buy-btn disabled"
-                                  disabled
-                                >
-                                  <CircleOff :size="18" aria-hidden="true" />
-                                  <span>暂停销售</span>
-                                </button>
-                                <button
-                                  v-else-if="userStore.isLoggedIn && !canPurchaseByTrustLevel"
-                                  class="buy-btn disabled"
-                                  disabled
-                                >
-                                  需达到 TL{{ purchaseTrustLevel }}
-                                </button>
-                                <button
-                                  v-else
-                                  class="buy-btn"
-                                  :class="{ test: isTestMode && isSeller }"
-                                  :disabled="purchasing"
-                                  @click="handleBuyProduct"
-                                >
-                                  {{ purchasing ? '正在进入确认页…' : '立即兑换' }}
-                                </button>
-                                <p v-if="canEnterCheckout" class="purchase-next-step-hint">数量与优惠券将在下一步确认</p>
-                              </template>
-                              <template v-else-if="isLegacyLink">
-                                <button
-                                  class="buy-btn disabled"
-                                  disabled
-                                >
-                                  外链已停用
-                                </button>
-                              </template>
-                              <template v-else>
-                                <button
-                                  class="buy-btn"
-                                  @click="handleOpenStore"
-                                >
-                                  <Store :size="18" aria-hidden="true" />
-                                  <span>立即前往</span>
-                                </button>
-                              </template>
+        <div class="action-bottom mobile-only">
+          <ProductPurchasePanel v-bind="purchasePanelProps" @buy="handleBuyProduct" @open-store="handleOpenStore" @subscribe-restock="handleSubscribeRestock" />
         </div>
       </template>
       
@@ -803,7 +564,7 @@
     <!-- 图片预览弹窗 -->
     <Teleport to="body">
       <div 
-        v-if="showImagePreview && product?.image_url" 
+        v-if="showImagePreview && product?.imageUrl"
         class="image-preview-overlay"
         @click.self="closeImagePreview"
       >
@@ -811,7 +572,7 @@
           <X :size="24" aria-hidden="true" />
         </button>
         <img 
-          :src="product.image_url" 
+          :src="product.imageUrl"
           :alt="product.name" 
           class="preview-image"
         />
@@ -948,20 +709,14 @@ import { ref, computed, watch, onActivated, onDeactivated, onMounted, onUnmounte
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft,
-  Bell,
-  BellCheck,
   Bot,
   CalendarClock,
-  CircleOff,
   Eye,
-  EyeOff,
   FileText,
-  Flag,
   Flame,
   FlaskConical,
   Gamepad2,
   HardDrive,
-  Heart,
   Laptop,
   LockKeyhole,
   MessageCircle,
@@ -969,7 +724,6 @@ import {
   MoreHorizontal,
   Package,
   PackageX,
-  Search,
   Server,
   ShieldAlert,
   ShieldCheck,
@@ -980,40 +734,36 @@ import {
   Wrench,
   X
 } from '@lucide/vue'
-import { useShopStore } from '@/stores/shop'
+import { useProductStore } from '@/stores/product'
 import { useUserStore } from '@/stores/user'
 import { useCheckoutStore } from '@/stores/checkout'
-import { isMaintenanceFeatureEnabled, isRestrictedMaintenanceMode } from '@/config/maintenance'
 import { useToast } from '@/composables/useToast'
 import { useDialog } from '@/composables/useDialog'
-import { formatRelativeTime, formatPrice } from '@/utils/format'
+import { formatRelativeTime } from '@/utils/format'
 import { renderProductDescription } from '@/utils/renderProductDescription'
 import { prepareNewTab, openInNewTab, cleanupPreparedTab } from '@/utils/newTab'
 import AvatarImage from '@/components/common/AvatarImage.vue'
 import StarRatingDisplay from '@/components/common/StarRatingDisplay.vue'
 import StarRatingInput from '@/components/common/StarRatingInput.vue'
 import ProductStockIndicator from '@/components/product/ProductStockIndicator.vue'
+import ProductMedia from '@/components/product-detail/ProductMedia.vue'
+import ProductInteractionPanel from '@/components/product-detail/ProductInteractionPanel.vue'
+import ProductPurchasePanel from '@/components/product-detail/ProductPurchasePanel.vue'
+import ProductComments from '@/components/product-detail/ProductComments.vue'
+import { useProductDetail } from '@/composables/product-detail/useProductDetail'
+import { useProductComments } from '@/composables/product-detail/useProductComments'
+import { useProductInteractions } from '@/composables/product-detail/useProductInteractions'
 import { buildAvatarCandidates } from '@/utils/avatar'
-import { api } from '@/utils/api'
+import { fetchExternalProductLinkRequest } from '@/services/shop/catalogService'
 import {
-  isCdkProduct,
-  isLegacyLinkProduct,
-  isOutOfStock as isProductOutOfStock,
-  isPlatformOrderProduct,
-  isStoreProduct
+  isPlatformOrderProduct
 } from '@/utils/shopProduct'
 import Skeleton from '@/components/common/Skeleton.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
-import {
-  formatPurchaseLimitLabel,
-  formatPurchaseLimitReleaseTime,
-  getPurchaseLimit,
-  isPurchaseLimitReached
-} from '@/utils/purchaseLimit'
 
 const route = useRoute()
 const router = useRouter()
-const shopStore = useShopStore()
+const productStore = useProductStore()
 const userStore = useUserStore()
 const checkoutStore = useCheckoutStore()
 const toast = useToast()
@@ -1036,44 +786,45 @@ const favoriteSubmitting = ref(false)
 const restockSubscribed = ref(false)
 const restockStatusLoading = ref(false)
 const restockSubscribeLoading = ref(false)
-const coverAspectRatio = ref(null)
-const commentLoading = ref(false)
-const commentList = ref([])
-const commentEnabled = ref(false)
-const commentDisabledReason = ref('该物品暂未开启评论')
-const commentPagination = ref({
-  total: 0,
-  page: 1,
-  pageSize: 10,
-  totalPages: 0
+const commentController = useProductComments()
+const {
+  loading: commentLoading,
+  commentList,
+  commentEnabled,
+  commentDisabledReason,
+  commentPagination,
+  commentSummary,
+  viewerHasPurchased,
+  viewerHasRated,
+  viewerRatingValue,
+  commentDraft,
+  commentRatingDraft,
+  commentSubmitting,
+  commentActionMenuId,
+  commentDeletingId,
+  commentReportingId,
+  showCommentReportModal,
+  commentReportReason,
+  commentReportSubmitting,
+  commentReportTarget,
+  commentVotingMap,
+  commentReplyComposerIdSet,
+  commentReplyMap,
+  commentReplyPaginationMap,
+  commentReplyLoadingMap,
+  commentReplySubmittingMap,
+  commentReplyDraftMap
+} = commentController
+const {
+  active: detailInteractionsActive,
+  activate: activateInteractionListeners,
+  deactivate: deactivateInteractionListeners,
+  syncModalState: syncInteractionModalState
+} = useProductInteractions({
+  hasOpenModal: () => showImagePreview.value || showReportModal.value || showCommentReportModal.value,
+  onEscape: event => handleEscKey(event),
+  onDocumentClick: event => handleDocumentClick(event)
 })
-const commentSummary = ref({
-  averageRating: 0,
-  ratedCount: 0,
-  favoriteCount: 0,
-  visibleCommentCount: 0,
-  visibleReplyCount: 0
-})
-const viewerHasPurchased = ref(false)
-const viewerHasRated = ref(false)
-const viewerRatingValue = ref(null)
-const commentDraft = ref('')
-const commentRatingDraft = ref(null)
-const commentSubmitting = ref(false)
-const commentActionMenuId = ref(null)
-const commentDeletingId = ref(null)
-const commentReportingId = ref(null)
-const showCommentReportModal = ref(false)
-const commentReportReason = ref('')
-const commentReportSubmitting = ref(false)
-const commentReportTarget = ref(null)
-const commentVotingMap = ref({})
-const commentReplyComposerIdSet = ref(new Set())
-const commentReplyMap = ref({})
-const commentReplyPaginationMap = ref({})
-const commentReplyLoadingMap = ref({})
-const commentReplySubmittingMap = ref({})
-const commentReplyDraftMap = ref({})
 
 const COMMENT_VOTE_UP = 'up'
 const COMMENT_VOTE_DOWN = 'down'
@@ -1098,43 +849,64 @@ const reportCategoryOptions = [
   { value: 'other', label: '其他' }
 ]
 
-// 物品类型
-const renderedDescription = computed(() => renderProductDescription(product.value?.description))
-const isCdk = computed(() => isCdkProduct(product.value))
-const isStore = computed(() => isStoreProduct(product.value))
-const isLegacyLink = computed(() => isLegacyLinkProduct(product.value))
-const isPlatformOrder = computed(() => isPlatformOrderProduct(product.value))
-const supportsComments = computed(() => isPlatformOrder.value)
-const isLandscapeDetailLayout = computed(() => {
-  const ratio = Number(coverAspectRatio.value)
-  return Number.isFinite(ratio) && ratio > 1
+const {
+  coverAspectRatio,
+  isCdk,
+  isStore,
+  isLegacyLink,
+  isPlatformOrder,
+  supportsComments,
+  isLandscapeDetailLayout,
+  isTestMode,
+  isSeller,
+  hasDiscount,
+  discountPercent,
+  finalPrice,
+  originalPrice,
+  isOutOfStock,
+  canPurchase,
+  soldCount,
+  purchaseLimitReached,
+  purchaseLimitReservedQuantity,
+  purchaseLimitReleaseText,
+  purchaseTrustLevel,
+  canPurchaseByTrustLevel,
+  purchaseTrustBlockMessage,
+  exchangeQuantityText,
+  purchaseAccountText,
+  purchaseAccountTone,
+  deliveryConditionText,
+  isOwnProductPurchaseBlocked,
+  isOrderCreationMaintenanceBlocked,
+  canEnterCheckout,
+  maintenancePurchaseHint,
+  coverStyle,
+  setCoverAspectRatio,
+  syncCoverAspectRatio,
+  stop: stopProductDetail
+} = useProductDetail({
+  product,
+  isLoggedIn: computed(() => userStore.isLoggedIn),
+  userId: computed(() => userStore.user?.id),
+  trustLevel: computed(() => userStore.trustLevel)
 })
 
-// 测试模式相关
-const isTestMode = computed(() => !!product.value?.is_test_mode || !!product.value?.isTestMode)
-const isSeller = computed(() => {
-  if (!product.value || !userStore.user) return false
-  return String(userStore.user.id) === String(product.value.seller_user_id)
-})
+// 物品类型
+const renderedDescription = computed(() => renderProductDescription(product.value?.description))
 const isFavorited = computed(() =>
-  !!(product.value?.isFavorited || product.value?.is_favorited)
+  !!product.value?.isFavorited
 )
-const viewerTrustLevel = computed(() => {
-  const raw = userStore.trustLevel
-  const parsed = Number.parseInt(raw, 10)
-  return Number.isInteger(parsed) ? parsed : 0
-})
 const sellerUsernameLabel = computed(() => {
-  const username = String(product.value?.seller_username || '').trim()
+  const username = String(product.value?.sellerUsername || '').trim()
   return username || '未知'
 })
 const sellerDisplayName = computed(() => {
-  const nickname = String(product.value?.seller_name || '').trim()
+  const nickname = String(product.value?.sellerName || '').trim()
   if (!nickname || nickname === sellerUsernameLabel.value) return ''
   return nickname
 })
 const sellerTrustLevelValue = computed(() => {
-  const parsed = Number.parseInt(product.value?.seller_trust_level ?? product.value?.sellerTrustLevel, 10)
+  const parsed = Number.parseInt(product.value?.sellerTrustLevel, 10)
   return Number.isInteger(parsed) && parsed >= 0 ? Math.min(parsed, 4) : null
 })
 const sellerTrustLevelLabel = computed(() => (
@@ -1145,102 +917,34 @@ const sellerTrustBadgeClass = computed(() => {
   return `seller-trust-badge--${sellerTrustLevelValue.value}`
 })
 
-
-// 价格计算
-const price = computed(() => parseFloat(product.value?.price) || 0)
-const discount = computed(() => parseFloat(product.value?.discount) || 1)
-const hasDiscount = computed(() => discount.value < 1)
-const discountPercent = computed(() => Math.round((1 - discount.value) * 100))
-const finalPrice = computed(() => formatPrice(price.value * discount.value))
-const originalPrice = computed(() => formatPrice(price.value))
-
-// 库存
-const isOutOfStock = computed(() => isProductOutOfStock(product.value))
 const restockButtonText = computed(() => {
   if (restockStatusLoading.value) return '加载中...'
   if (restockSubscribeLoading.value) return '订阅中...'
   if (restockSubscribed.value) return '已订阅'
   return '订阅补货通知'
 })
-const restockButtonIcon = computed(() => restockSubscribed.value ? BellCheck : Bell)
-// canPurchase 逻辑：后端返回明确的 false 时才禁用，未返回或为 undefined/null 时默认可购买
-const canPurchase = computed(() => {
-  // 如果后端没有返回这个字段（undefined），默认允许购买
-  if (product.value?.canPurchase === undefined) return true
-  return product.value.canPurchase !== false
-})
-const soldCount = computed(() => parseInt(product.value?.sold_count) || 0)
-const purchaseLimit = computed(() => getPurchaseLimit(product.value))
-const purchaseLimitReached = computed(() => isPurchaseLimitReached(purchaseLimit.value))
-const purchaseLimitReservedQuantity = computed(() => Number(purchaseLimit.value.reservedQuantity || 0))
-const purchaseLimitReleaseText = computed(() => (
-  purchaseLimit.value.periodDays > 0
-    ? formatPurchaseLimitReleaseTime(purchaseLimit.value.nextAvailableAt)
-    : ''
-))
-const purchaseTrustLevel = computed(() => {
-  const raw = Number(product.value?.purchase_trust_level ?? product.value?.purchaseTrustLevel ?? 0)
-  if (!Number.isInteger(raw) || raw < 0) return 0
-  return Math.min(raw, 4)
-})
-const canPurchaseByTrustLevel = computed(() => viewerTrustLevel.value >= purchaseTrustLevel.value)
-const purchaseTrustBlockMessage = computed(() => {
-  if (purchaseTrustLevel.value <= 0 || canPurchaseByTrustLevel.value) return ''
-  if (!userStore.isLoggedIn) {
-    return `该商品需登录且信任等级达到 TL${purchaseTrustLevel.value} 才可兑换`
-  }
-  return `当前账号信任等级为 TL${viewerTrustLevel.value}，需达到 TL${purchaseTrustLevel.value} 才可兑换`
-})
-
-const exchangeQuantityText = computed(() => {
-  if (isOutOfStock.value) return '当前无货'
-  return formatPurchaseLimitLabel(purchaseLimit.value, { loggedIn: userStore.isLoggedIn })
-})
-
-const purchaseAccountText = computed(() => {
-  if (purchaseTrustLevel.value <= 0) {
-    return userStore.isLoggedIn ? '无等级限制' : '登录后即可兑换'
-  }
-  if (!userStore.isLoggedIn) return `需 TL${purchaseTrustLevel.value} · 登录后核验`
-  return canPurchaseByTrustLevel.value
-    ? `需 TL${purchaseTrustLevel.value} · 当前 TL${viewerTrustLevel.value}，已满足`
-    : `需 TL${purchaseTrustLevel.value} · 当前 TL${viewerTrustLevel.value}，差 ${purchaseTrustLevel.value - viewerTrustLevel.value} 级`
-})
-
-const purchaseAccountTone = computed(() => {
-  if (!userStore.isLoggedIn) return ''
-  if (purchaseTrustLevel.value <= 0 || canPurchaseByTrustLevel.value) return 'is-satisfied'
-  return 'is-blocked'
-})
-
-const deliveryConditionText = computed(() => (
-  isCdk.value ? '支付成功后自动发放' : '支付后联系卖家履约'
-))
+const purchasePanelProps = computed(() => ({
+  isStore: isStore.value,
+  isPlatformOrder: isPlatformOrder.value,
+  isLegacyLink: isLegacyLink.value,
+  isCdk: isCdk.value,
+  isOutOfStock: isOutOfStock.value,
+  isTestMode: isTestMode.value,
+  isSeller: isSeller.value,
+  maintenanceBlocked: isOrderCreationMaintenanceBlocked.value,
+  ownProductBlocked: isOwnProductPurchaseBlocked.value,
+  purchaseLimitReached: purchaseLimitReached.value,
+  canPurchase: canPurchase.value,
+  isLoggedIn: userStore.isLoggedIn,
+  trustAllowed: canPurchaseByTrustLevel.value,
+  purchaseTrustLevel: purchaseTrustLevel.value,
+  purchasing: purchasing.value,
+  canEnterCheckout: canEnterCheckout.value,
+  restockSubscribed: restockSubscribed.value,
+  restockBusy: restockStatusLoading.value || restockSubscribeLoading.value,
+  restockButtonText: restockButtonText.value
+}))
 const deliveryConditionIcon = computed(() => (isCdk.value ? Ticket : MessagesSquare))
-const isOwnProductPurchaseBlocked = computed(() => (
-  isPlatformOrder.value && isSeller.value && !isTestMode.value
-))
-
-const isOrderCreationMaintenanceBlocked = computed(() =>
-  isRestrictedMaintenanceMode() && !isMaintenanceFeatureEnabled('orderCreate')
-)
-
-const canEnterCheckout = computed(() => (
-  isPlatformOrder.value
-  && !isOutOfStock.value
-  && !purchaseLimitReached.value
-  && !isOrderCreationMaintenanceBlocked.value
-  && canPurchase.value
-  && !isOwnProductPurchaseBlocked.value
-  && !(isCdk.value && isTestMode.value && !isSeller.value)
-  && (!userStore.isLoggedIn || canPurchaseByTrustLevel.value)
-))
-
-const maintenancePurchaseHint = computed(() =>
-  isOrderCreationMaintenanceBlocked.value
-    ? '因 LinuxDo Credit 积分服务维护中，当前暂不支持创建新订单。'
-    : ''
-)
 
 const detailErrorContent = computed(() => {
   if (detailErrorType.value === 'login_required') {
@@ -1295,7 +999,7 @@ const hasCommentSummary = computed(() =>
 )
 
 // 分类
-const categoryName = computed(() => product.value?.category_name || '其他')
+const categoryName = computed(() => product.value?.categoryName || '其他')
 const categoryIconComponent = computed(() => {
   const normalizedName = categoryName.value.trim().toLowerCase()
 
@@ -1313,11 +1017,11 @@ const categoryIconComponent = computed(() => {
 
 // 卖家
 const sellerAvatarSeed = computed(() =>
-  product.value?.seller_username || product.value?.seller_user_id || product.value?.id || 'seller'
+  product.value?.sellerUsername || product.value?.sellerUserId || product.value?.id || 'seller'
 )
 
 const sellerAvatarCandidates = computed(() =>
-  buildAvatarCandidates(product.value?.seller_avatar, 128)
+  buildAvatarCandidates(product.value?.sellerAvatar, 128)
 )
 
 function commentAvatarSeed(user) {
@@ -1326,83 +1030,19 @@ function commentAvatarSeed(user) {
 
 function resolveCommentAvatarCandidates(user) {
   return buildAvatarCandidates([
-    user?.animated_avatar,
+    user?.animatedAvatar,
     user?.avatar,
-    user?.avatar_url,
-    user?.avatar_template
+    user?.avatarUrl,
+    user?.avatarTemplate
   ], 96)
 }
 
 // 时间
 const updateTime = computed(() => 
-  formatRelativeTime(product.value?.updated_at || product.value?.created_at)
+  formatRelativeTime(product.value?.updatedAt || product.value?.createdAt)
 )
 
-// 封面样式
-const colors = [
-  'linear-gradient(135deg, #e0f2fe, #bae6fd)',
-  'linear-gradient(135deg, #fce7f3, #fbcfe8)',
-  'linear-gradient(135deg, #d1fae5, #a7f3d0)',
-  'linear-gradient(135deg, #fef3c7, #fde68a)',
-  'linear-gradient(135deg, #ede9fe, #ddd6fe)',
-  'linear-gradient(135deg, #ffedd5, #fed7aa)'
-]
-const coverStyle = computed(() => {
-  if (product.value?.image_url) return {}
-  const id = product.value?.id || 0
-  return { background: colors[id % colors.length] }
-})
-
 let latestRestockStatusRequestId = 0
-let latestCoverProbeRequestId = 0
-
-function setCoverAspectRatio(width, height) {
-  const naturalWidth = Number(width)
-  const naturalHeight = Number(height)
-
-  if (!Number.isFinite(naturalWidth) || !Number.isFinite(naturalHeight) || naturalWidth <= 0 || naturalHeight <= 0) {
-    coverAspectRatio.value = null
-    return
-  }
-
-  coverAspectRatio.value = naturalWidth / naturalHeight
-}
-
-async function syncCoverAspectRatio(imageUrl) {
-  const requestId = ++latestCoverProbeRequestId
-  coverAspectRatio.value = null
-
-  if (!imageUrl || typeof window === 'undefined') {
-    return
-  }
-
-  const image = new window.Image()
-  image.decoding = 'async'
-  image.src = imageUrl
-
-  if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
-    if (requestId === latestCoverProbeRequestId) {
-      setCoverAspectRatio(image.naturalWidth, image.naturalHeight)
-    }
-    return
-  }
-
-  await new Promise((resolve) => {
-    image.onload = () => {
-      if (requestId === latestCoverProbeRequestId) {
-        setCoverAspectRatio(image.naturalWidth, image.naturalHeight)
-      }
-      resolve()
-    }
-
-    image.onerror = () => {
-      if (requestId === latestCoverProbeRequestId) {
-        coverAspectRatio.value = null
-      }
-      resolve()
-    }
-  })
-}
 
 async function refreshRestockSubscriptionStatus() {
   const requestId = ++latestRestockStatusRequestId
@@ -1415,7 +1055,7 @@ async function refreshRestockSubscriptionStatus() {
 
   restockStatusLoading.value = true
   try {
-    const result = await shopStore.getProductRestockSubscriptionStatus(product.value.id)
+    const result = await productStore.getProductRestockSubscriptionStatus(product.value.id)
     if (requestId !== latestRestockStatusRequestId) return
 
     if (result?.success) {
@@ -1458,11 +1098,8 @@ onMounted(async () => {
     return
   }
   
-  // 获取分类
-  await shopStore.fetchCategories()
-  
   // 获取物品详情
-  const result = await api.get(`/api/shop/products/${encodeURIComponent(productId)}`)
+  const result = await productStore.fetchProduct(String(productId))
   if (result?.success && result?.data?.product) {
     product.value = result.data.product
     detailErrorMessage.value = ''
@@ -1499,14 +1136,15 @@ onDeactivated(() => {
 })
 
 function activateDetailInteractions() {
-  document.addEventListener('click', handleDocumentClick)
+  commentController.activate()
+  activateInteractionListeners()
   syncModalState()
 }
 
 function deactivateDetailInteractions() {
-  document.body.style.overflow = ''
-  document.removeEventListener('keydown', handleEscKey)
-  document.removeEventListener('click', handleDocumentClick)
+  commentController.deactivate()
+  deactivateInteractionListeners()
+  stopProductDetail()
 }
 
 async function restoreCheckoutReturnState() {
@@ -1514,9 +1152,9 @@ async function restoreCheckoutReturnState() {
   const draft = checkoutStore.consumeProductReturn(product.value.id)
   if (!draft) return false
 
-  const latestProduct = await shopStore.fetchProduct(product.value.id)
-  if (latestProduct) {
-    product.value = { ...product.value, ...latestProduct }
+  const latestResult = await productStore.fetchProduct(product.value.id)
+  if (latestResult.success) {
+    product.value = { ...product.value, ...latestResult.data.product }
   }
 
   await nextTick()
@@ -1543,7 +1181,7 @@ watch(
 
 // 方法
 watch(
-  () => product.value?.image_url || '',
+  () => product.value?.imageUrl || '',
   (imageUrl) => {
     void syncCoverAspectRatio(imageUrl)
   },
@@ -1635,7 +1273,7 @@ function isCommentRejectedStatus(status) {
 }
 
 function canOpenCommentActionMenu(item) {
-  return !!item?.can_delete || isCommentPublicStatus(item?.status)
+  return !!item?.canDelete || isCommentPublicStatus(item?.status)
 }
 
 function normalizeCommentVoteType(value) {
@@ -1706,10 +1344,15 @@ function handleDocumentClick(event) {
 async function loadComments(page = 1) {
   if (!product.value?.id) return
   const targetPage = Math.max(Number.parseInt(page, 10) || 1, 1)
+  const request = commentController.beginRequest('comments')
 
-  commentLoading.value = true
   try {
-    const result = await shopStore.fetchProductComments(product.value.id, { page: targetPage, pageSize: 10 })
+    const result = await productStore.fetchProductComments(product.value.id, {
+      page: targetPage,
+      pageSize: 10,
+      signal: request.signal
+    })
+    if (!commentController.isCurrent('comments', request)) return
     if (!result?.success) {
       const message = typeof result?.error === 'object'
         ? (result.error?.message || result.error?.code || '加载评论失败')
@@ -1734,22 +1377,22 @@ async function loadComments(page = 1) {
     }
     const summary = data.summary || {}
     commentSummary.value = {
-      averageRating: normalizeCommentRatingValue(summary.averageRating ?? summary.average_rating),
-      ratedCount: Number(summary.ratedCount ?? summary.rated_count ?? 0),
-      favoriteCount: Number(summary.favoriteCount ?? summary.favorite_count ?? 0),
-      visibleCommentCount: Number(summary.visibleCommentCount ?? summary.visible_comment_count ?? pagination.total ?? 0),
-      visibleReplyCount: Number(summary.visibleReplyCount ?? summary.visible_reply_count ?? 0)
+      averageRating: normalizeCommentRatingValue(summary.averageRating),
+      ratedCount: Number(summary.ratedCount ?? 0),
+      favoriteCount: Number(summary.favoriteCount ?? 0),
+      visibleCommentCount: Number(summary.visibleCommentCount ?? pagination.total ?? 0),
+      visibleReplyCount: Number(summary.visibleReplyCount ?? 0)
     }
     const list = Array.isArray(data.comments) ? data.comments : []
     commentList.value = list.map((item) => ({
       ...item,
       status: String(item?.status || '').trim(),
-      is_seller: !!(item?.is_seller ?? item?.isSeller),
-      rating_value: normalizeCommentRatingValue(item?.rating_value ?? item?.ratingValue, { allowNull: true }),
-      upvote_count: Number(item?.upvote_count || item?.upvoteCount || 0),
-      downvote_count: Number(item?.downvote_count || item?.downvoteCount || 0),
-      reply_count: Number(item?.reply_count || item?.replyCount || 0),
-      viewer_vote: normalizeCommentVoteType(item?.viewer_vote || item?.viewerVote)
+      isSeller: !!item?.isSeller,
+      ratingValue: normalizeCommentRatingValue(item?.ratingValue, { allowNull: true }),
+      upvoteCount: Number(item?.upvoteCount || 0),
+      downvoteCount: Number(item?.downvoteCount || 0),
+      replyCount: Number(item?.replyCount || 0),
+      viewerVote: normalizeCommentVoteType(item?.viewerVote)
     }))
     commentPagination.value = {
       total: Number(pagination.total || 0),
@@ -1779,9 +1422,9 @@ async function loadComments(page = 1) {
     commentActionMenuId.value = null
     void preloadCommentRepliesForVisibleComments()
   } catch (error) {
-    toast.error(`加载评论失败：${error.message}`)
+    if (!request.signal.aborted) toast.error(`加载评论失败：${error.message}`)
   } finally {
-    commentLoading.value = false
+    commentController.finishRequest('comments', request)
   }
 }
 
@@ -1815,9 +1458,9 @@ async function voteComment(comment, voteType) {
   commentVotingMap.value[safeCommentId] = true
 
   try {
-    const currentVote = normalizeCommentVoteType(comment.viewer_vote)
+    const currentVote = normalizeCommentVoteType(comment.viewerVote)
     const targetVote = currentVote === voteType ? '' : voteType
-    const result = await shopStore.voteProductComment(safeCommentId, targetVote)
+    const result = await productStore.voteProductComment(safeCommentId, targetVote)
     if (!result?.success) {
       const message = typeof result?.error === 'object'
         ? (result.error?.message || result.error?.code || '点赞操作失败')
@@ -1829,9 +1472,9 @@ async function voteComment(comment, voteType) {
     const data = result?.data || {}
     updateCommentListItem(safeCommentId, (current) => ({
       ...current,
-      viewer_vote: normalizeCommentVoteType(data.viewerVote),
-      upvote_count: Number(data.upvoteCount ?? current.upvote_count ?? 0),
-      downvote_count: Number(data.downvoteCount ?? current.downvote_count ?? 0)
+      viewerVote: normalizeCommentVoteType(data.viewerVote),
+      upvoteCount: Number(data.upvoteCount ?? current.upvoteCount ?? 0),
+      downvoteCount: Number(data.downvoteCount ?? current.downvoteCount ?? 0)
     }))
   } catch (error) {
     toast.error(`点赞操作失败：${error.message}`)
@@ -1844,7 +1487,7 @@ async function preloadCommentRepliesForVisibleComments() {
   const targets = commentList.value
     .map((item) => ({
       id: Number(item?.id || 0),
-      replyCount: Number(item?.reply_count || 0)
+      replyCount: Number(item?.replyCount || 0)
     }))
     .filter((item) => item.id > 0 && item.replyCount > 0)
 
@@ -1862,15 +1505,19 @@ async function loadCommentReplies(commentId, page = 1, options = {}) {
   const silent = !!options?.silent
   const force = !!options?.force
   const loadedOnce = !!commentReplyPaginationMap.value[safeCommentId]
+  const requestScope = `replies:${safeCommentId}`
 
   if (!append && loadedOnce && !force) return
 
   commentReplyLoadingMap.value[safeCommentId] = true
+  const request = commentController.beginRequest(requestScope)
   try {
-    const result = await shopStore.fetchProductCommentReplies(safeCommentId, {
+    const result = await productStore.fetchProductCommentReplies(safeCommentId, {
       page: targetPage,
-      pageSize: 10
+      pageSize: 10,
+      signal: request.signal
     })
+    if (!commentController.isCurrent(requestScope, request)) return
     if (!result?.success) {
       const message = typeof result?.error === 'object'
         ? (result.error?.message || result.error?.code || '加载回复失败')
@@ -1883,7 +1530,7 @@ async function loadCommentReplies(commentId, page = 1, options = {}) {
     const list = Array.isArray(data.replies) ? data.replies : []
     const normalizedList = list.map((item) => ({
       ...item,
-      is_seller: !!(item?.is_seller ?? item?.isSeller),
+      isSeller: !!item?.isSeller,
       status: String(item?.status || '').trim()
     }))
     const currentList = commentReplyMap.value[safeCommentId] || []
@@ -1902,12 +1549,13 @@ async function loadCommentReplies(commentId, page = 1, options = {}) {
 
     updateCommentListItem(safeCommentId, (current) => ({
       ...current,
-      reply_count: Number(pagination.total || current.reply_count || merged.length || 0)
+      replyCount: Number(pagination.total || current.replyCount || merged.length || 0)
     }))
   } catch (error) {
-    if (!silent) toast.error(`加载回复失败：${error.message}`)
+    if (!silent && !request.signal.aborted) toast.error(`加载回复失败：${error.message}`)
   } finally {
-    commentReplyLoadingMap.value[safeCommentId] = false
+    if (commentController.ownsRequest(requestScope, request)) commentReplyLoadingMap.value[safeCommentId] = false
+    commentController.finishRequest(requestScope, request)
   }
 }
 
@@ -1959,7 +1607,7 @@ async function submitCommentReply(comment) {
 
   commentReplySubmittingMap.value[safeCommentId] = true
   try {
-    const result = await shopStore.createProductCommentReply(safeCommentId, content)
+    const result = await productStore.createProductCommentReply(safeCommentId, content)
     if (!result?.success) {
       const message = typeof result?.error === 'object'
         ? (result.error?.message || result.error?.code || '回复发布失败')
@@ -1972,7 +1620,7 @@ async function submitCommentReply(comment) {
     const data = result?.data || {}
     updateCommentListItem(safeCommentId, (current) => ({
       ...current,
-      reply_count: Number(data.replyCount ?? current.reply_count ?? 0)
+      replyCount: Number(data.replyCount ?? current.replyCount ?? 0)
     }))
     await loadCommentReplies(safeCommentId, 1, { force: true })
     toast.success(data.message || '回复已发布')
@@ -2008,7 +1656,7 @@ async function submitComment() {
     if (viewerHasPurchased.value && !viewerHasRated.value && selectedCommentRating.value !== null) {
       payload.rating = selectedCommentRating.value
     }
-    const result = await shopStore.createProductComment(product.value.id, payload)
+    const result = await productStore.createProductComment(product.value.id, payload)
     if (!result?.success) {
       const message = typeof result?.error === 'object'
         ? (result.error?.message || result.error?.code || '评论发布失败')
@@ -2041,7 +1689,7 @@ async function deleteComment(comment) {
 
   commentDeletingId.value = comment.id
   try {
-    const result = await shopStore.deleteProductComment(comment.id)
+    const result = await productStore.deleteProductComment(comment.id)
     if (!result?.success) {
       const message = typeof result?.error === 'object'
         ? (result.error?.message || result.error?.code || '删除评论失败')
@@ -2098,7 +1746,7 @@ async function submitCommentReport() {
   commentReportSubmitting.value = true
   commentReportingId.value = commentReportTarget.value.id
   try {
-    const result = await shopStore.reportProductComment(commentReportTarget.value.id, reason)
+    const result = await productStore.reportProductComment(commentReportTarget.value.id, reason)
     if (!result?.success) {
       const message = typeof result?.error === 'object'
         ? (result.error?.message || result.error?.code || '举报提交失败')
@@ -2128,7 +1776,7 @@ function goBack() {
 }
 
 function goToSeller() {
-  const username = String(product.value?.seller_username || '').trim()
+  const username = String(product.value?.sellerUsername || '').trim()
   if (!username) {
     toast.warning('商家主页暂不可用')
     return
@@ -2158,8 +1806,8 @@ async function toggleFavorite() {
   favoriteSubmitting.value = true
   try {
     const result = isFavorited.value
-      ? await shopStore.removeFavorite(product.value.id)
-      : await shopStore.addFavorite(product.value.id)
+      ? await productStore.removeFavorite(product.value.id)
+      : await productStore.addFavorite(product.value.id)
 
     if (!result?.success) {
       const message = typeof result?.error === 'object'
@@ -2172,8 +1820,7 @@ async function toggleFavorite() {
     const nextState = !isFavorited.value
     product.value = {
       ...product.value,
-      isFavorited: nextState,
-      is_favorited: nextState
+      isFavorited: nextState
     }
     commentSummary.value = {
       ...commentSummary.value,
@@ -2216,7 +1863,7 @@ async function markNotInterested() {
 
   favoriteSubmitting.value = true
   try {
-    const result = await shopStore.blockProduct(product.value.id)
+    const result = await productStore.blockProduct(product.value.id)
     if (!result?.success) {
       const message = typeof result?.error === 'object'
         ? (result.error?.message || result.error?.code || '设置不感兴趣失败，请稍后重试')
@@ -2242,7 +1889,7 @@ function handleImageError(e) {
 // 图片预览
 // 图片预览
 function openImagePreview() {
-  if (product.value?.image_url) {
+  if (product.value?.imageUrl) {
     showImagePreview.value = true
     syncModalState()
   }
@@ -2270,12 +1917,7 @@ function handleEscKey(e) {
 }
 
 function syncModalState() {
-  const opened = showImagePreview.value || showReportModal.value || showCommentReportModal.value
-  document.body.style.overflow = opened ? 'hidden' : ''
-  document.removeEventListener('keydown', handleEscKey)
-  if (opened) {
-    document.addEventListener('keydown', handleEscKey)
-  }
+  syncInteractionModalState()
 }
 
 async function openReportModal() {
@@ -2344,7 +1986,7 @@ async function submitReport() {
 
   reportSubmitting.value = true
   try {
-    const result = await shopStore.reportProduct(product.value.id, {
+    const result = await productStore.reportProduct(product.value.id, {
       reason,
       reportCategory: reportCategory.value
     })
@@ -2395,7 +2037,7 @@ async function handleSubscribeRestock() {
 
   restockSubscribeLoading.value = true
   try {
-    const result = await shopStore.subscribeProductRestock(product.value.id)
+    const result = await productStore.subscribeProductRestock(product.value.id)
     if (result?.success) {
       restockSubscribed.value = true
       toast.success(result?.data?.message || '订阅成功，补货后将通过系统消息通知你')
@@ -2441,7 +2083,7 @@ async function openExternalProductLink() {
   const preparedWindow = prepareNewTab()
 
   try {
-    const result = await api.get(`/api/shop/products/${encodeURIComponent(product.value?.id)}/external-link`)
+    const result = await fetchExternalProductLinkRequest(product.value?.id)
     if (result?.success && result.data?.paymentLink) {
       const opened = openInNewTab(result.data.paymentLink, preparedWindow)
       if (!opened) {
@@ -2566,7 +2208,7 @@ async function handleOpenStore() {
   font-weight: 500;
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .back-btn:hover {
@@ -2605,20 +2247,20 @@ async function handleOpenStore() {
 }
 
 .nav-favorite-btn {
-  border: 1px solid #e4cad0;
-  background: #fff4f6;
-  color: #b16472;
+  border: 1px solid var(--palette-hex-e4cad0);
+  background: var(--palette-hex-fff4f6);
+  color: var(--palette-hex-b16472);
 }
 
 .nav-favorite-btn:hover {
-  background: #feecef;
-  border-color: #dbaab5;
+  background: var(--palette-hex-feecef);
+  border-color: var(--palette-hex-dbaab5);
 }
 
 .nav-favorite-btn.active {
-  background: #fce5ea;
-  border-color: #d98f9f;
-  color: #9f4258;
+  background: var(--palette-hex-fce5ea);
+  border-color: var(--palette-hex-d98f9f);
+  color: var(--palette-hex-9f4258);
 }
 
 .nav-favorite-btn:disabled,
@@ -2635,28 +2277,28 @@ async function handleOpenStore() {
 }
 
 .nav-block-btn:hover {
-  background: rgba(220, 38, 38, 0.08);
-  border-color: rgba(220, 38, 38, 0.3);
+  background: var(--palette-rgba-220-38-38-0p08);
+  border-color: var(--palette-rgba-220-38-38-0p3);
   color: var(--color-danger);
 }
 
 .nav-favorite-btn:focus-visible,
 .nav-block-btn:focus-visible,
 .nav-report-btn:focus-visible {
-  outline: 3px solid rgba(99, 102, 241, 0.2);
+  outline: 3px solid var(--palette-rgba-99-102-241-0p2);
   outline-offset: 2px;
 }
 
 .nav-report-btn {
-  border: 1px solid rgba(234, 179, 8, 0.35);
-  background: rgba(250, 204, 21, 0.16);
-  color: #8a6500;
+  border: 1px solid var(--palette-rgba-234-179-8-0p35);
+  background: var(--palette-rgba-250-204-21-0p16);
+  color: var(--palette-hex-8a6500);
 }
 
 .nav-report-btn:hover {
-  background: rgba(250, 204, 21, 0.24);
-  border-color: rgba(234, 179, 8, 0.5);
-  color: #6f5200;
+  background: var(--palette-rgba-250-204-21-0p24);
+  border-color: var(--palette-rgba-234-179-8-0p5);
+  color: var(--palette-hex-6f5200);
 }
 
 .nav-category {
@@ -2756,7 +2398,7 @@ async function handleOpenStore() {
   justify-content: center;
   background: var(--bg-secondary);
   cursor: pointer;
-  transition: all 0.3s;
+  transition: color var(--motion-duration-standard) var(--motion-ease-standard), background-color var(--motion-duration-standard) var(--motion-ease-standard), border-color var(--motion-duration-standard) var(--motion-ease-standard), box-shadow var(--motion-duration-standard) var(--motion-ease-standard), opacity var(--motion-duration-standard) var(--motion-ease-standard), transform var(--motion-duration-standard) var(--motion-ease-standard);
 }
 
 .detail-main--landscape .media-wrapper {
@@ -2765,7 +2407,7 @@ async function handleOpenStore() {
 
 .media-wrapper:hover {
   transform: scale(1.02);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 24px var(--palette-rgba-0-0-0-0p1);
 }
 
 .media-zoom-hint {
@@ -2774,8 +2416,8 @@ async function handleOpenStore() {
   left: 0;
   right: 0;
   padding: 10px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.5));
-  color: white;
+  background: linear-gradient(transparent, var(--palette-rgba-0-0-0-0p5));
+  color: var(--palette-hex-ffffff);
   font-size: 12px;
   display: flex;
   align-items: center;
@@ -2793,7 +2435,7 @@ async function handleOpenStore() {
 .image-preview-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.9);
+  background: var(--palette-rgba-0-0-0-0p9);
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -2813,21 +2455,21 @@ async function handleOpenStore() {
   right: 20px;
   width: 44px;
   height: 44px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--palette-rgba-255-255-255-0p1);
   border: none;
   border-radius: 50%;
-  color: white;
+  color: var(--palette-hex-ffffff);
   font-size: 24px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
   z-index: 10;
 }
 
 .preview-close:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--palette-rgba-255-255-255-0p2);
   transform: scale(1.1);
 }
 
@@ -2855,14 +2497,14 @@ async function handleOpenStore() {
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--palette-rgba-255-255-255-0p6);
   font-size: 13px;
 }
 
 .report-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--palette-rgba-0-0-0-0p55);
   z-index: 10000;
   display: flex;
   align-items: center;
@@ -2877,7 +2519,7 @@ async function handleOpenStore() {
   background: var(--bg-card);
   border-radius: 20px;
   border: 1px solid color-mix(in srgb, var(--border-light) 75%, transparent);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 24px 80px var(--palette-rgba-0-0-0-0p22);
   padding: 20px;
 }
 
@@ -2924,8 +2566,8 @@ async function handleOpenStore() {
   padding: 16px;
   border: 1px solid color-mix(in srgb, var(--border-light) 80%, transparent);
   border-radius: 16px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-card) 92%, white 8%) 0%, var(--bg-primary) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-card) 92%, var(--palette-hex-ffffff) 8%) 0%, var(--bg-primary) 100%);
+  box-shadow: inset 0 1px 0 var(--palette-rgba-255-255-255-0p05);
 }
 
 .report-field-label {
@@ -2975,18 +2617,18 @@ async function handleOpenStore() {
   appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 0 var(--palette-rgba-255-255-255-0p04);
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .report-select:hover {
-  border-color: color-mix(in srgb, var(--color-primary, #C4612F) 35%, var(--border-light));
+  border-color: color-mix(in srgb, var(--color-primary, var(--palette-hex-c4612f)) 35%, var(--border-light));
 }
 
 .report-select:focus {
   outline: none;
-  border-color: var(--color-primary, #C4612F);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #C4612F) 18%, transparent);
+  border-color: var(--color-primary, var(--palette-hex-c4612f));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, var(--palette-hex-c4612f)) 18%, transparent);
 }
 
 .report-textarea {
@@ -3008,13 +2650,13 @@ async function handleOpenStore() {
 }
 
 .report-textarea:hover {
-  border-color: color-mix(in srgb, var(--color-primary, #C4612F) 24%, var(--border-light));
+  border-color: color-mix(in srgb, var(--color-primary, var(--palette-hex-c4612f)) 24%, var(--border-light));
 }
 
 .report-textarea:focus {
   outline: none;
-  border-color: var(--color-primary, #C4612F);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #C4612F) 14%, transparent);
+  border-color: var(--color-primary, var(--palette-hex-c4612f));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, var(--palette-hex-c4612f)) 14%, transparent);
 }
 
 .report-quick-section {
@@ -3052,10 +2694,10 @@ async function handleOpenStore() {
 
 .report-quick-item:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--color-primary, #C4612F) 28%, var(--border-light));
-  background: color-mix(in srgb, var(--color-primary, #C4612F) 8%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--color-primary, var(--palette-hex-c4612f)) 28%, var(--border-light));
+  background: color-mix(in srgb, var(--color-primary, var(--palette-hex-c4612f)) 8%, var(--bg-card));
   color: var(--text-primary);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 18px var(--palette-rgba-0-0-0-0p08);
 }
 
 .report-modal-footer {
@@ -3075,7 +2717,7 @@ async function handleOpenStore() {
 }
 
 .report-count.is-invalid {
-  color: #C4612F;
+  color: var(--palette-hex-c4612f);
 }
 
 .report-actions {
@@ -3109,14 +2751,14 @@ async function handleOpenStore() {
 
 .report-submit-btn {
   border: 1px solid transparent;
-  background: linear-gradient(135deg, #C4612F 0%, #991b1b 100%);
-  color: #fff;
-  box-shadow: 0 10px 24px rgba(185, 28, 28, 0.24);
+  background: linear-gradient(135deg, var(--palette-hex-c4612f) 0%, var(--palette-hex-991b1b) 100%);
+  color: var(--palette-hex-ffffff);
+  box-shadow: 0 10px 24px var(--palette-rgba-185-28-28-0p24);
 }
 
 .report-submit-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 14px 28px rgba(185, 28, 28, 0.28);
+  box-shadow: 0 14px 28px var(--palette-rgba-185-28-28-0p28);
 }
 
 .report-submit-btn:disabled {
@@ -3174,8 +2816,8 @@ async function handleOpenStore() {
   position: absolute;
   top: 12px;
   right: 12px;
-  background: linear-gradient(135deg, #ad9090 0%, #937474 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--palette-hex-ad9090) 0%, var(--palette-hex-937474) 100%);
+  color: var(--palette-hex-ffffff);
   font-size: 13px;
   font-weight: 700;
   padding: 8px 12px;
@@ -3223,7 +2865,7 @@ async function handleOpenStore() {
   align-items: baseline;
   gap: 12px;
   padding: 16px 20px;
-  background: linear-gradient(135deg, #fef9f3 0%, #fdf6ee 100%);
+  background: linear-gradient(135deg, var(--palette-hex-fef9f3) 0%, var(--palette-hex-fdf6ee) 100%);
   border-radius: 14px;
 }
 
@@ -3400,9 +3042,9 @@ async function handleOpenStore() {
 .maintenance-order-notice {
   padding: 12px 14px;
   border-radius: 12px;
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.24);
-  color: #b45309;
+  background: var(--palette-rgba-245-158-11-0p12);
+  border: 1px solid var(--palette-rgba-245-158-11-0p24);
+  color: var(--palette-hex-b45309);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -3416,7 +3058,7 @@ async function handleOpenStore() {
   background: var(--bg-secondary);
   border-radius: 14px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .seller-card:hover {
@@ -3510,24 +3152,24 @@ async function handleOpenStore() {
   font-weight: 700;
   letter-spacing: 0.04em;
   line-height: 1;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+  box-shadow: inset 0 0 0 1px var(--palette-rgba-255-255-255-0p28);
 }
 
-.seller-trust-badge--0 { background: linear-gradient(135deg, #eef1f5, #e4e8ed); color: #596172; }
-.seller-trust-badge--1 { background: linear-gradient(135deg, #edf4ff, #dbeafe); color: #1d4ed8; }
-.seller-trust-badge--2 { background: linear-gradient(135deg, #edf9f1, #dcfce7); color: #15803d; }
-.seller-trust-badge--3 { background: linear-gradient(135deg, #fbf4e6, #fef3c7); color: #a16207; }
-.seller-trust-badge--4 { background: linear-gradient(135deg, #fbecec, #fee2e2); color: #C4612F; }
+.seller-trust-badge--0 { background: linear-gradient(135deg, var(--palette-hex-eef1f5), var(--palette-hex-e4e8ed)); color: var(--palette-hex-596172); }
+.seller-trust-badge--1 { background: linear-gradient(135deg, var(--palette-hex-edf4ff), var(--palette-hex-dbeafe)); color: var(--palette-hex-1d4ed8); }
+.seller-trust-badge--2 { background: linear-gradient(135deg, var(--palette-hex-edf9f1), var(--palette-hex-dcfce7)); color: var(--palette-hex-15803d); }
+.seller-trust-badge--3 { background: linear-gradient(135deg, var(--palette-hex-fbf4e6), var(--palette-hex-fef3c7)); color: var(--palette-hex-a16207); }
+.seller-trust-badge--4 { background: linear-gradient(135deg, var(--palette-hex-fbecec), var(--palette-hex-fee2e2)); color: var(--palette-hex-c4612f); }
 
 :global(html.dark .detail-page .seller-trust-badge) {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px var(--palette-rgba-255-255-255-0p08);
 }
 
-:global(html.dark .detail-page .seller-trust-badge--0) { background: linear-gradient(135deg, #2f3134, #3a3d42); color: #d5d9e1; }
-:global(html.dark .detail-page .seller-trust-badge--1) { background: linear-gradient(135deg, #243149, #1e3a5f); color: #bfdbfe; }
-:global(html.dark .detail-page .seller-trust-badge--2) { background: linear-gradient(135deg, #21352c, #1f4d34); color: #bbf7d0; }
-:global(html.dark .detail-page .seller-trust-badge--3) { background: linear-gradient(135deg, #3a3123, #57441c); color: #fde68a; }
-:global(html.dark .detail-page .seller-trust-badge--4) { background: linear-gradient(135deg, #3d2428, #5b1d22); color: #fecaca; }
+:global(html.dark .detail-page .seller-trust-badge--0) { background: linear-gradient(135deg, var(--palette-hex-2f3134), var(--palette-hex-3a3d42)); color: var(--palette-hex-d5d9e1); }
+:global(html.dark .detail-page .seller-trust-badge--1) { background: linear-gradient(135deg, var(--palette-hex-243149), var(--palette-hex-1e3a5f)); color: var(--palette-hex-bfdbfe); }
+:global(html.dark .detail-page .seller-trust-badge--2) { background: linear-gradient(135deg, var(--palette-hex-21352c), var(--palette-hex-1f4d34)); color: var(--palette-hex-bbf7d0); }
+:global(html.dark .detail-page .seller-trust-badge--3) { background: linear-gradient(135deg, var(--palette-hex-3a3123), var(--palette-hex-57441c)); color: var(--palette-hex-fde68a); }
+:global(html.dark .detail-page .seller-trust-badge--4) { background: linear-gradient(135deg, var(--palette-hex-3d2428), var(--palette-hex-5b1d22)); color: var(--palette-hex-fecaca); }
 
 .seller-hint {
   font-size: 11px;
@@ -3630,10 +3272,10 @@ async function handleOpenStore() {
   gap: 16px;
   padding: 18px 20px;
   border-radius: 20px;
-  border: 1px solid rgba(207, 167, 111, 0.22);
+  border: 1px solid var(--palette-rgba-207-167-111-0p22);
   background:
-    radial-gradient(circle at top right, rgba(207, 167, 111, 0.16), transparent 34%),
-    linear-gradient(135deg, rgba(255, 247, 237, 0.96), rgba(250, 245, 235, 0.92));
+    radial-gradient(circle at top right, var(--palette-rgba-207-167-111-0p16), transparent 34%),
+    linear-gradient(135deg, var(--palette-rgba-255-247-237-0p96), var(--palette-rgba-250-245-235-0p92));
   box-shadow: var(--shadow-sm);
 }
 
@@ -3649,19 +3291,19 @@ async function handleOpenStore() {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  color: #8a5a20;
+  color: var(--palette-hex-8a5a20);
 }
 
 .comment-summary-stars strong {
   font-size: 24px;
   font-weight: 700;
-  color: #7a4a18;
+  color: var(--palette-hex-7a4a18);
 }
 
 .comment-summary-text {
   font-size: 14px;
   line-height: 1.7;
-  color: #86613b;
+  color: var(--palette-hex-86613b);
 }
 
 .comment-summary-side {
@@ -3677,9 +3319,9 @@ async function handleOpenStore() {
   gap: 4px;
   padding: 12px 14px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(207, 167, 111, 0.18);
-  color: #7a4a18;
+  background: var(--palette-rgba-255-255-255-0p7);
+  border: 1px solid var(--palette-rgba-207-167-111-0p18);
+  color: var(--palette-hex-7a4a18);
 }
 
 .comment-summary-metric strong {
@@ -3689,7 +3331,7 @@ async function handleOpenStore() {
 
 .comment-summary-metric-label {
   font-size: 12px;
-  color: #9c7852;
+  color: var(--palette-hex-9c7852);
 }
 
 .comment-header {
@@ -3720,8 +3362,8 @@ async function handleOpenStore() {
   height: 24px;
   padding: 0 10px;
   border-radius: 999px;
-  background: rgba(38, 111, 63, 0.12);
-  color: #266f3f;
+  background: var(--palette-rgba-38-111-63-0p12);
+  color: var(--palette-hex-266f3f);
   font-size: 12px;
   font-weight: 700;
 }
@@ -3812,8 +3454,8 @@ async function handleOpenStore() {
   align-items: center;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #ffe1ea;
-  color: #d85d7f;
+  background: var(--palette-hex-ffe1ea);
+  color: var(--palette-hex-d85d7f);
   font-size: 11px;
   font-weight: 700;
   line-height: 1;
@@ -3828,8 +3470,8 @@ async function handleOpenStore() {
   align-items: center;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #e8f6e8;
-  color: #2f855a;
+  background: var(--palette-hex-e8f6e8);
+  color: var(--palette-hex-2f855a);
   font-size: 11px;
   font-weight: 600;
 }
@@ -3845,8 +3487,8 @@ async function handleOpenStore() {
 }
 
 .comment-rating-tag {
-  background: rgba(245, 158, 11, 0.12);
-  color: #b45309;
+  background: var(--palette-rgba-245-158-11-0p12);
+  color: var(--palette-hex-b45309);
 }
 
 .comment-right {
@@ -3942,16 +3584,16 @@ async function handleOpenStore() {
   margin-left: 8px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(59, 130, 246, 0.1);
-  color: #1d4ed8;
+  background: var(--palette-rgba-59-130-246-0p1);
+  color: var(--palette-hex-1d4ed8);
   font-size: 12px;
   font-weight: 600;
   line-height: 1.4;
 }
 
 .comment-inline-status-tag--rejected {
-  background: rgba(220, 38, 38, 0.1);
-  color: #C4612F;
+  background: var(--palette-rgba-220-38-38-0p1);
+  color: var(--palette-hex-c4612f);
 }
 
 .comment-footer {
@@ -3980,7 +3622,7 @@ async function handleOpenStore() {
   gap: 4px;
   font-size: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .comment-footer-btn:disabled {
@@ -3998,9 +3640,9 @@ async function handleOpenStore() {
 }
 
 .comment-reply-btn.active {
-  background: rgba(38, 111, 63, 0.1);
-  color: #266f3f;
-  border-color: rgba(38, 111, 63, 0.22);
+  background: var(--palette-rgba-38-111-63-0p1);
+  color: var(--palette-hex-266f3f);
+  border-color: var(--palette-rgba-38-111-63-0p22);
 }
 
 .comment-vote-btn {
@@ -4013,9 +3655,9 @@ async function handleOpenStore() {
 }
 
 .comment-vote-btn.active {
-  background: rgba(38, 111, 63, 0.12);
-  color: #266f3f;
-  border-color: rgba(38, 111, 63, 0.25);
+  background: var(--palette-rgba-38-111-63-0p12);
+  color: var(--palette-hex-266f3f);
+  border-color: var(--palette-rgba-38-111-63-0p25);
 }
 
 .comment-reply-panel {
@@ -4160,7 +3802,7 @@ async function handleOpenStore() {
 
 .comment-page-btn.active {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--palette-hex-ffffff);
   border-color: var(--color-primary);
 }
 
@@ -4194,7 +3836,7 @@ async function handleOpenStore() {
   border: none;
   border-radius: 8px;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--palette-hex-ffffff);
   padding: 8px 12px;
   font-size: 13px;
   cursor: pointer;
@@ -4222,7 +3864,7 @@ async function handleOpenStore() {
 .comment-rating-once-tip {
   font-size: 12px;
   line-height: 1.6;
-  color: #b45309;
+  color: var(--palette-hex-b45309);
 }
 
 .comment-rating-tip {
@@ -4243,7 +3885,7 @@ async function handleOpenStore() {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: #b45309;
+  color: var(--palette-hex-b45309);
 }
 
 .comment-rating-tip-value strong {
@@ -4280,8 +3922,8 @@ async function handleOpenStore() {
 .comment-submit-btn {
   border: none;
   border-radius: 10px;
-  background: #266f3f;
-  color: #fff;
+  background: var(--palette-hex-266f3f);
+  color: var(--palette-hex-ffffff);
   padding: 10px 14px;
   font-size: 14px;
   cursor: pointer;
@@ -4332,29 +3974,29 @@ async function handleOpenStore() {
   gap: 8px;
   width: 100%;
   padding: 16px 24px;
-  background: linear-gradient(135deg, #cfa76f 0%, #bd8d57 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--palette-hex-cfa76f) 0%, var(--palette-hex-bd8d57) 100%);
+  color: var(--palette-hex-ffffff);
   font-size: 16px;
   font-weight: 600;
   border: none;
   border-radius: 14px;
   cursor: pointer;
   text-decoration: none;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .buy-btn:hover {
   opacity: 0.92;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(207, 167, 111, 0.3);
+  box-shadow: 0 4px 12px var(--palette-rgba-207-167-111-0p3);
 }
 
 .buy-btn.store {
-  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  background: linear-gradient(135deg, var(--palette-hex-06b6d4) 0%, var(--palette-hex-0891b2) 100%);
 }
 
 .buy-btn.store:hover {
-  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+  box-shadow: 0 4px 12px var(--palette-rgba-6-182-212-0p3);
 }
 
 .buy-btn.restock {
@@ -4387,7 +4029,7 @@ async function handleOpenStore() {
 }
 
 .buy-btn.disabled {
-  background: #999;
+  background: var(--palette-hex-999999);
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
@@ -4395,16 +4037,16 @@ async function handleOpenStore() {
 }
 
 .buy-btn.disabled.test-only {
-  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  background: linear-gradient(135deg, var(--palette-hex-06b6d4) 0%, var(--palette-hex-0891b2) 100%);
   opacity: 0.6;
 }
 
 .buy-btn.test {
-  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  background: linear-gradient(135deg, var(--palette-hex-06b6d4) 0%, var(--palette-hex-0891b2) 100%);
 }
 
 .buy-btn.test:hover {
-  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+  box-shadow: 0 4px 12px var(--palette-rgba-6-182-212-0p3);
 }
 
 /* 测试模式横幅 */
@@ -4413,8 +4055,8 @@ async function handleOpenStore() {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);
-  border: 1px solid #a5f3fc;
+  background: linear-gradient(135deg, var(--palette-hex-ecfeff) 0%, var(--palette-hex-cffafe) 100%);
+  border: 1px solid var(--palette-hex-a5f3fc);
   border-radius: 12px;
   margin-bottom: 0;
 }
@@ -4435,8 +4077,8 @@ async function handleOpenStore() {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--palette-hex-06b6d4) 0%, var(--palette-hex-0891b2) 100%);
+  color: var(--palette-hex-ffffff);
   font-size: 12px;
   font-weight: 600;
   padding: 4px 10px;
@@ -4446,7 +4088,7 @@ async function handleOpenStore() {
 
 .test-desc {
   font-size: 13px;
-  color: #0891b2;
+  color: var(--palette-hex-0891b2);
 }
 
 /* 移动端适配 */

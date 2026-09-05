@@ -4,6 +4,27 @@ set -euo pipefail
 project_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$project_dir"
 
+current_branch=$(git branch --show-current)
+[[ "$current_branch" == 'main' ]] || {
+  echo "Refusing Pages deployment: expected branch main, found ${current_branch:-detached HEAD}" >&2
+  exit 1
+}
+[[ -z "$(git status --porcelain)" ]] || {
+  echo 'Refusing Pages deployment: Git worktree is not clean' >&2
+  exit 1
+}
+git fetch origin main
+local_head=$(git rev-parse HEAD)
+remote_head=$(git rev-parse origin/main)
+[[ "$local_head" == "$remote_head" ]] || {
+  echo 'Refusing Pages deployment: local main is not synchronized with origin/main' >&2
+  exit 1
+}
+
+npm run lint
+npm audit --audit-level=low
+npm run validate:og
+
 # This file is intentionally ignored by Git. It contains a public Faro
 # ingestion identifier, but keeping deployment-only values out of tracked
 # files avoids silently changing the production telemetry contract.
@@ -73,6 +94,7 @@ public_hashes=$(find dist/assets -type f -name '*.js' -exec shasum -a 256 {} \; 
   echo 'Refusing Pages deployment: public build contains source maps' >&2
   exit 1
 }
+npm run check:bundle
 
 npx wrangler pages deploy dist --project-name=ld-store --branch main
 

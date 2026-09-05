@@ -248,8 +248,8 @@ onUnmounted(() => {
 
 .app-select.variant-toolbar .select-trigger:hover:not(:disabled),
 .app-select.variant-toolbar.open .select-trigger {
-  border-color: var(--app-select-toolbar-trigger-hover-border, rgba(16, 185, 129, 0.4));
-  box-shadow: var(--app-select-toolbar-trigger-hover-shadow, 0 0 0 3px rgba(16, 185, 129, 0.08));
+  border-color: var(--app-select-toolbar-trigger-hover-border, var(--palette-rgba-16-185-129-0p4));
+  box-shadow: var(--app-select-toolbar-trigger-hover-shadow, 0 0 0 3px var(--palette-rgba-16-185-129-0p08));
 }
 
 .app-select.variant-toolbar .select-arrow {
@@ -261,7 +261,7 @@ onUnmounted(() => {
   border-radius: 12px;
   border-color: var(--app-select-toolbar-panel-border, var(--border-light));
   background: var(--app-select-toolbar-panel-bg, var(--bg-card));
-  box-shadow: var(--app-select-toolbar-panel-shadow, 0 16px 32px rgba(15, 23, 42, 0.12));
+  box-shadow: var(--app-select-toolbar-panel-shadow, 0 16px 32px var(--palette-rgba-15-23-42-0p12));
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -299,7 +299,7 @@ onUnmounted(() => {
 
 .select-option:hover:not(:disabled),
 .select-option.active {
-  background: var(--app-select-option-hover-bg, rgba(196, 145, 26, 0.12));
+  background: var(--app-select-option-hover-bg, var(--palette-rgba-196-145-26-0p12));
 }
 
 .select-option.disabled {

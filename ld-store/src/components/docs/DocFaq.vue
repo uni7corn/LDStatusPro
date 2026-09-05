@@ -42,6 +42,10 @@
     <h2 id="delivery">发货与卡密</h2>
     <div class="faq-list">
       <details>
+        <summary>普通物品 72 小时没发货会怎样？</summary>
+        <div><p>系统在 48 小时下架对应物品，72 小时停止发货并自动发起原订单实付全额退款。退款可能成功、失败或进入待核对，只有 Credit 明确成功后才显示已退款。</p><p><router-link to="/docs/shipping-deadline">查看完整发货保障规则</router-link></p></div>
+      </details>
+      <details>
         <summary>订单为什么一直待发货？</summary>
         <div><p>普通物品需要卖家手动履约。自动发卡订单待发货时，卖家应检查支付通知、独立卡密可用库存或共享内容，再从订单详情处理。</p><p><router-link to="/docs/seller-orders#pending-delivery">处理待发货订单</router-link></p></div>
       </details>

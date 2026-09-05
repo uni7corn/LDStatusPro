@@ -46,7 +46,7 @@ describe('商城发现会话与归因', () => {
   })
 
   it('点击商品后按商品保存签名令牌，并可在下单成功后清理', () => {
-    expect(rememberDiscoveryToken({ id: 42, discovery_token: 'd1.payload.signature' })).toBe('d1.payload.signature')
+    expect(rememberDiscoveryToken({ id: 42, discoveryToken: 'd1.payload.signature' })).toBe('d1.payload.signature')
     expect(getDiscoveryTokenForProduct(42)).toBe('d1.payload.signature')
     clearDiscoveryTokenForProduct(42)
     expect(getDiscoveryTokenForProduct(42)).toBe('')

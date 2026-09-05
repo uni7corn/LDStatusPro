@@ -219,10 +219,10 @@ function toDateTimeAttribute(value) {
   font-variant-numeric: tabular-nums;
 }
 
-.tone-info .refund-event__marker { color: var(--color-info, #277da1); }
-.tone-success .refund-event__marker { color: var(--color-success, #3f7a52); }
-.tone-warning .refund-event__marker { color: var(--color-warning, #a66b24); }
-.tone-danger .refund-event__marker { color: var(--color-danger, #b54a4a); }
+.tone-info .refund-event__marker { color: var(--color-info, var(--palette-hex-277da1)); }
+.tone-success .refund-event__marker { color: var(--color-success, var(--palette-hex-3f7a52)); }
+.tone-warning .refund-event__marker { color: var(--color-warning, var(--palette-hex-a66b24)); }
+.tone-danger .refund-event__marker { color: var(--color-danger, var(--palette-hex-b54a4a)); }
 .tone-neutral .refund-event__marker { color: var(--text-tertiary); }
 
 @media (max-width: 479px) {

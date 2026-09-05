@@ -271,7 +271,7 @@ onUnmounted(stopObserving)
   right: 10%;
   height: 45%;
   border-radius: 10px 10px 50% 50%;
-  background: var(--liquid-shine-bg, linear-gradient(180deg, var(--glass-shine) 0%, rgba(255, 255, 255, .12) 50%, transparent 100%));
+  background: var(--liquid-shine-bg, linear-gradient(180deg, var(--glass-shine) 0%, var(--palette-rgba-255-255-255-p12) 50%, transparent 100%));
 }
 
 .liquid-tab {

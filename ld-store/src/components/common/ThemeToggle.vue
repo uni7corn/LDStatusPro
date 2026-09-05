@@ -46,7 +46,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useTheme, THEME_MODES } from '@/composables/useTheme'
 
-const props = defineProps({
+defineProps({
   showText: {
     type: Boolean,
     default: false
@@ -124,7 +124,7 @@ onUnmounted(() => {
   border-radius: 10px;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 .theme-btn:hover {
@@ -185,7 +185,7 @@ onUnmounted(() => {
   font-size: 14px;
   color: var(--text-primary);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background-color 0.2s, color 0.2s;
   text-align: left;
 }
 
@@ -275,6 +275,19 @@ onUnmounted(() => {
 
   .theme-menu {
     right: -10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-btn,
+  .menu-item,
+  .arrow-icon {
+    transition: none;
+  }
+
+  .menu-enter-active,
+  .menu-leave-active {
+    animation: none;
   }
 }
 </style>

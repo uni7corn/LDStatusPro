@@ -8,7 +8,7 @@
     <!-- 顶部导航栏 -->
     <AppHeader v-if="showHeader" />
     <AnnouncementBar v-if="showAnnouncementBar" />
-    <AnnouncementPopup v-if="showAnnouncementBar" />
+    <AnnouncementPopup v-if="!isMaintenanceRoute && announcementLoaded" />
 
     <!-- 主内容区域 -->
     <component :is="isSellerRoute ? 'div' : 'main'" class="main-content">
@@ -67,6 +67,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useNotificationSummaryStore } from '@/stores/notificationSummary'
+import { announcementIdentity } from '@/utils/announcementPreferences'
 import { useAnnouncement } from '@/composables/useAnnouncement'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AnnouncementBar from '@/components/common/AnnouncementBar.vue'
@@ -88,7 +89,7 @@ import {
 const route = useRoute()
 const userStore = useUserStore()
 const notificationSummaryStore = useNotificationSummaryStore()
-const { announcementLoaded, fetchAnnouncements } = useAnnouncement()
+const { announcementLoaded, configureAnnouncements, startAnnouncements, stopAnnouncements } = useAnnouncement()
 const isMaintenanceRoute = computed(() => route.name === 'Maintenance')
 const isSellerRoute = computed(() => route.meta.layout === 'seller')
 const isRestrictedHomeRoute = computed(() => false)
@@ -102,11 +103,12 @@ const showAnnouncementBar = computed(() => (
   && !isSellerRoute.value
   && announcementLoaded.value
 ))
+watch([() => announcementIdentity(userStore), isSellerRoute], ([account, seller]) => configureAnnouncements(account, seller ? 'seller' : 'storefront'), { immediate: true })
 const showRouterView = computed(() => userStore.sessionReady)
 
 // 需要缓存的页面组件名称
 // Home = 首页(物品广场), Category = 分类页(小店集市等)
-const cachedViews = ref(['Home', 'Category', 'ProductDetail'])
+const cachedViews = ref(['Home', 'Category'])
 
 // 涂鸦背景状态（默认开启，从本地存储读取）
 const DOODLE_STORAGE_KEY = 'ld-store-doodle-bg'
@@ -136,11 +138,13 @@ watch(showDoodleBg, (value) => {
   }
 })
 
+onUnmounted(stopAnnouncements)
+
 // 初始化
 onMounted(() => {
   // 全站维护时避免触发额外初始化链路
   if (!isFullMaintenanceMode()) {
-    void fetchAnnouncements().catch(() => [])
+    startAnnouncements()
   }
 })
 
@@ -178,11 +182,11 @@ onUnmounted(() => {
   width: min(100% - 24px, 1180px);
   margin: 18px auto 0;
   padding: 24px 26px;
-  border: 1px solid color-mix(in srgb, #f59e0b 28%, var(--border-color));
+  border: 1px solid color-mix(in srgb, var(--palette-hex-f59e0b) 28%, var(--border-color));
   border-radius: 26px;
   background:
-    linear-gradient(135deg, rgba(255, 248, 235, 0.96), rgba(255, 255, 255, 0.92));
-  box-shadow: 0 18px 42px rgba(217, 119, 6, 0.12);
+    linear-gradient(135deg, var(--palette-rgba-255-248-235-0p96), var(--palette-rgba-255-255-255-0p92));
+  box-shadow: 0 18px 42px var(--palette-rgba-217-119-6-0p12);
   display: flex;
   gap: 24px;
   align-items: flex-start;
@@ -215,19 +219,19 @@ onUnmounted(() => {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #b45309;
+  color: var(--palette-hex-b45309);
 }
 
 .maintenance-banner__title {
   margin: 0;
   font-size: 22px;
-  color: #111827;
+  color: var(--palette-hex-111827);
 }
 
 .maintenance-banner__message {
   margin: 8px 0 0;
   line-height: 1.6;
-  color: #4b5563;
+  color: var(--palette-hex-4b5563);
 }
 
 .maintenance-banner__actions {
@@ -244,22 +248,22 @@ onUnmounted(() => {
   min-width: 96px;
   padding: 10px 14px;
   border-radius: 999px;
-  background: #111827;
-  color: #ffffff;
+  background: var(--palette-hex-111827);
+  color: var(--palette-hex-ffffff);
   font-weight: 600;
   text-decoration: none;
 }
 
 .maintenance-banner__link.secondary {
-  background: #ffffff;
-  color: #b45309;
-  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: var(--palette-hex-ffffff);
+  color: var(--palette-hex-b45309);
+  border: 1px solid var(--palette-rgba-245-158-11-0p35);
 }
 
 .maintenance-banner__link.tertiary {
-  background: rgba(255, 255, 255, 0.72);
-  color: #374151;
-  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: var(--palette-rgba-255-255-255-0p72);
+  color: var(--palette-hex-374151);
+  border: 1px solid var(--palette-rgba-148-163-184-0p4);
 }
 
 /* 页面切换动画 */

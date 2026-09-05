@@ -129,7 +129,7 @@ const supportTiers = [
   width: 320px;
   height: 320px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(181, 168, 152, 0.18), transparent 70%);
+  background: radial-gradient(circle, var(--palette-rgba-181-168-152-0p18), transparent 70%);
   filter: blur(0px);
   z-index: 0;
 }
@@ -170,8 +170,8 @@ const supportTiers = [
   padding: 26px 28px;
   border-radius: 26px;
   background:
-    radial-gradient(circle at 85% 15%, rgba(239, 122, 122, 0.12), transparent 60%),
-    linear-gradient(135deg, rgba(181, 168, 152, 0.25), rgba(255, 255, 255, 0.92));
+    radial-gradient(circle at 85% 15%, var(--palette-rgba-239-122-122-0p12), transparent 60%),
+    linear-gradient(135deg, var(--palette-rgba-181-168-152-0p25), var(--palette-rgba-255-255-255-0p92));
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
@@ -186,7 +186,7 @@ const supportTiers = [
   right: -15%;
   width: 220px;
   height: 220px;
-  background: radial-gradient(circle, rgba(239, 122, 122, 0.12), transparent 70%);
+  background: radial-gradient(circle, var(--palette-rgba-239-122-122-0p12), transparent 70%);
   opacity: 0.6;
   z-index: 0;
 }
@@ -195,7 +195,7 @@ const supportTiers = [
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 15% 15%, rgba(255, 255, 255, 0.5), transparent 45%);
+  background: radial-gradient(circle at 15% 15%, var(--palette-rgba-255-255-255-0p5), transparent 45%);
   opacity: 0.7;
   pointer-events: none;
   z-index: 0;
@@ -220,9 +220,9 @@ const supportTiers = [
   top: -20px;
   width: 220px;
   height: 220px;
-  color: rgba(239, 122, 122, 0.16);
+  color: var(--palette-rgba-239-122-122-0p16);
   opacity: 0.8;
-  filter: drop-shadow(0 12px 24px rgba(239, 122, 122, 0.18));
+  filter: drop-shadow(0 12px 24px var(--palette-rgba-239-122-122-0p18));
   transform: rotate(6deg);
   pointer-events: none;
   z-index: 1;
@@ -231,7 +231,7 @@ const supportTiers = [
 .support-heart {
   display: inline-block;
   animation: heart-beat 1.4s ease-in-out infinite;
-  filter: drop-shadow(0 0 6px rgba(239, 122, 122, 0.5));
+  filter: drop-shadow(0 0 6px var(--palette-rgba-239-122-122-0p5));
 }
 
 .support-hero-desc {
@@ -279,14 +279,14 @@ const supportTiers = [
 
 .support-github-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 16px 32px var(--palette-rgba-0-0-0-0p12);
 }
 
 .support-github-card::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.6), transparent 70%);
+  background: linear-gradient(120deg, transparent 30%, var(--palette-rgba-255-255-255-0p6), transparent 70%);
   opacity: 0;
   transform: translateX(-30%);
   transition: opacity 0.3s ease, transform 0.6s ease;
@@ -305,7 +305,7 @@ const supportTiers = [
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 1px 0 var(--palette-rgba-255-255-255-0p6);
 }
 
 .github-icon {
@@ -328,7 +328,7 @@ const supportTiers = [
 }
 
 .github-star-icon {
-  color: #f59e0b;
+  color: var(--palette-hex-f59e0b);
 }
 
 .github-desc {
@@ -438,31 +438,31 @@ const supportTiers = [
   border-radius: 999px;
   font-size: 10px;
   font-weight: 600;
-  color: #fff;
-  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #000));
+  color: var(--palette-hex-ffffff);
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, var(--palette-hex-000000)));
   box-shadow: 0 6px 14px var(--glow);
   animation: badge-float 3s ease-in-out infinite;
 }
 
 .support-card.tier-1 {
-  --accent: #6fbf8f;
-  --glow: rgba(111, 191, 143, 0.25);
+  --accent: var(--palette-hex-6fbf8f);
+  --glow: var(--palette-rgba-111-191-143-0p25);
 }
 
 .support-card.tier-2 {
-  --accent: #6aa6d9;
-  --glow: rgba(106, 166, 217, 0.25);
+  --accent: var(--palette-hex-6aa6d9);
+  --glow: var(--palette-rgba-106-166-217-0p25);
 }
 
 .support-card.tier-3 {
-  --accent: #f2b561;
-  --glow: rgba(242, 181, 97, 0.32);
+  --accent: var(--palette-hex-f2b561);
+  --glow: var(--palette-rgba-242-181-97-0p32);
 }
 
 .support-card.tier-4 {
-  --accent: #ef7a7a;
-  --glow: rgba(239, 122, 122, 0.32);
-  background: linear-gradient(145deg, var(--bg-card), rgba(239, 122, 122, 0.08));
+  --accent: var(--palette-hex-ef7a7a);
+  --glow: var(--palette-rgba-239-122-122-0p32);
+  background: linear-gradient(145deg, var(--bg-card), var(--palette-rgba-239-122-122-0p08));
 }
 
 .support-card.tier-3::before,

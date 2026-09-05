@@ -307,12 +307,12 @@
 }
 
 .highlight-box.danger {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.3);
+  background: var(--palette-rgba-239-68-68-0p1);
+  border-color: var(--palette-rgba-239-68-68-0p3);
 }
 
 .highlight-box.danger .box-icon {
-  color: #ef4444;
+  color: var(--palette-hex-ef4444);
 }
 
 .highlight-box.danger ul {

@@ -1,6 +1,14 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { api } from '@/utils/api'
+import { fetchProductImagesRequest } from '@/services/shop/inventoryService'
+import {
+  cancelTopServiceOrderRequest,
+  createTopServiceOrderRequest,
+  fetchTopServiceOptionsRequest,
+  fetchTopServiceOrdersRequest,
+  getTopServicePaymentUrlRequest,
+  refreshTopServiceOrderRequest
+} from '@/services/shop/topServiceService'
 import { useDialog } from '@/composables/useDialog'
 import { cleanupPreparedTab, preparePaymentPopup, openPaymentPopup, watchPaymentPopup } from '@/utils/newTab'
 import {
@@ -11,7 +19,7 @@ import {
 const emptyPagination = () => ({ page: 1, pageSize: 20, total: 0, totalPages: 0 })
 const ORDER_POLL_INTERVAL_MS = 15000
 const AUTO_VERIFY_COOLDOWN_MS = 30000
-const hasImageField = product => product.imageUrl !== undefined || product.image_url !== undefined
+const hasImageField = product => product.imageUrl !== undefined
 
 export function useTopServicePurchase() {
   const route = useRoute()
@@ -119,7 +127,7 @@ export function useTopServicePurchase() {
       optionsLoading.value = true
       const previous = selectedConfig.value ? { amount: selectedConfig.value.price, categoryId: selectedProduct.value?.categoryId } : null
       try {
-        const response = await api.get('/api/shop/top-service/options')
+        const response = await fetchTopServiceOptionsRequest()
         if (!response?.success) throw new Error(getTopServiceError(response, '无法加载服务信息，请重试'))
         if (disposed) return false
         packages.value = Array.isArray(response.data?.packages) ? response.data.packages : []
@@ -161,13 +169,13 @@ export function useTopServicePurchase() {
         let page = 1
         let totalPages = 1
         do {
-          const response = await api.get(`/api/shop/my-products?status=approved&page=${page}&pageSize=100`, { timeout: 8000 })
+          const response = await fetchProductImagesRequest({ status: 'approved', page, pageSize: 100, timeout: 8000 })
           if (disposed) return
           if (!response?.success || !Array.isArray(response.data?.products)) throw new Error('图片暂未加载')
           for (const product of response.data.products) {
             const id = String(product.id)
             if (!missingIds.has(id)) continue
-            productImages.set(id, String(product.image_url || product.imageUrl || '').trim())
+            productImages.set(id, String(product.imageUrl || '').trim())
             missingIds.delete(id)
           }
           products.value = products.value.map(p => !hasImageField(p) && productImages.has(String(p.id))
@@ -188,9 +196,13 @@ export function useTopServicePurchase() {
     if (disposed) return
     const sequence = ++ordersSequence
     ordersLoading.value = true
-    const params = new URLSearchParams({ status: orderFilterStatus.value, search: orderSearch.value.trim(), page: String(page), pageSize: '20' })
     try {
-      const response = await api.get(`/api/shop/top-service/orders?${params}`)
+      const response = await fetchTopServiceOrdersRequest({
+        status: orderFilterStatus.value,
+        search: orderSearch.value,
+        page,
+        pageSize: 20
+      })
       if (!response?.success) throw new Error(getTopServiceError(response, '无法读取购买记录，请重试'))
       if (disposed || sequence !== ordersSequence) return
       orders.value = response.data?.orders || []
@@ -219,7 +231,7 @@ export function useTopServicePurchase() {
     const key = `${orderNo}:${revision}`
     if (reads.has(key)) return reads.get(key)
     const request = (async () => {
-      const response = await api.get(`/api/shop/top-service/orders?search=${encodeURIComponent(orderNo)}&page=1&pageSize=20`)
+      const response = await fetchTopServiceOrdersRequest({ search: orderNo, page: 1, pageSize: 20 })
       if (!response?.success) throw new Error(getTopServiceError(response, '订单状态暂未更新，请重试，不要重复付款。'))
       const order = response.data?.orders?.find(o => o.orderNo === orderNo)
       if (!order) throw new Error('未找到这笔订单，请检查订单号或当前登录账号。')
@@ -314,7 +326,7 @@ export function useTopServicePurchase() {
     return runAction(order, 'refresh', async () => {
       feedback(order.orderNo, unresolvedRefund ? '正在检查退款进度，请勿重复付款。' : '正在检查 Credit 支付结果，请勿重复付款。')
       try {
-        const response = await api.post(`/api/shop/top-service/orders/${encodeURIComponent(order.orderNo)}/refresh`)
+        const response = await refreshTopServiceOrderRequest(order.orderNo)
         if (!response?.success) throw new Error(getTopServiceError(response, '暂时无法核验支付结果，请稍后重试，不要重复付款。'))
         const latest = await readOrder(order.orderNo)
         lastPollAt = Date.now()
@@ -368,8 +380,11 @@ export function useTopServicePurchase() {
         let page = 1
         let totalPages = 1
         do {
-          const params = new URLSearchParams({ search: uncertainProductName.slice(0, 80), page: String(page), pageSize: '100' })
-          const response = await api.get(`/api/shop/top-service/orders?${params}`)
+          const response = await fetchTopServiceOrdersRequest({
+            search: uncertainProductName.slice(0, 80),
+            page,
+            pageSize: 100
+          })
           if (!response?.success) throw new Error(getTopServiceError(response, '暂时无法核对购买记录，请重试，不要重复下单。'))
           if (disposed) return
           existing = response.data?.orders?.find(order => Number(order.productId) === productId && ['pending', 'active', 'suspended'].includes(order.status))
@@ -401,7 +416,7 @@ export function useTopServicePurchase() {
     purchaseError.value = ''
     const preparedWindow = preparePaymentPopup()
     try {
-      const response = await api.post('/api/shop/top-service/orders', {
+      const response = await createTopServiceOrderRequest({
         productId: quote.productId, packageType: quote.packageType, durationDays: quote.durationDays
       })
       if (disposed) { cleanupPreparedTab(preparedWindow); return }
@@ -445,7 +460,7 @@ export function useTopServicePurchase() {
     const preparedWindow = preparePaymentPopup()
     return runAction(order, 'pay', async () => {
       try {
-        const response = await api.get(`/api/shop/top-service/orders/${encodeURIComponent(order.orderNo)}/payment-url`)
+        const response = await getTopServicePaymentUrlRequest(order.orderNo)
         if (!response?.success || !response.data?.paymentUrl) throw new Error(getTopServiceError(response, '支付链接不可用，请核验订单状态。'))
         const latest = await readOrder(order.orderNo)
         if (disposed) { cleanupPreparedTab(preparedWindow); return }
@@ -475,7 +490,7 @@ export function useTopServicePurchase() {
       if (!confirmed || disposed) return
       orderActions.value = { ...orderActions.value, [order.orderNo]: 'cancel' }
       try {
-        const response = await api.post(`/api/shop/top-service/orders/${encodeURIComponent(order.orderNo)}/cancel`)
+        const response = await cancelTopServiceOrderRequest(order.orderNo)
         // Always read the authoritative result: payment may win the cancellation race.
         await readOrder(order.orderNo)
         feedback(order.orderNo, response?.success ? '' : getTopServiceError(response, '未能取消，请核对最新订单状态。'))

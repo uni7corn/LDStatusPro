@@ -184,8 +184,8 @@ onMounted(async () => {
 .spinner {
   width: 48px;
   height: 48px;
-  border: 3px solid rgba(181, 168, 152, 0.2);
-  border-top-color: #b5a898;
+  border: 3px solid var(--palette-rgba-181-168-152-0p2);
+  border-top-color: var(--palette-hex-b5a898);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -221,8 +221,8 @@ onMounted(async () => {
 
 .retry-btn {
   padding: 12px 24px;
-  background: linear-gradient(135deg, #b5a898 0%, #9f8f7d 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--palette-hex-b5a898) 0%, var(--palette-hex-9f8f7d) 100%);
+  color: var(--palette-hex-ffffff);
   font-size: 14px;
   font-weight: 500;
   border-radius: 10px;

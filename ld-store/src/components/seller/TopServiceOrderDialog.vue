@@ -77,8 +77,8 @@ onBeforeUnmount(release)
 </script>
 
 <style scoped>
-.service-dialog-layer { position:fixed; inset:0; z-index:1400; display:grid; place-items:center; padding:24px; background:rgba(16,28,42,.55); backdrop-filter:blur(4px); }
-.service-dialog-panel { display:flex; flex-direction:column; min-height:0; width:min(600px,100%); max-height:min(760px,calc(100dvh - 48px)); border:1px solid var(--seller-border); border-radius:18px; background:var(--seller-surface-strong); color:var(--seller-ink); box-shadow:0 24px 80px rgba(0,0,0,.22); outline:0; }
+.service-dialog-layer { position:fixed; inset:0; z-index:1400; display:grid; place-items:center; padding:24px; background:var(--palette-rgba-16-28-42-p55); backdrop-filter:blur(4px); }
+.service-dialog-panel { display:flex; flex-direction:column; min-height:0; width:min(600px,100%); max-height:min(760px,calc(100dvh - 48px)); border:1px solid var(--seller-border); border-radius:18px; background:var(--seller-surface-strong); color:var(--seller-ink); box-shadow:0 24px 80px var(--palette-rgba-0-0-0-p22); outline:0; }
 .dialog-heading { display:flex; align-items:center; justify-content:space-between; flex:0 0 auto; gap:18px; padding:12px 22px; border-bottom:1px solid var(--seller-border); }
 .dialog-heading h2 { margin:0; font-family:"Noto Serif SC","Songti SC",serif; color:var(--seller-ink); font-size:21px; font-weight:600; }
 .dialog-heading button { display:grid; place-items:center; width:44px; height:44px; flex:0 0 auto; border:1px solid var(--seller-border); border-radius:50%; color:var(--seller-muted); background:var(--seller-surface); }

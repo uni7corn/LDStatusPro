@@ -1,5 +1,6 @@
 <template>
   <div class="publish-page">
+    <FulfillmentRuleDialog v-bind="fulfillmentReminder.dialogProps" @confirm="fulfillmentReminder.confirm" @cancel="fulfillmentReminder.cancel" @retry="fulfillmentReminder.retry" />
     <Transition name="submit-mask">
       <div
         v-if="publishOverlayVisible"
@@ -18,7 +19,7 @@
 
     <!-- 使用说明弹窗 -->
     <Teleport to="body">
-      <Transition name="modal">
+      <Transition name="modal" @after-leave="guideClosing = false">
         <div v-if="showGuideModal" class="guide-modal-overlay" @click.self="closeGuideModal">
           <div class="guide-modal">
             <div class="guide-modal-header">
@@ -148,190 +149,55 @@
           </div>
         </section>
 
-        <!-- 基本信息 -->
-        <div class="form-card">
-          <h2 class="card-title">基本信息</h2>
-          
-          <div class="form-group">
-            <label class="form-label required">物品名称</label>
-            <input
-              v-model="form.name"
-              type="text"
-              class="form-input"
-              :class="{ 'input-error': showError('name', nameError) }"
-              placeholder="请输入物品名称（2-50字符）"
-              maxlength="50"
-              ref="nameInput"
-              @input="markTouched('name')"
-            />
-            <p class="form-counter">{{ form.name.length }}/50</p>
-            <p v-if="showError('name', nameError)" class="form-error">{{ nameError }}</p>
-          </div>
-          
-          <div class="form-group">
-            <div class="form-label-row">
-              <label class="form-label required">物品描述</label>
-              <div class="desc-mode-tabs">
-                <button
-                  type="button"
-                  :class="['desc-mode-tab', { active: descMode === 'write' }]"
-                  @click="descMode = 'write'"
-                >编辑</button>
-                <button
-                  type="button"
-                  :class="['desc-mode-tab', { active: descMode === 'preview' }]"
-                  @click="descMode = 'preview'"
-                >预览</button>
-              </div>
-            </div>
-            <textarea
-              v-if="descMode === 'write'"
-              v-model="form.description"
-              class="form-textarea"
-              :class="{ 'input-error': showError('description', descriptionError) }"
-              :placeholder="descriptionPlaceholder"
-              rows="4"
-              maxlength="1000"
-              ref="descriptionInput"
-              @input="markTouched('description')"
-            ></textarea>
-            <div
-              v-else
-              class="form-textarea-preview markdown-content"
-              :class="{ 'is-empty': !descriptionPreview }"
-              v-html="descriptionPreview || '暂无内容，切换到「编辑」填写物品描述'"
-            ></div>
-            <p class="form-hint">支持 Markdown：**加粗**、*斜体*、++下划线++、`代码`；网址和图片语法显示为可点击链接（新窗口打开）</p>
-            <p class="form-counter">{{ form.description.length }}/1000</p>
-            <p v-if="showError('description', descriptionError)" class="form-error">{{ descriptionError }}</p>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label required">物品分类</label>
-            <div class="category-select">
-              <button
-                v-for="cat in categories"
-                :key="cat.id || cat.name"
-                type="button"
-                :class="['category-btn', { active: form.categoryId === cat.id }]"
-                @click="form.categoryId = cat.id"
-              >
-                {{ cat.name }}
-              </button>
-            </div>
-            <p v-if="categoriesLoading" class="form-hint">正在加载物品分类...</p>
-            <div v-else-if="categoriesLoadError" class="category-load-error" role="alert">
-              <p class="form-error">{{ categoriesLoadError }}</p>
-              <button type="button" class="category-retry-btn" @click="loadCategories">重新加载</button>
-            </div>
-            <!-- 入站分类价格提示 -->
-            <div v-if="isRuzhanCategory" class="category-price-notice">
-              <span class="notice-icon">注意</span>
-              <span class="notice-text">始皇指导价：入站分类物品<strong>折后价格不得低于 500 LDC</strong></span>
-            </div>
-          </div>
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label required">价格 (LDC)</label>
-              <input
-                v-model="form.price"
-                type="number"
-                class="form-input"
-                :class="{ 'input-error': showError('price', priceError) || ruzhanPriceError }"
-                placeholder="0.00"
-                min="0.01"
-                max="99999999"
-                step="0.01"
-                ref="priceInput"
-                @input="markTouched('price')"
-              />
-              <p v-if="showError('price', priceError)" class="form-error">{{ priceError }}</p>
-              <p v-else-if="ruzhanPriceError" class="form-error">{{ ruzhanPriceError }}</p>
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">折扣</label>
-              <input
-                v-model="form.discount"
-                type="number"
-                class="form-input"
-                :class="{ 'input-error': showError('discount', discountError) || ruzhanPriceError }"
-                placeholder="1"
-                min="0.01"
-                max="1"
-                step="0.01"
-                ref="discountInput"
-                @input="markTouched('discount')"
-              />
-              <p v-if="showError('discount', discountError)" class="form-error">{{ discountError }}</p>
-              <p v-else class="form-hint">范围 0.01-1，0.8 表示8折，1 表示原价</p>
-            </div>
-          </div>
-          <!-- 入站分类折后价格显示 -->
-          <div v-if="isRuzhanCategory && finalPrice > 0" class="final-price-display">
-            <span class="price-label">折后价格：</span>
-            <span class="price-value" :class="{ 'price-error': finalPrice < 500 }">
-              {{ finalPrice.toFixed(2) }} LDC
-            </span>
-            <span v-if="finalPrice < 500" class="price-warning">（最低 500 LDC）</span>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label required">物品图片</label>
-            <input
-              v-model="form.imageUrl"
-              type="url"
-              class="form-input"
-              :class="{ 'input-error': showError('image', imageDisplayError) }"
-              placeholder="https://..."
-              :maxlength="MAX_PRODUCT_IMAGE_URL_LENGTH"
-              @blur="validateImageLoad"
-              ref="imageInput"
-              @input="markTouched('image')"
-            />
-            <p v-if="showError('image', imageDisplayError)" class="form-error">{{ imageDisplayError }}</p>
-            <p v-else-if="imageLoadError" class="form-error">{{ imageLoadError }}</p>
-            <p v-else-if="imageValidating" class="form-hint loading-hint">正在验证图片...</p>
-            <p v-else-if="imageValidated" class="form-hint success-hint">图片验证通过</p>
-            <div v-else class="form-hint-with-link">
-              <p class="form-hint">推荐尺寸 16:9，必须使用 HTTPS 链接，不支持 linux.do 图床</p>
-              <router-link to="/ld-image" target="_blank" class="image-bed-link">
-                没有图床？试试 <strong>士多图床</strong>，即刻上传图片并获取在线链接
-              </router-link>
-            </div>
-            
-            <!-- 图片预览 -->
-            <div v-if="imagePreviewUrl && !imageLoadError" class="image-preview">
-              <img :src="imagePreviewUrl" alt="图片预览" @error="onPreviewError" />
-            </div>
-          </div>
-        </div>
-        
-        <!-- 物品类型 -->
-        <div class="form-card">
-          <h2 class="card-title">物品类型</h2>
-          
-          <div class="type-select">
-            <div
-              v-for="type in productTypes"
+        <div class="form-card product-type-section">
+          <div class="type-heading"><h2 id="product-type-title" class="card-title">物品类型</h2><router-link to="/docs/product-types" target="_blank" rel="noopener noreferrer">物品类型说明<ArrowUpRight :size="14" aria-hidden="true" /></router-link></div>
+          <div class="type-select" role="radiogroup" aria-labelledby="product-type-title">
+            <button
+              v-for="(type, index) in productTypes"
               :key="type.id"
+              type="button"
+              role="radio"
+              :aria-checked="form.productType === type.id"
+              :tabindex="form.productType === type.id ? 0 : -1"
+              :disabled="fulfillmentReminder.pending || productSubmittingBusy"
               :class="['type-card', { active: form.productType === type.id }]"
-              @click="form.productType = type.id"
+              @click="selectProductType(type.id)"
+              @keydown="handleProductTypeKeydown($event, index)"
             >
-              <div v-if="type.icon" class="type-icon">{{ type.icon }}</div>
-              <div class="type-info">
-                <h4 class="type-name">{{ type.name }}</h4>
-                <p class="type-desc">{{ type.desc }}</p>
-              </div>
-              <div class="type-check" v-if="form.productType === type.id">✓</div>
-            </div>
+              <component :is="type.icon" class="type-icon" :size="22" :stroke-width="1.7" aria-hidden="true" />
+              <span class="type-info"><span class="type-name">{{ type.name }}</span><span class="type-desc">{{ type.desc }}</span></span>
+              <CircleCheck v-if="form.productType === type.id" class="type-selected-icon" :size="20" aria-hidden="true" />
+            </button>
           </div>
         </div>
-        
+
+        <ProductEditorForm
+          ref="productEditorFormRef"
+          v-model="form"
+          v-model:desc-mode="descMode"
+          variant="publish"
+          :categories="categories"
+          :categories-loading="categoriesLoading"
+          :categories-load-error="categoriesLoadError"
+          :description-preview="descriptionPreview"
+          :description-placeholder="descriptionPlaceholder"
+          :errors="productEditorDisplayErrors"
+          :is-ruzhan-category="isRuzhanCategory"
+          :ruzhan-price-error="ruzhanPriceError"
+          :final-price="finalPrice"
+          :image-validating="imageValidating"
+          :image-validated="imageValidated"
+          :image-load-error="imageLoadError"
+          :image-preview-url="imagePreviewUrl"
+          @touched="markTouched"
+          @retry-categories="loadCategories"
+          @validate-image="validateImageLoad"
+          @preview-error="onPreviewError"
+        />
+
         <!-- 普通物品设置 -->
         <div class="form-card" v-if="form.productType === 'normal'">
-          <h2 class="card-title">普通物品设置</h2>
+          <div class="type-heading"><h2 class="card-title">普通物品设置</h2><button type="button" class="rule-text-link" @click="fulfillmentReminder.request({ force: true })">查看发货规则<ArrowUpRight :size="14" aria-hidden="true" /></button></div>
 
           <div class="cdk-config-notice">
             <div class="notice-header">
@@ -431,14 +297,14 @@
               <div class="notice-item highlight">
                 <span class="item-num">2</span>
                 <div class="item-text">
-                  <strong>在<a href="https://credit.linux.do/merchant" target="_blank" style="color: #007bff;"> LDC集市 </a>配置通知地址（最重要）</strong>：这是支付成功后自动发货的关键！
+                  <strong>在<a href="https://credit.linux.do/merchant" target="_blank" class="merchant-config-link"> LDC集市 </a>配置通知地址（最重要）</strong>：这是支付成功后自动发货的关键！
                   <code class="notice-url">https://api.ldspro.qzz.io/api/shop/ldc/notify</code>
                 </div>
               </div>
               <div class="notice-item">
                 <span class="item-num">3</span>
                 <div class="item-text">
-                  <strong>在<a href="https://credit.linux.do/merchant" target="_blank" style="color: #007bff;"> LDC集市 </a>配置回调地址</strong>：支付完成后浏览器跳转地址
+                  <strong>在<a href="https://credit.linux.do/merchant" target="_blank" class="merchant-config-link"> LDC集市 </a>配置回调地址</strong>：支付完成后浏览器跳转地址
                   <code class="notice-url">https://api.ldspro.qzz.io/api/shop/ldc/return</code>
                 </div>
               </div>
@@ -524,106 +390,47 @@
           <p class="seller-summary-meta">{{ selectedCategoryName }} · {{ form.productType === 'cdk' ? '自动发卡' : '普通物品' }}</p>
           <dl class="seller-summary-facts"><div><dt>成交价</dt><dd>{{ finalPrice > 0 ? finalPrice.toFixed(2) : '—' }} LDC</dd></div><div><dt>{{ form.productType === 'cdk' ? '卡密' : '库存' }}</dt><dd>{{ form.productType === 'cdk' ? (form.sharedCdkEnabled ? '共享模式' : `${cdkCount} 个`) : (form.stock || '—') }}</dd></div><div><dt>限购</dt><dd>{{ purchaseLimitSummary }}</dd></div></dl>
           <ul class="seller-readiness-list"><li :class="{ ready: merchantConfigured }"><span></span>{{ merchantReadinessText }}</li><li :class="{ ready: !!form.name.trim() }"><span></span>物品名称</li><li :class="{ ready: !!form.categoryId }"><span></span>物品分类</li><li :class="{ ready: imageValidated && lastValidatedUrl === form.imageUrl.trim() }"><span></span>图片验证</li></ul>
-          <template #action><button type="submit" class="submit-btn" :disabled="!canSubmit || productSubmittingBusy">{{ submitButtonText }}</button></template>
+          <template #action><button type="submit" class="submit-btn" :disabled="!canSubmit || productSubmittingBusy || fulfillmentReminder.pending">{{ submitButtonText }}</button></template>
         </SellerStickySummary>
       </form>
 
-      <form v-else class="publish-form" @submit.prevent="submitBuyRequest">
-        <div class="form-card">
-          <h3 class="card-title">求购信息</h3>
-
-          <div class="form-group">
-            <label class="form-label required">求购标题</label>
-            <input
-              v-model="buyForm.title"
-              type="text"
-              class="form-input"
-              :class="{ 'input-error': showBuyError('title', buyTitleError) }"
-              placeholder="例如：收一个月 Claude 会员"
-              maxlength="60"
-              ref="buyTitleInput"
-              @input="markBuyTouched('title')"
-            />
-            <p class="form-counter">{{ buyForm.title.length }}/60</p>
-            <p v-if="showBuyError('title', buyTitleError)" class="form-error">{{ buyTitleError }}</p>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label required">详细需求</label>
-            <textarea
-              v-model="buyForm.details"
-              class="form-textarea"
-              :class="{ 'input-error': showBuyError('details', buyDetailsError) }"
-              placeholder="请写清楚具体需求、交付方式、时效要求等（10-2000 字）"
-              rows="6"
-              maxlength="2000"
-              ref="buyDetailsInput"
-              @input="markBuyTouched('details')"
-            ></textarea>
-            <p class="form-counter">{{ buyForm.details.length }}/2000</p>
-            <p v-if="showBuyError('details', buyDetailsError)" class="form-error">{{ buyDetailsError }}</p>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label required">预算价格 (LDC)</label>
-            <input
-              v-model="buyForm.price"
-              type="number"
-              class="form-input"
-              :class="{ 'input-error': showBuyError('price', buyPriceError) }"
-              placeholder="0.00"
-              min="0.01"
-              max="99999999"
-              step="0.01"
-              ref="buyPriceInput"
-              @input="markBuyTouched('price')"
-            />
-            <p v-if="showBuyError('price', buyPriceError)" class="form-error">{{ buyPriceError }}</p>
-            <p class="form-hint">发布后可在会话中继续协商，并可随时调价。</p>
-          </div>
-        </div>
-
-        <div class="form-card buy-safe-card">
-          <h3 class="card-title">安全说明</h3>
-          <p class="form-hint">平台会展示随机用户名与密码进行沟通，真实信息默认不公开。</p>
-          <p class="form-hint">聊天内容会自动检测违禁词，命中后无法发送。</p>
-        </div>
-
-        <div class="form-actions">
-          <button type="submit" class="submit-btn" :disabled="!canSubmitBuy || buySubmitting">
-            {{ buySubmitting ? '发布中...' : '发布求购' }}
-          </button>
-        </div>
-      </form>
+      <BuyRequestEditorForm v-else @busy="buySubmitting = $event" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
-import { CircleAlert, CircleCheck, Clock3, Cloud, FlaskConical, Image as ImageIcon, ShieldAlert } from '@lucide/vue'
+import FulfillmentRuleDialog from '@/components/seller/FulfillmentRuleDialog.vue'
+import { useFulfillmentReminder } from '@/composables/useFulfillmentReminder'
+import { reactive, ref, computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
+import { ArrowUpRight, KeyRound, PackageCheck, CircleAlert, CircleCheck, Clock3, Cloud, FlaskConical, Image as ImageIcon, ShieldAlert } from '@lucide/vue'
 import { onBeforeRouteLeave, useRouter, useRoute } from 'vue-router'
-import { useShopStore } from '@/stores/shop'
+import { useCatalogStore } from '@/stores/catalog'
+import { useInventoryStore } from '@/stores/inventory'
 import { useUserStore } from '@/stores/user'
 import { useToast } from '@/composables/useToast'
 import { useDialog } from '@/composables/useDialog'
 import { validateProductName, validateProductDescription, validatePrice } from '@/utils/security'
 import { renderProductDescription } from '@/utils/renderProductDescription'
-import { api } from '@/utils/api'
 import { CDK_UPLOAD_LIMITS } from '@/config/cdkQuota'
 import SellerStickySummary from '@/components/seller/SellerStickySummary.vue'
 import PurchaseLimitSelector from '@/components/product/PurchaseLimitSelector.vue'
+import ProductEditorForm from '@/components/product-editor/ProductEditorForm.vue'
+import BuyRequestEditorForm from '@/components/product-editor/BuyRequestEditorForm.vue'
 import {
-  PRODUCT_PUBLISH_PAYMENT_SOURCE,
-  clearProductPublishDraft,
-  readProductPublishDraft,
-  writeProductPublishDraft
+  buildProductCreatePayload,
+  createProductEditorFormState,
+  useProductEditor
+} from '@/composables/product-editor/useProductEditor'
+import { useProductDraft } from '@/composables/product-editor/useProductDraft'
+import {
+  createSubmissionToken,
+  isUncertainMutationResult,
+  reconcileByPolling
+} from '@/composables/product-editor/useSubmissionReconciliation'
+import {
+  PRODUCT_PUBLISH_PAYMENT_SOURCE
 } from '@/utils/productPublishDraft'
-import {
-  MAX_PRODUCT_IMAGE_URL_LENGTH,
-  getProductImageUrlError,
-  preloadProductImage
-} from '@/utils/productImageValidation'
 
 const props = defineProps({
   initialMode: {
@@ -638,10 +445,32 @@ const props = defineProps({
 
 const router = useRouter()
 const route = useRoute()
-const shopStore = useShopStore()
+const catalogStore = useCatalogStore()
+const inventoryStore = useInventoryStore()
 const userStore = useUserStore()
 const toast = useToast()
 const dialog = useDialog()
+const fulfillmentReminder = reactive(useFulfillmentReminder(() => `${userStore.currentUser?.site || 'linux.do'}:${userStore.currentUser?.id || ''}`))
+const guideClosing = ref(false)
+const publishInitialized = ref(false)
+const restoredNormalReminderPending = ref(false)
+
+async function selectProductType(type) {
+  if (fulfillmentReminder.pending || productSubmittingBusy.value || form.value.productType === type) return
+  if (type === 'normal' && !await fulfillmentReminder.request()) return
+  form.value.productType = type
+}
+
+async function handleProductTypeKeydown(event, index) {
+  if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return
+  event.preventDefault()
+  const next = event.key === 'Home' ? 0 : event.key === 'End' ? productTypes.length - 1
+    : (index + (['ArrowLeft', 'ArrowUp'].includes(event.key) ? -1 : 1) + productTypes.length) % productTypes.length
+  const group = event.currentTarget.closest('[role="radiogroup"]')
+  await selectProductType(productTypes[next].id)
+  await nextTick()
+  group?.querySelector('[aria-checked="true"]')?.focus()
+}
 
 const submitting = ref(false)
 const submitConfirming = ref(false)
@@ -654,19 +483,6 @@ const dontShowAgain = ref(false)
 const lockedMode = computed(() => props.lockedMode)
 const publishMode = ref(props.initialMode === 'buy' ? 'buy' : 'product')
 const buySubmitting = ref(false)
-const buySubmitAttempted = ref(false)
-
-const buyForm = ref({
-  title: '',
-  details: '',
-  price: ''
-})
-
-const buyTouched = ref({
-  title: false,
-  details: false,
-  price: false
-})
 
 const submitAttempted = ref(false)
 const submitTokenState = ref({
@@ -683,33 +499,15 @@ const touched = ref({
   cdkCodes: false
 })
 
-const nameInput = ref(null)
-const descriptionInput = ref(null)
-const priceInput = ref(null)
-const discountInput = ref(null)
-const imageInput = ref(null)
+const productEditorFormRef = ref(null)
 const stockInput = ref(null)
 const cdkCodesInput = ref(null)
 const maxPurchaseQuantityInput = ref(null)
-const buyTitleInput = ref(null)
-const buyDetailsInput = ref(null)
-const buyPriceInput = ref(null)
 
 const fieldRefs = {
-  name: nameInput,
-  description: descriptionInput,
-  price: priceInput,
-  discount: discountInput,
-  image: imageInput,
   stock: stockInput,
   cdkCodes: cdkCodesInput,
   maxPurchaseQuantity: maxPurchaseQuantityInput
-}
-
-const buyFieldRefs = {
-  title: buyTitleInput,
-  details: buyDetailsInput,
-  price: buyPriceInput
 }
 
 function markTouched(field) {
@@ -718,26 +516,12 @@ function markTouched(field) {
   }
 }
 
-function markBuyTouched(field) {
-  if (field in buyTouched.value) {
-    buyTouched.value[field] = true
-  }
-}
-
 function focusField(field) {
-  const elRef = fieldRefs[field]
-  if (elRef?.value) {
-    elRef.value.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    try {
-      elRef.value.focus({ preventScroll: true })
-    } catch (e) {
-      // ignore focus errors
-    }
+  if (['name', 'description', 'price', 'discount', 'image'].includes(field)) {
+    productEditorFormRef.value?.focusField?.(field)
+    return
   }
-}
-
-function focusBuyField(field) {
-  const elRef = buyFieldRefs[field]
+  const elRef = fieldRefs[field]
   if (elRef?.value) {
     elRef.value.scrollIntoView({ behavior: 'smooth', block: 'center' })
     try {
@@ -753,10 +537,10 @@ const GUIDE_MODAL_KEY = 'ld_store_publish_guide_seen'
 const PRODUCT_SUBMIT_TIMEOUT_MS = 90000
 const PRODUCT_SUBMIT_STATUS_MAX_RETRIES = 8
 const PRODUCT_SUBMIT_STATUS_RETRY_INTERVAL_MS = 2000
-const PRODUCT_DRAFT_SAVE_DEBOUNCE_MS = 600
 
 // 关闭弹窗
 function closeGuideModal() {
+  guideClosing.value = true
   showGuideModal.value = false
   if (dontShowAgain.value) {
     localStorage.setItem(GUIDE_MODAL_KEY, 'true')
@@ -764,134 +548,49 @@ function closeGuideModal() {
 }
 
 function createDefaultProductForm(categoryId = null) {
-  return {
-    name: '',
-    description: '',
-    categoryId,
-    price: '',
-    discount: 1,
-    imageUrl: '',
-    productType: 'normal',
-    stock: '',
-    purchaseTrustLevel: 0,
-    cdkCodes: '',
-    sharedCdkEnabled: false,
-    sharedCdkCode: '',
-    isTestMode: false,
-    purchaseLimitType: 'none',
-    maxPurchaseQuantity: '',
-    purchaseLimitPeriodDays: 0
-  }
+  return createProductEditorFormState({ categoryId, productType: 'cdk' })
 }
 
 // 表单数据
 const form = ref(createDefaultProductForm())
-const draftReady = ref(false)
-const draftDirty = ref(false)
-const draftState = ref('idle')
-const draftSavedAt = ref(0)
-const draftError = ref('')
-const hasRestoredDraft = ref(false)
-const restoredDraftAt = ref(0)
-const restoredSensitiveFields = ref([])
 const restoredCategoryId = ref(null)
 const restoredCategoryNotice = ref('')
-let draftSaveTimer = null
-
-const draftStatusText = computed(() => {
-  if (draftState.value === 'error') {
-    return draftError.value || '自动保存失败，离开页面可能丢失内容'
-  }
-  if (draftSavedAt.value) return `已自动保存 ${formatDraftTime(draftSavedAt.value)}`
-  return '自动保存已开启'
+const {
+  draftReady,
+  draftDirty,
+  draftState,
+  draftSavedAt,
+  draftError,
+  hasRestoredDraft,
+  restoredDraftAt,
+  restoredSensitiveFields,
+  draftStatusText,
+  formatDraftTime,
+  clearDraftSaveTimer,
+  flushProductDraft,
+  retryDraftSave,
+  restoreProductDraft: restoreDraft,
+  clearPersistedProductDraft: clearDraft,
+  markDirty: markDraftDirty
+} = useProductDraft({
+  getUser: () => userStore.currentUser,
+  form,
+  isActive: () => publishMode.value === 'product'
 })
 
-function formatDraftTime(value) {
-  const date = new Date(Number(value || 0))
-  if (Number.isNaN(date.getTime())) return ''
-  const now = new Date()
-  const time = date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
-  if (date.toDateString() === now.toDateString()) return time
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${time}`
-}
-
-function clearDraftSaveTimer() {
-  if (draftSaveTimer !== null) {
-    window.clearTimeout(draftSaveTimer)
-    draftSaveTimer = null
-  }
-}
-
-function persistProductDraft() {
-  clearDraftSaveTimer()
-  if (!draftReady.value || !draftDirty.value || publishMode.value !== 'product') return true
-
-  const result = writeProductPublishDraft(userStore.currentUser, form.value)
-  if (!result.success) {
-    draftState.value = 'error'
-    draftError.value = '自动保存失败，离开页面可能丢失内容'
-    return false
-  }
-
-  draftDirty.value = false
-  draftState.value = 'saved'
-  draftSavedAt.value = result.draft.updatedAt
-  draftError.value = ''
-  return true
-}
-
-function scheduleProductDraftSave() {
-  clearDraftSaveTimer()
-  draftSaveTimer = window.setTimeout(persistProductDraft, PRODUCT_DRAFT_SAVE_DEBOUNCE_MS)
-}
-
-function flushProductDraft() {
-  if (!draftReady.value) return true
-  return persistProductDraft()
-}
-
-function retryDraftSave() {
-  draftDirty.value = true
-  persistProductDraft()
-}
-
 function restoreProductDraft() {
-  const result = readProductPublishDraft(userStore.currentUser)
-  if (result.error) {
-    draftState.value = 'error'
-    draftError.value = '草稿读取失败，本次填写仍会继续尝试自动保存'
-    return
-  }
-  if (!result.draft) return
-
-  const draft = result.draft
-  form.value = {
-    ...createDefaultProductForm(),
-    ...draft.form,
-    cdkCodes: '',
-    sharedCdkCode: ''
-  }
-  hasRestoredDraft.value = true
-  restoredDraftAt.value = draft.updatedAt
-  restoredSensitiveFields.value = draft.sensitiveFieldsOmitted
-  restoredCategoryId.value = draft.form.categoryId
-  draftSavedAt.value = draft.updatedAt
-  draftState.value = 'saved'
+  const draft = restoreDraft(() => createDefaultProductForm())
+  restoredCategoryId.value = draft?.form.categoryId ?? null
+  restoredNormalReminderPending.value = draft?.form.productType === 'normal'
 }
 
 function clearPersistedProductDraft() {
-  clearDraftSaveTimer()
-  draftReady.value = false
-  draftDirty.value = false
-  clearProductPublishDraft(userStore.currentUser)
-  hasRestoredDraft.value = false
-  restoredDraftAt.value = 0
-  restoredSensitiveFields.value = []
-  restoredCategoryId.value = null
-  restoredCategoryNotice.value = ''
-  draftSavedAt.value = 0
-  draftState.value = 'idle'
-  draftError.value = ''
+  const cleared = clearDraft()
+  if (cleared) {
+    restoredCategoryId.value = null
+    restoredCategoryNotice.value = ''
+  }
+  return cleared
 }
 
 async function discardProductDraft() {
@@ -903,13 +602,15 @@ async function discardProductDraft() {
 
   clearDraftSaveTimer()
   draftReady.value = false
-  if (!clearProductPublishDraft(userStore.currentUser)) {
+  if (!clearPersistedProductDraft()) {
     draftState.value = 'error'
     draftError.value = '无法清除草稿，请稍后重试'
     draftReady.value = true
     return
   }
 
+  fulfillmentReminder.reset()
+  restoredNormalReminderPending.value = false
   form.value = createDefaultProductForm(categories.value[0]?.id ?? null)
   touched.value = {
     name: false,
@@ -925,11 +626,6 @@ async function discardProductDraft() {
   showTestModeModal.value = false
   resetImageValidation()
   clearSubmissionTokenState()
-  hasRestoredDraft.value = false
-  restoredDraftAt.value = 0
-  restoredSensitiveFields.value = []
-  restoredCategoryId.value = null
-  restoredCategoryNotice.value = ''
   draftDirty.value = false
   draftSavedAt.value = 0
   draftState.value = 'idle'
@@ -993,9 +689,9 @@ async function loadCategories() {
   categoriesLoading.value = true
   categoriesLoadError.value = ''
   try {
-    const result = await shopStore.fetchCategories()
-    const availableCategories = Array.isArray(result)
-      ? result.filter(cat => cat.name !== '小店' && cat.name !== '友情小店')
+    const result = await catalogStore.fetchCategories()
+    const availableCategories = result.success && Array.isArray(result.data.categories)
+      ? result.data.categories.filter(cat => cat.name !== '小店' && cat.name !== '友情小店')
       : []
 
     if (availableCategories.length === 0) {
@@ -1035,8 +731,8 @@ async function loadCategories() {
 
 // 物品类型
 const productTypes = [
-  { id: 'normal', name: '普通物品', desc: '平台内支付、记录订单、卖家手动履约', icon: '' },
-  { id: 'cdk', name: '自动发卡', desc: '平台内支付+自动发放 CDK', icon: '' }
+  { id: 'cdk', name: 'CDK 物品', desc: '买家支付后，系统自动发放卡密', icon: KeyRound },
+  { id: 'normal', name: '普通物品', desc: '买家支付后，由您手动完成交付', icon: PackageCheck }
 ]
 const purchaseTrustLevelOptions = [0, 1, 2, 3, 4]
 const isSharedCdkMode = computed(() => form.value.productType === 'cdk' && !!form.value.sharedCdkEnabled)
@@ -1056,12 +752,6 @@ const isRuzhanCategory = computed(() => {
   return selectedCategory?.name === '入站'
 })
 
-// 折后价格
-const finalPrice = computed(() => {
-  const price = parseFloat(form.value.price) || 0
-  const discount = parseFloat(form.value.discount) || 1
-  return price * discount
-})
 const selectedCategoryName = computed(() => categories.value.find(category => Number(category.id) === Number(form.value.categoryId))?.name || '未选择分类')
 
 // 入站分类价格错误提示
@@ -1114,86 +804,19 @@ const submitButtonText = computed(() => {
   return form.value.productType === 'cdk' ? '发布并上传CDK' : '发布物品'
 })
 
-// 图片加载验证状态
-const imageValidating = ref(false)
-const imageValidated = ref(false)
-const imageLoadError = ref('')
-const imagePreviewUrl = ref('')
-const lastValidatedUrl = ref('')
-let imageValidationSequence = 0
-let pendingImageValidation = null
-let pendingImageValidationUrl = ''
-
-function resetImageValidation() {
-  imageValidationSequence += 1
-  pendingImageValidation = null
-  pendingImageValidationUrl = ''
-  imageValidating.value = false
-  imageValidated.value = false
-  imageLoadError.value = ''
-  imagePreviewUrl.value = ''
-  lastValidatedUrl.value = ''
-}
-
-// 验证图片是否可加载
-async function validateImageLoad() {
-  const url = form.value.imageUrl?.trim()
-  
-  // 清空或格式错误时重置状态
-  if (!url || imageUrlError.value) {
-    resetImageValidation()
-    return false
-  }
-  
-  if (url === lastValidatedUrl.value && imageValidated.value) return true
-  if (pendingImageValidation && pendingImageValidationUrl === url) {
-    return pendingImageValidation
-  }
-
-  const validationSequence = ++imageValidationSequence
-  pendingImageValidationUrl = url
-  imageValidating.value = true
-  imageValidated.value = false
-  imageLoadError.value = ''
-  imagePreviewUrl.value = ''
-
-  const validationPromise = (async () => {
-    try {
-      await preloadProductImage(url)
-      if (validationSequence !== imageValidationSequence || form.value.imageUrl?.trim() !== url) return false
-
-      imageValidated.value = true
-      imagePreviewUrl.value = url
-      lastValidatedUrl.value = url
-      return true
-    } catch (error) {
-      if (validationSequence !== imageValidationSequence || form.value.imageUrl?.trim() !== url) return false
-      imageLoadError.value = '图片无法加载，请检查链接是否有效'
-      lastValidatedUrl.value = ''
-      return false
-    } finally {
-      if (validationSequence === imageValidationSequence) {
-        imageValidating.value = false
-      }
-      if (pendingImageValidation === validationPromise) {
-        pendingImageValidation = null
-        pendingImageValidationUrl = ''
-      }
-    }
-  })()
-
-  pendingImageValidation = validationPromise
-  return validationPromise
-}
-
-// 预览图片加载失败
-function onPreviewError() {
-  imageValidationSequence += 1
-  imageLoadError.value = '图片加载失败，请检查链接是否有效'
-  imagePreviewUrl.value = ''
-  imageValidated.value = false
-  lastValidatedUrl.value = ''
-}
+const {
+  errors: productEditorErrors,
+  finalPrice,
+  purchaseLimitSummary,
+  imageValidating,
+  imageValidated,
+  imageLoadError,
+  imagePreviewUrl,
+  lastValidatedUrl,
+  resetImageValidation,
+  validateImageLoad,
+  onPreviewError
+} = useProductEditor(form, { minimumStock: 1, requireCdkCodes: true })
 
 // 图片URL验证（只有输入内容后才验证格式，空值不报错）
 // 字段级校验
@@ -1256,19 +879,6 @@ const purchaseLimitPeriodDaysError = computed(() => {
   return ''
 })
 
-const purchaseLimitSummary = computed(() => {
-  if (form.value.productType === 'cdk' && form.value.sharedCdkEnabled) return '每位用户永久累计 1 件'
-  const quantity = Number(form.value.maxPurchaseQuantity || 0)
-  if (form.value.purchaseLimitType === 'per_order' && quantity > 0) return `每单 ${quantity} 件`
-  if (form.value.purchaseLimitType === 'per_user' && quantity > 0) {
-    const periodDays = Number(form.value.purchaseLimitPeriodDays || 0)
-    return periodDays > 0
-      ? `每位用户最近 ${periodDays} 天 ${quantity} 件`
-      : `每位用户永久累计 ${quantity} 件`
-  }
-  return '不限制'
-})
-
 const cdkCodesError = computed(() => {
   if (form.value.productType !== 'cdk') return ''
   const source = form.value.sharedCdkEnabled ? form.value.sharedCdkCode : form.value.cdkCodes
@@ -1283,40 +893,11 @@ const cdkCodesError = computed(() => {
   }
   return ''
 })
-const buyTitleError = computed(() => {
-  const value = buyForm.value.title?.trim() || ''
-  if (!value) return '请输入求购标题'
-  if (value.length < 2 || value.length > 60) return '标题需要 2-60 个字符'
-  return ''
-})
-
-const buyDetailsError = computed(() => {
-  const value = buyForm.value.details?.trim() || ''
-  if (!value) return '请输入详细需求'
-  if (value.length < 10 || value.length > 2000) return '详细需求需要 10-2000 个字符'
-  return ''
-})
-
-const buyPriceError = computed(() => {
-  const result = validatePrice(buyForm.value.price)
-  return result.valid ? '' : result.error
-})
-
-const canSubmitBuy = computed(() => {
-  return !buyTitleError.value && !buyDetailsError.value && !buyPriceError.value
-})
-
-function showBuyError(field, err) {
-  return !!err && (buyTouched.value[field] || buySubmitAttempted.value)
-}
-
 function showError(field, err) {
   return !!err && (touched.value[field] || submitAttempted.value)
 }
 
-const imageUrlError = computed(() => {
-  return getProductImageUrlError(form.value.imageUrl) || null
-})
+const imageUrlError = computed(() => productEditorErrors.value.imageUrl || null)
 
 const imageDisplayError = computed(() => {
   const url = form.value.imageUrl?.trim()
@@ -1324,6 +905,14 @@ const imageDisplayError = computed(() => {
   if (imageLoadError.value) return imageLoadError.value
   return imageUrlError.value || ''
 })
+
+const productEditorDisplayErrors = computed(() => ({
+  name: showError('name', nameError.value) ? nameError.value : '',
+  description: showError('description', descriptionError.value) ? descriptionError.value : '',
+  price: showError('price', priceError.value) ? priceError.value : '',
+  discount: showError('discount', discountError.value) ? discountError.value : '',
+  image: showError('image', imageDisplayError.value) ? imageDisplayError.value : ''
+}))
 
 // 是否可以提交
 const canSubmit = computed(() => {
@@ -1353,13 +942,13 @@ async function checkMerchantConfig() {
   merchantStatusLoaded.value = false
   merchantConfigError.value = ''
   try {
-    const result = await shopStore.fetchMerchantConfig()
-    if (!result) {
+    const result = await inventoryStore.fetchMerchantConfig()
+    if (!result.success) {
       merchantConfigured.value = false
-      merchantConfigError.value = '收款配置状态加载失败，请刷新页面后重试'
+      merchantConfigError.value = result.error || '收款配置状态加载失败，请刷新页面后重试'
       return
     }
-    const config = result?.data?.data || result?.data || result || {}
+    const config = result.data || {}
     merchantConfigured.value = !!config.configured && !!config.isActive && !!config.isVerified
   } catch (error) {
     merchantConfigured.value = false
@@ -1367,17 +956,6 @@ async function checkMerchantConfig() {
   } finally {
     merchantStatusLoaded.value = true
   }
-}
-
-function wait(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-function generateSubmissionToken() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `pub_${crypto.randomUUID().replace(/-/g, '')}`
-  }
-  return `pub_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 14)}`
 }
 
 function buildProductFingerprint(productData) {
@@ -1405,7 +983,7 @@ function resolveSubmissionToken(productData) {
   const fingerprint = buildProductFingerprint(productData)
   if (!submitTokenState.value.token || submitTokenState.value.fingerprint !== fingerprint) {
     submitTokenState.value = {
-      token: generateSubmissionToken(),
+      token: createSubmissionToken(),
       fingerprint
     }
   }
@@ -1419,28 +997,16 @@ function clearSubmissionTokenState() {
   }
 }
 
-function isUncertainSubmitResult(result) {
-  const status = Number(result?.status || 0)
-  const message = String(result?.error || '').toLowerCase()
-  if (status === 0) return true
-  return message.includes('超时')
-    || message.includes('网络')
-    || message.includes('failed to fetch')
-    || message.includes('network')
-    || message.includes('abort')
-}
-
 async function pollProductSubmissionResult(submissionToken) {
-  for (let i = 0; i < PRODUCT_SUBMIT_STATUS_MAX_RETRIES; i += 1) {
-    const statusResult = await shopStore.getProductSubmissionStatus(submissionToken)
-    if (statusResult?.success && statusResult.data?.exists && statusResult.data?.product?.id) {
-      return { confirmed: true, product: statusResult.data.product }
-    }
-    if (i < PRODUCT_SUBMIT_STATUS_MAX_RETRIES - 1) {
-      await wait(PRODUCT_SUBMIT_STATUS_RETRY_INTERVAL_MS)
-    }
-  }
-  return { confirmed: false, product: null }
+  const result = await reconcileByPolling(
+    async () => {
+      const statusResult = await inventoryStore.getProductSubmissionStatus(submissionToken)
+      return statusResult?.success ? statusResult.data?.product || null : null
+    },
+    product => Boolean(product?.id),
+    { retries: PRODUCT_SUBMIT_STATUS_MAX_RETRIES, intervalMs: PRODUCT_SUBMIT_STATUS_RETRY_INTERVAL_MS }
+  )
+  return { confirmed: result.confirmed, product: result.value }
 }
 
 async function confirmSubmitAfterUncertainResult(submissionToken) {
@@ -1464,7 +1030,7 @@ async function confirmSubmitAfterUncertainResult(submissionToken) {
 
 // 提交表单
 async function submitForm() {
-  if (productSubmittingBusy.value) return
+  if (productSubmittingBusy.value || fulfillmentReminder.pending) return
   flushProductDraft()
   submitAttempted.value = true
 
@@ -1574,57 +1140,37 @@ async function submitForm() {
     return
   }
   
+  if (form.value.productType === 'normal') {
+    const snapshot = JSON.stringify(form.value)
+    const confirmationCount = fulfillmentReminder.confirmationCount
+    if (!await fulfillmentReminder.request({ refresh: true })) return
+    // A dialog confirms the rules only. Publishing always needs a separate click.
+    if (confirmationCount !== fulfillmentReminder.confirmationCount || snapshot !== JSON.stringify(form.value)) return
+  }
+
   submitting.value = true
   
   try {
-    // 构建物品数据（与客户端脚本保持一致）
-    const productData = {
-      name: form.value.name.trim(),
-      categoryId: form.value.categoryId,
-      description: form.value.description.trim(),
-      price: parseFloat(form.value.price),
-      discount: parseFloat(form.value.discount) || 1,
-      imageUrl,
-      productType: form.value.productType,
-      purchaseTrustLevel: Number(form.value.purchaseTrustLevel) || 0,
-      purchaseLimitType: form.value.purchaseLimitType,
-      maxPurchaseQuantity: form.value.purchaseLimitType === 'none'
-        ? 0
-        : Number(form.value.maxPurchaseQuantity),
-      purchaseLimitPeriodDays: form.value.purchaseLimitType === 'per_user'
-        ? Number(form.value.purchaseLimitPeriodDays || 0)
-        : 0
-    }
-    
-    // 类型特定数据
-    if (form.value.productType === 'normal') {
-      productData.stock = Number(form.value.stock)
-    } else if (form.value.productType === 'cdk') {
-      productData.sharedCdkEnabled = form.value.sharedCdkEnabled
-      productData.sharedCdkCode = form.value.sharedCdkEnabled ? form.value.sharedCdkCode.trim() : ''
-      if (form.value.sharedCdkEnabled) {
-        productData.cdkCodes = form.value.sharedCdkCode.trim()
-      } else if (form.value.cdkCodes.trim()) {
-        productData.cdkCodes = form.value.cdkCodes.trim()
-      }
-      // 测试模式
-      if (form.value.isTestMode) {
-        productData.isTestMode = true
-      }
-    }
+    const productData = buildProductCreatePayload(form.value)
 
     const submissionToken = resolveSubmissionToken(productData)
     productData.submissionToken = submissionToken
     
     // 创建物品
-    const result = await shopStore.createProduct(productData, { timeout: PRODUCT_SUBMIT_TIMEOUT_MS })
+    const result = await inventoryStore.createProduct(productData, { timeout: PRODUCT_SUBMIT_TIMEOUT_MS })
     
     if (!result.success) {
-      if (isUncertainSubmitResult(result)) {
+      if (isUncertainMutationResult(result)) {
         await confirmSubmitAfterUncertainResult(submissionToken)
         return
       }
       clearSubmissionTokenState()
+      if (form.value.productType === 'normal' && ['FULFILLMENT_RULE_NOT_ACCEPTED', 'POLICY_VERSION_MISMATCH'].includes(result.errorCode)) {
+        fulfillmentReminder.reset()
+        submitting.value = false
+        await fulfillmentReminder.request({ force: true })
+        return
+      }
       toast.error(result.error || '发布失败')
       return
     }
@@ -1648,54 +1194,10 @@ async function submitForm() {
   }
 }
 
-// 初始化
-async function submitBuyRequest() {
-  buySubmitAttempted.value = true
-
-  if (buyTitleError.value) {
-    toast.error(buyTitleError.value)
-    focusBuyField('title')
-    return
-  }
-  if (buyDetailsError.value) {
-    toast.error(buyDetailsError.value)
-    focusBuyField('details')
-    return
-  }
-  if (buyPriceError.value) {
-    toast.error(buyPriceError.value)
-    focusBuyField('price')
-    return
-  }
-
-  buySubmitting.value = true
-  try {
-    const result = await api.post('/api/shop/buy-requests', {
-      title: buyForm.value.title.trim(),
-      details: buyForm.value.details.trim(),
-      price: parseFloat(buyForm.value.price)
-    })
-
-    if (!result.success) {
-      toast.error(result.error || '发布求购失败')
-      return
-    }
-
-    toast.success('求购发布成功，已提交管理员审核')
-    router.push('/user/buy-requests')
-  } catch (error) {
-    toast.error(error.message || '发布求购失败')
-  } finally {
-    buySubmitting.value = false
-  }
-}
-
 watch(
   form,
   () => {
-    if (!draftReady.value || publishMode.value !== 'product') return
-    draftDirty.value = true
-    scheduleProductDraftSave()
+    markDraftDirty()
   },
   { deep: true, flush: 'sync' }
 )
@@ -1719,6 +1221,12 @@ watch(
   }
 )
 
+watch([showGuideModal, publishMode, publishInitialized, restoredNormalReminderPending, guideClosing], () => {
+  if (!publishInitialized.value || showGuideModal.value || guideClosing.value || publishMode.value !== 'product' || !restoredNormalReminderPending.value) return
+  restoredNormalReminderPending.value = false
+  if (form.value.productType === 'normal') void fulfillmentReminder.request()
+})
+
 watch(
   () => form.value.productType,
   (type) => {
@@ -1729,6 +1237,10 @@ watch(
     }
   }
 )
+
+watch(() => `${userStore.currentUser?.site || 'linux.do'}:${userStore.currentUser?.id || ''}`, () => {
+  restoredNormalReminderPending.value = form.value.productType === 'normal'
+})
 
 watch(
   publishMode,
@@ -1771,6 +1283,7 @@ onMounted(async () => {
     void validateImageLoad()
   }
 
+  publishInitialized.value = true
   window.addEventListener('pagehide', handleDraftPageHide)
   document.addEventListener('visibilitychange', handleDraftVisibilityChange)
 })
@@ -1822,7 +1335,7 @@ onBeforeUnmount(() => {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .mode-btn.active {
@@ -2038,7 +1551,7 @@ onBeforeUnmount(() => {
 
 .desc-mode-tab.active {
   background: var(--color-success);
-  color: #fff;
+  color: var(--palette-hex-ffffff);
   font-weight: 600;
 }
 
@@ -2163,7 +1676,7 @@ onBeforeUnmount(() => {
 .image-bed-link {
   display: block;
   padding: 10px 12px;
-  background: linear-gradient(135deg, rgba(90, 140, 90, 0.08) 0%, rgba(122, 154, 122, 0.12) 100%);
+  background: linear-gradient(135deg, var(--palette-rgba-90-140-90-0p08) 0%, var(--palette-rgba-122-154-122-0p12) 100%);
   border: 1px dashed var(--color-success);
   border-radius: 10px;
   font-size: 13px;
@@ -2171,7 +1684,7 @@ onBeforeUnmount(() => {
   text-decoration: none;
   line-height: 1.5;
   word-break: break-word;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .image-bed-link:hover {
@@ -2204,8 +1717,8 @@ onBeforeUnmount(() => {
 .cdk-config-notice {
   margin-bottom: 20px;
   padding: 16px;
-  background: var(--color-warning-bg, rgba(245, 158, 11, 0.1));
-  border: 1px solid var(--color-warning, #f59e0b);
+  background: var(--color-warning-bg, var(--palette-rgba-245-158-11-0p1));
+  border: 1px solid var(--color-warning, var(--palette-hex-f59e0b));
   border-radius: 12px;
 }
 
@@ -2239,8 +1752,8 @@ onBeforeUnmount(() => {
 }
 
 .cdk-config-notice .notice-item.highlight {
-  background: var(--color-danger-bg, rgba(239, 68, 68, 0.1));
-  border: 1px solid var(--color-danger, #ef4444);
+  background: var(--color-danger-bg, var(--palette-rgba-239-68-68-0p1));
+  border: 1px solid var(--color-danger, var(--palette-hex-ef4444));
 }
 
 .cdk-config-notice .item-num {
@@ -2250,15 +1763,15 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-warning, #f59e0b);
-  color: white;
+  background: var(--color-warning, var(--palette-hex-f59e0b));
+  color: var(--palette-hex-ffffff);
   border-radius: 50%;
   font-size: 12px;
   font-weight: 600;
 }
 
 .cdk-config-notice .notice-item.highlight .item-num {
-  background: var(--color-danger, #ef4444);
+  background: var(--color-danger, var(--palette-hex-ef4444));
 }
 
 .cdk-config-notice .item-text {
@@ -2270,6 +1783,10 @@ onBeforeUnmount(() => {
 
 .cdk-config-notice .item-text strong {
   color: var(--text-primary);
+}
+
+.merchant-config-link {
+  color: var(--palette-hex-007bff);
 }
 
 .cdk-config-notice .notice-url {
@@ -2318,7 +1835,7 @@ onBeforeUnmount(() => {
 
 .input-error {
   border-color: var(--color-danger) !important;
-  background-color: var(--input-error-bg, rgba(220, 38, 38, 0.05));
+  background-color: var(--input-error-bg, var(--palette-rgba-220-38-38-0p05));
 }
 
 .form-error {
@@ -2343,7 +1860,7 @@ onBeforeUnmount(() => {
   font-size: 14px;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .category-btn:hover {
@@ -2381,7 +1898,7 @@ onBeforeUnmount(() => {
 }
 
 .category-retry-btn:hover {
-  background: var(--input-error-bg, rgba(220, 38, 38, 0.05));
+  background: var(--input-error-bg, var(--palette-rgba-220-38-38-0p05));
 }
 
 /* 入站分类价格提示 */
@@ -2391,8 +1908,8 @@ onBeforeUnmount(() => {
   gap: 8px;
   margin-top: 12px;
   padding: 10px 14px;
-  background: var(--color-warning-bg, rgba(245, 158, 11, 0.1));
-  border: 1px solid var(--color-warning, #f59e0b);
+  background: var(--color-warning-bg, var(--palette-rgba-245-158-11-0p1));
+  border: 1px solid var(--color-warning, var(--palette-hex-f59e0b));
   border-radius: 10px;
 }
 
@@ -2408,7 +1925,7 @@ onBeforeUnmount(() => {
 }
 
 .category-price-notice .notice-text strong {
-  color: var(--color-warning, #f59e0b);
+  color: var(--color-warning, var(--palette-hex-f59e0b));
   font-weight: 600;
 }
 
@@ -2460,7 +1977,7 @@ onBeforeUnmount(() => {
   border: 2px solid transparent;
   border-radius: 14px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .type-card:hover {
@@ -2468,8 +1985,8 @@ onBeforeUnmount(() => {
 }
 
 .type-card.active {
-  background: var(--color-success-bg);
-  border-color: var(--color-success);
+  background: var(--action-paper-accent-soft);
+  border-color: var(--action-paper-accent-strong);
 }
 
 .type-icon {
@@ -2493,19 +2010,6 @@ onBeforeUnmount(() => {
   margin: 0;
 }
 
-.type-check {
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-success);
-  color: white;
-  border-radius: 50%;
-  font-size: 14px;
-  font-weight: 600;
-}
-
 /* 提交按钮 */
 .form-actions {
   position: fixed;
@@ -2524,19 +2028,19 @@ onBeforeUnmount(() => {
   max-width: 568px;
   margin: 0 auto;
   padding: 16px 32px;
-  background: linear-gradient(135deg, var(--color-success) 0%, #7a9a7a 100%);
+  background: linear-gradient(135deg, var(--color-success) 0%, var(--palette-hex-7a9a7a) 100%);
   border: none;
   border-radius: 14px;
   font-size: 16px;
   font-weight: 600;
-  color: white;
+  color: var(--palette-hex-ffffff);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .submit-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(90, 140, 90, 0.4);
+  box-shadow: 0 4px 15px var(--palette-rgba-90-140-90-0p4);
 }
 
 .submit-btn:disabled {
@@ -2553,7 +2057,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: var(--overlay-bg, rgba(24, 28, 34, 0.45));
+  background: var(--overlay-bg, var(--palette-rgba-24-28-34-0p45));
   backdrop-filter: blur(2px);
 }
 
@@ -2573,7 +2077,7 @@ onBeforeUnmount(() => {
   height: 44px;
   margin: 0 auto 14px;
   border-radius: 50%;
-  border: 3px solid rgba(126, 179, 126, 0.25);
+  border: 3px solid var(--palette-rgba-126-179-126-0p25);
   border-top-color: var(--color-success);
   animation: submit-mask-spin 0.8s linear infinite;
 }
@@ -2690,7 +2194,7 @@ onBeforeUnmount(() => {
   color: var(--color-danger);
   margin: 12px 0 0;
   padding: 10px 12px;
-  background: rgba(220, 38, 38, 0.08);
+  background: var(--palette-rgba-220-38-38-0p08);
   border-radius: 8px;
   text-align: center;
 }
@@ -2719,18 +2223,18 @@ onBeforeUnmount(() => {
   text-align: center;
   text-decoration: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
   border: none;
 }
 
 .guide-btn-primary {
-  background: linear-gradient(135deg, var(--color-success) 0%, #7a9a7a 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--color-success) 0%, var(--palette-hex-7a9a7a) 100%);
+  color: var(--palette-hex-ffffff);
 }
 
 .guide-btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(90, 140, 90, 0.4);
+  box-shadow: 0 4px 15px var(--palette-rgba-90-140-90-0p4);
 }
 
 .guide-btn-secondary {
@@ -2819,10 +2323,10 @@ onBeforeUnmount(() => {
   left: 2px;
   width: 20px;
   height: 20px;
-  background: white;
+  background: var(--palette-hex-ffffff);
   border-radius: 50%;
   transition: transform 0.2s;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px var(--palette-rgba-0-0-0-0p1);
 }
 
 .toggle-track.active .toggle-thumb {
@@ -2943,4 +2447,18 @@ onBeforeUnmount(() => {
   background: var(--color-warning-bg);
   border: 1px solid var(--color-warning);
 }
+
+.type-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 16px; margin-bottom:18px; }
+.seller-product-form .type-heading .card-title { margin:0; }
+.type-heading a,.rule-text-link { display:inline-flex; align-items:center; gap:4px; min-height:44px; border:0; padding:0; background:transparent; color:var(--action-paper-accent-strong); font:inherit; font-size:13px; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+.product-type-section .type-select { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.type-card { position:relative; min-width:0; min-height:88px; font:inherit; text-align:left; color:var(--text-primary); }
+.type-card:disabled { cursor:wait; }
+.type-card:focus-visible { outline:3px solid var(--action-paper-accent-strong); outline-offset:3px; }
+.type-card .type-icon { flex-shrink:0; margin:0; color:var(--action-paper-accent-strong); }
+.type-info { display:grid; gap:6px; min-width:0; padding-right:24px; }
+.type-info .type-name,.type-info .type-desc { display:block; margin:0; }
+.type-info .type-desc { color:var(--text-secondary); }
+.type-selected-icon { position:absolute; right:12px; top:14px; color:var(--action-paper-accent-strong); }
+@media(max-width:640px) { .product-type-section .type-select { grid-template-columns:minmax(0,1fr); } }
 </style>

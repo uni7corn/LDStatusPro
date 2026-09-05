@@ -33,8 +33,8 @@
         <!-- 小店图片 -->
         <div class="shop-image-wrapper">
           <img 
-            v-if="shop.image_url" 
-            :src="shop.image_url" 
+            v-if="shop.imageUrl"
+            :src="shop.imageUrl"
             :alt="shop.name"
             class="shop-image"
             @error="handleImageError"
@@ -44,7 +44,7 @@
           </div>
           
           <!-- 置顶标记 -->
-          <div v-if="shop.is_pinned" class="pinned-badge">
+          <div v-if="shop.isPinned" class="pinned-badge">
             <span>📌 置顶推荐</span>
           </div>
         </div>
@@ -56,7 +56,7 @@
           <!-- 店主信息 -->
           <div class="owner-section">
             <a 
-              :href="shop.owner_linuxdo_link" 
+              :href="shop.ownerLinuxdoLink"
               target="_blank" 
               rel="noopener noreferrer"
               class="owner-link"
@@ -65,11 +65,11 @@
                 :candidates="ownerAvatarCandidates"
                 :seed="ownerAvatarSeed"
                 :size="96"
-                :alt="shop.owner_username"
+                :alt="shop.ownerUsername"
                 class="owner-avatar"
               />
               <div class="owner-info">
-                <span class="owner-name">{{ shop.owner_username }}</span>
+                <span class="owner-name">{{ shop.ownerUsername }}</span>
                 <span class="owner-desc">店主 · 点击查看主页</span>
               </div>
               <span class="external-icon">↗</span>
@@ -92,7 +92,7 @@
           <div class="stats-section">
             <div class="stat-item">
               <span class="stat-icon">👀</span>
-              <span class="stat-value">{{ shop.view_count || 0 }}</span>
+              <span class="stat-value">{{ shop.viewCount || 0 }}</span>
               <span class="stat-label">浏览</span>
             </div>
           </div>
@@ -106,7 +106,7 @@
           <!-- 前往按钮 -->
           <div class="action-section">
             <a 
-              :href="shop.shop_url" 
+              :href="shop.shopUrl"
               target="_blank" 
               rel="noopener noreferrer"
               class="btn btn-primary btn-large"
@@ -125,7 +125,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AvatarImage from '@/components/common/AvatarImage.vue'
-import { api } from '@/utils/api'
+import { fetchShopDetailRequest } from '@/services/shop/shopService'
 import { buildAvatarCandidates } from '@/utils/avatar'
 
 const route = useRoute()
@@ -148,12 +148,12 @@ const parsedTags = computed(() => {
 
 // 店主头像 URL
 const ownerAvatarSeed = computed(() =>
-  shop.value?.owner_username || shop.value?.owner_user_id || shop.value?.name || 'shop'
+  shop.value?.ownerUsername || shop.value?.ownerUserId || shop.value?.name || 'shop'
 )
 
 const ownerAvatarCandidates = computed(() => {
   if (!shop.value) return []
-  return buildAvatarCandidates(shop.value.owner_avatar_template, 96)
+  return buildAvatarCandidates(shop.value.ownerAvatarTemplate, 96)
 })
 
 // 标签样式类
@@ -195,7 +195,7 @@ async function loadShopDetail() {
   }
   
   try {
-    const result = await api.get(`/api/shops/${shopId}`)
+    const result = await fetchShopDetailRequest(shopId)
     if (result.success && result.data) {
       shop.value = result.data
     } else {
@@ -240,7 +240,7 @@ onMounted(() => {
   font-size: 14px;
   padding: 8px 12px;
   border-radius: 10px;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -392,7 +392,7 @@ onMounted(() => {
   background: var(--bg-secondary);
   border-radius: 14px;
   text-decoration: none;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .owner-link:hover {
@@ -466,8 +466,8 @@ onMounted(() => {
 }
 
 .shop-tag.tag-ai {
-  background: rgba(147, 51, 234, 0.15);
-  color: #a855f7;
+  background: var(--palette-rgba-147-51-234-0p15);
+  color: var(--palette-hex-a855f7);
 }
 
 .shop-tag.tag-entertainment {
@@ -476,8 +476,8 @@ onMounted(() => {
 }
 
 .shop-tag.tag-charity {
-  background: rgba(219, 39, 119, 0.15);
-  color: #ec4899;
+  background: var(--palette-rgba-219-39-119-0p15);
+  color: var(--palette-hex-ec4899);
 }
 
 /* 统计信息 */
@@ -548,13 +548,13 @@ onMounted(() => {
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
   border: none;
 }
 
 .btn-primary {
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
-  color: white;
+  color: var(--palette-hex-ffffff);
 }
 
 .btn-primary:hover {

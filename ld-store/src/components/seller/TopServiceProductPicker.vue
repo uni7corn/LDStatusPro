@@ -98,7 +98,7 @@ button:disabled,fieldset:disabled { opacity:.6; }
 .product-choice { min-width:0; cursor:pointer; border-radius:14px; }
 .choice-cover { display:block; position:relative; aspect-ratio:4/3; border-radius:12px; overflow:hidden; background:var(--seller-surface-soft); border:1px solid var(--seller-border); }
 .choice-cover input { position:absolute; z-index:1; top:0; right:0; width:44px; height:44px; margin:0; opacity:0; cursor:pointer; }
-.choice-marker { position:absolute; top:11px; right:11px; display:grid; place-items:center; width:23px; height:23px; border:1px solid #68737c; border-radius:50%; background:#fffefa; color:#fff; pointer-events:none; }
+.choice-marker { position:absolute; top:11px; right:11px; display:grid; place-items:center; width:23px; height:23px; border:1px solid var(--palette-hex-68737c); border-radius:50%; background:var(--palette-hex-fffefa); color:var(--palette-hex-ffffff); pointer-events:none; }
 .selected .choice-marker { border-color:var(--seller-jade-strong); background:var(--seller-jade-strong); color:var(--seller-surface-strong); }
 .product-choice.selected .choice-cover { outline:2px solid var(--seller-jade-strong); outline-offset:2px; }
 .product-choice:has(input:focus-visible) { outline:3px solid var(--seller-jade); outline-offset:3px; }

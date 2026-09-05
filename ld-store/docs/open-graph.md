@@ -61,7 +61,7 @@ api2 超时、5xx 或返回无效结构时，Worker仍返回对应页面的通�
 - `twitter:card`、标题、描述、图片和图片 alt。
 - 商品页面额外提供 `product:price:amount`、`product:price:currency=LDC`、`product:availability`；其他页面会主动移除这些字段。
 
-全站保持 `noindex, nofollow, noarchive`，响应同时设置 `X-Robots-Tag`。`robots.txt` 允许抓取是为了分享预览，不代表允许搜索引擎收录。
+全站保持 `noindex, nofollow, noarchive`，HTML、oEmbed 和 Worker 生成的 OG 图片响应同时设置 `X-Robots-Tag`。`robots.txt` 允许抓取是为了让抓取器读取 noindex 并生成分享预览，不代表允许搜索引擎收录。完整决策与重新评估条件见 [ADR-0001](./adr/0001-noindex-sharing-metadata.md)。
 
 canonical 规则：
 

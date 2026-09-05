@@ -225,7 +225,7 @@ onUnmounted(() => {
 
 .star-rating-track:focus-visible {
   border-radius: 999px;
-  box-shadow: 0 0 0 3px rgba(38, 111, 63, 0.16);
+  box-shadow: 0 0 0 3px var(--palette-rgba-38-111-63-0p16);
 }
 
 .star-rating-input.disabled .star-rating-track,
@@ -249,7 +249,7 @@ onUnmounted(() => {
   min-width: var(--rating-label-slot-width, auto);
   font-size: 16px;
   font-weight: 700;
-  color: #8a5a20;
+  color: var(--palette-hex-8a5a20);
   line-height: 1;
   text-align: center;
   white-space: nowrap;

@@ -669,7 +669,7 @@ onUnmounted(() => {
   color: var(--text-secondary);
   font-size: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .search-tag:hover {
@@ -794,7 +794,7 @@ onUnmounted(() => {
 }
 
 .user-info.has-unread {
-  box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.28);
+  box-shadow: inset 0 0 0 1px var(--palette-rgba-220-38-38-0p28);
 }
 
 .header-alert-status {
@@ -934,8 +934,8 @@ onUnmounted(() => {
   min-width: 18px;
   height: 18px;
   border-radius: 999px;
-  background: #ef4444;
-  color: #fff;
+  background: var(--palette-hex-ef4444);
+  color: var(--palette-hex-ffffff);
   font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -943,7 +943,7 @@ onUnmounted(() => {
   text-align: center;
   padding: 0 5px;
   border: 2px solid var(--bg-primary);
-  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.35);
+  box-shadow: 0 2px 8px var(--palette-rgba-220-38-38-0p35);
 }
 
 .dropdown-arrow {
@@ -1143,7 +1143,7 @@ onUnmounted(() => {
 }
 
 .dropdown-item.with-unread {
-  background: rgba(220, 38, 38, 0.06);
+  background: var(--palette-rgba-220-38-38-0p06);
 }
 
 .dropdown-badge {
@@ -1152,8 +1152,8 @@ onUnmounted(() => {
   height: 18px;
   padding: 0 6px;
   border-radius: 999px;
-  background: #dc2626;
-  color: #fff;
+  background: var(--palette-hex-dc2626);
+  color: var(--palette-hex-ffffff);
   font-size: 11px;
   font-weight: 700;
   display: inline-flex;
@@ -1176,7 +1176,7 @@ onUnmounted(() => {
   height: var(--header-control-size);
   padding: 0 16px;
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
-  color: white;
+  color: var(--palette-hex-ffffff);
   border-radius: 10px;
   font-size: 14px;
   font-weight: 500;

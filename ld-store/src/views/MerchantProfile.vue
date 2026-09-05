@@ -112,7 +112,8 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useShopStore } from '@/stores/shop'
+import { useCatalogStore } from '@/stores/catalog'
+import { useProductStore } from '@/stores/product'
 import { useUserStore } from '@/stores/user'
 import AvatarImage from '@/components/common/AvatarImage.vue'
 import { useToast } from '@/composables/useToast'
@@ -125,7 +126,8 @@ defineOptions({ name: 'MerchantProfile' })
 
 const route = useRoute()
 const router = useRouter()
-const shopStore = useShopStore()
+const catalogStore = useCatalogStore()
+const productStore = useProductStore()
 const userStore = useUserStore()
 const toast = useToast()
 
@@ -139,17 +141,17 @@ const products = ref([])
 const loading = ref(true)
 const error = ref('')
 
-const categories = computed(() => shopStore.categories || [])
+const categories = computed(() => catalogStore.categories || [])
 const routeUsername = computed(() => String(route.params.username || '').trim())
 const merchantAvatarSeed = computed(() =>
   merchant.value?.name || merchant.value?.username || merchant.value?.userId || 'merchant'
 )
 const merchantAvatarCandidates = computed(() =>
   buildAvatarCandidates([
-    merchant.value?.animated_avatar,
+    merchant.value?.animatedAvatar,
     merchant.value?.avatar,
-    merchant.value?.avatar_url,
-    merchant.value?.avatar_template
+    merchant.value?.avatarUrl,
+    merchant.value?.avatarTemplate
   ], 128)
 )
 const merchantDisplayName = computed(() => {
@@ -213,8 +215,8 @@ async function loadMerchantProfile() {
   loading.value = true
   try {
     const [profileResult] = await Promise.all([
-      shopStore.fetchMerchantProfile(username),
-      shopStore.fetchCategories().catch(() => [])
+      productStore.fetchMerchantProfile(username),
+      catalogStore.fetchCategories()
     ])
 
     if (!profileResult?.success || !profileResult.data?.merchant) {
@@ -268,45 +270,45 @@ function openStoreMessage() {
   min-height: 100vh;
   padding: 16px 0 72px;
   background: var(--bg-primary);
-  --merchant-card-bg: #fcfaf6;
-  --merchant-card-border: #e4dbcf;
-  --merchant-card-shadow: 0 2px 12px rgba(61, 61, 61, 0.05);
-  --merchant-subtle-bg: #f5f3ef;
-  --merchant-subtle-border: #e4dbcf;
-  --merchant-hover-border: #cad6cb;
-  --merchant-accent: #7f9681;
-  --merchant-accent-bg: #eef3ed;
-  --merchant-primary: #b5a898;
-  --merchant-empty-bg: #f5f3ef;
-  --merchant-empty-border: #ddd7ce;
-  --product-card-border: #f0ede9;
-  --product-card-category-bg: #eef3ed;
-  --product-card-discount-bg: #fce8ec;
-  --product-card-discount-ring: #f5c6d0;
-  --avatar-surface-bg: #dfe3e8;
-  --avatar-placeholder-bg: #f2f0ed;
-  --skeleton-card-border: #e4dbcf;
+  --merchant-card-bg: var(--palette-hex-fcfaf6);
+  --merchant-card-border: var(--palette-hex-e4dbcf);
+  --merchant-card-shadow: 0 2px 12px var(--palette-rgba-61-61-61-0p05);
+  --merchant-subtle-bg: var(--palette-hex-f5f3ef);
+  --merchant-subtle-border: var(--palette-hex-e4dbcf);
+  --merchant-hover-border: var(--palette-hex-cad6cb);
+  --merchant-accent: var(--palette-hex-7f9681);
+  --merchant-accent-bg: var(--palette-hex-eef3ed);
+  --merchant-primary: var(--palette-hex-b5a898);
+  --merchant-empty-bg: var(--palette-hex-f5f3ef);
+  --merchant-empty-border: var(--palette-hex-ddd7ce);
+  --product-card-border: var(--palette-hex-f0ede9);
+  --product-card-category-bg: var(--palette-hex-eef3ed);
+  --product-card-discount-bg: var(--palette-hex-fce8ec);
+  --product-card-discount-ring: var(--palette-hex-f5c6d0);
+  --avatar-surface-bg: var(--palette-hex-dfe3e8);
+  --avatar-placeholder-bg: var(--palette-hex-f2f0ed);
+  --skeleton-card-border: var(--palette-hex-e4dbcf);
 }
 
 :global(html.dark .merchant-profile-page) {
-  --merchant-card-bg: #22201e;
-  --merchant-card-border: #33302c;
-  --merchant-card-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
-  --merchant-subtle-bg: #28261f;
-  --merchant-subtle-border: #33302c;
-  --merchant-hover-border: #4a5048;
-  --merchant-accent: #8faa92;
-  --merchant-accent-bg: #2e342a;
-  --merchant-primary: #b5a898;
-  --merchant-empty-bg: #1e1c1a;
-  --merchant-empty-border: #33302c;
-  --product-card-border: #33302c;
-  --product-card-category-bg: #2e342a;
-  --product-card-discount-bg: #3a2225;
-  --product-card-discount-ring: #3f282c;
-  --avatar-surface-bg: #2c2a26;
-  --avatar-placeholder-bg: #2a2521;
-  --skeleton-card-border: #33302c;
+  --merchant-card-bg: var(--palette-hex-22201e);
+  --merchant-card-border: var(--palette-hex-33302c);
+  --merchant-card-shadow: 0 2px 12px var(--palette-rgba-0-0-0-0p2);
+  --merchant-subtle-bg: var(--palette-hex-28261f);
+  --merchant-subtle-border: var(--palette-hex-33302c);
+  --merchant-hover-border: var(--palette-hex-4a5048);
+  --merchant-accent: var(--palette-hex-8faa92);
+  --merchant-accent-bg: var(--palette-hex-2e342a);
+  --merchant-primary: var(--palette-hex-b5a898);
+  --merchant-empty-bg: var(--palette-hex-1e1c1a);
+  --merchant-empty-border: var(--palette-hex-33302c);
+  --product-card-border: var(--palette-hex-33302c);
+  --product-card-category-bg: var(--palette-hex-2e342a);
+  --product-card-discount-bg: var(--palette-hex-3a2225);
+  --product-card-discount-ring: var(--palette-hex-3f282c);
+  --avatar-surface-bg: var(--palette-hex-2c2a26);
+  --avatar-placeholder-bg: var(--palette-hex-2a2521);
+  --skeleton-card-border: var(--palette-hex-33302c);
 }
 
 .page-shell {
@@ -332,7 +334,7 @@ function openStoreMessage() {
   font-weight: 500;
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .back-btn:hover {
@@ -368,7 +370,7 @@ function openStoreMessage() {
   object-fit: cover;
   flex-shrink: 0;
   border: 2px solid var(--merchant-accent-bg);
-  box-shadow: 0 2px 8px rgba(127, 150, 129, 0.15);
+  box-shadow: 0 2px 8px var(--palette-rgba-127-150-129-0p15);
 }
 
 .merchant-info {
@@ -406,17 +408,17 @@ function openStoreMessage() {
   letter-spacing: 0.04em;
 }
 
-.trust-chip--0 { background: #eef1f5; color: #596172; }
-.trust-chip--1 { background: #e8eef8; color: #1d4ed8; }
-.trust-chip--2 { background: #e8f3eb; color: #15803d; }
-.trust-chip--3 { background: #f5eee3; color: #a16207; }
-.trust-chip--4 { background: #f5eaea; color: #b91c1c; }
+.trust-chip--0 { background: var(--palette-hex-eef1f5); color: var(--palette-hex-596172); }
+.trust-chip--1 { background: var(--palette-hex-e8eef8); color: var(--palette-hex-1d4ed8); }
+.trust-chip--2 { background: var(--palette-hex-e8f3eb); color: var(--palette-hex-15803d); }
+.trust-chip--3 { background: var(--palette-hex-f5eee3); color: var(--palette-hex-a16207); }
+.trust-chip--4 { background: var(--palette-hex-f5eaea); color: var(--palette-hex-b91c1c); }
 
-:global(html.dark .merchant-profile-page .trust-chip--0) { background: #2f3134; color: #d5d9e1; }
-:global(html.dark .merchant-profile-page .trust-chip--1) { background: #2a3040; color: #bfdbfe; }
-:global(html.dark .merchant-profile-page .trust-chip--2) { background: #2a3530; color: #bbf7d0; }
-:global(html.dark .merchant-profile-page .trust-chip--3) { background: #363024; color: #fde68a; }
-:global(html.dark .merchant-profile-page .trust-chip--4) { background: #3a2225; color: #fecaca; }
+:global(html.dark .merchant-profile-page .trust-chip--0) { background: var(--palette-hex-2f3134); color: var(--palette-hex-d5d9e1); }
+:global(html.dark .merchant-profile-page .trust-chip--1) { background: var(--palette-hex-2a3040); color: var(--palette-hex-bfdbfe); }
+:global(html.dark .merchant-profile-page .trust-chip--2) { background: var(--palette-hex-2a3530); color: var(--palette-hex-bbf7d0); }
+:global(html.dark .merchant-profile-page .trust-chip--3) { background: var(--palette-hex-363024); color: var(--palette-hex-fde68a); }
+:global(html.dark .merchant-profile-page .trust-chip--4) { background: var(--palette-hex-3a2225); color: var(--palette-hex-fecaca); }
 
 /* ── Stats ── */
 .merchant-stats {
@@ -484,7 +486,7 @@ function openStoreMessage() {
   background: var(--merchant-accent-bg);
   border-color: var(--merchant-hover-border);
   color: var(--merchant-accent);
-  box-shadow: 0 2px 8px rgba(127, 150, 129, 0.12);
+  box-shadow: 0 2px 8px var(--palette-rgba-127-150-129-0p12);
 }
 
 .chip-icon {
@@ -586,7 +588,7 @@ function openStoreMessage() {
 
 .action-btn.primary {
   border: none;
-  color: #fff;
+  color: var(--palette-hex-ffffff);
   background: var(--merchant-accent);
 }
 

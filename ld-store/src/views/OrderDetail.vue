@@ -48,13 +48,13 @@
             </div>
             <div>
               <div class="status-text">{{ getStatusText(order.status) }}</div>
-              <div class="status-time" v-if="order.created_at || order.createdAt">
-                {{ formatDateTime(order.created_at || order.createdAt) }}
+              <div class="status-time" v-if="order.createdAt">
+                {{ formatDateTime(order.createdAt) }}
               </div>
             </div>
           </div>
           <div class="status-card__meta">
-            <span class="status-chip">订单号 {{ order.order_no || order.orderNo || order.id }}</span>
+            <span class="status-chip">订单号 {{ order.orderNo || order.id }}</span>
             <span class="status-chip">
               {{ currentStatusTimeLabel }} {{ currentStatusTimeText }}
             </span>
@@ -79,9 +79,9 @@
               class="info-value info-link"
               @click="goToProductDetail"
             >
-              {{ order.product?.name || order.product_name || order.productName }}
+              {{ order.product?.name || order.productName }}
             </button>
-            <span v-else class="info-value">{{ order.product?.name || order.product_name || order.productName }}</span>
+            <span v-else class="info-value">{{ order.product?.name || order.productName }}</span>
           </div>
 
           <div class="info-row">
@@ -98,9 +98,9 @@
             <span class="info-value">x{{ getOrderQuantity(order) }}</span>
           </div>
           
-          <div class="info-row" v-if="order.original_price || order.originalPrice">
+          <div class="info-row" v-if="order.originalPrice">
             <span class="info-label">商品标价小计</span>
-            <span class="info-value" :class="{ 'original-price': Number(order.original_price || order.originalPrice) !== productSubtotal }">{{ Number(order.original_price || order.originalPrice).toFixed(2) }} LDC</span>
+            <span class="info-value" :class="{ 'original-price': Number(order.originalPrice) !== productSubtotal }">{{ Number(order.originalPrice).toFixed(2) }} LDC</span>
           </div>
 
           <div class="info-row" v-if="productSubtotal > 0">
@@ -125,7 +125,7 @@
           
           <div class="info-row amount">
             <span class="info-label">实付积分</span>
-            <span class="info-value price">{{ order.amount || order.total_price }} LDC</span>
+            <span class="info-value price">{{ order.amount || order.totalPrice }} LDC</span>
           </div>
         </div>
         
@@ -172,12 +172,12 @@
             </span>
           </div>
           
-          <div class="info-row" v-if="order.delivery_type">
+          <div class="info-row" v-if="order.deliveryType">
             <span class="info-label">发货方式</span>
             <span class="info-value delivery-value">
-              <PackageCheck v-if="order.delivery_type === 'auto'" :size="16" aria-hidden="true" />
+              <PackageCheck v-if="order.deliveryType === 'auto'" :size="16" aria-hidden="true" />
               <UserRound v-else :size="16" aria-hidden="true" />
-              {{ order.delivery_type === 'auto' ? '自动发货' : '手动发货' }}
+              {{ order.deliveryType === 'auto' ? '自动发货' : '手动发货' }}
             </span>
           </div>
         </div>
@@ -253,6 +253,7 @@
           <div class="description-content markdown-content" v-html="renderedProductDescription"></div>
         </div>
 
+        <FulfillmentDeadline v-if="['paid', 'refund_pending'].includes(order.status)" :order="order" />
         <OrderRefundPanel
           v-if="isPlatformOrder(order)"
           :order="order"
@@ -270,11 +271,11 @@
           <div class="order-summary-grid">
             <div class="summary-item">
               <span class="summary-label">业务单号</span>
-              <span class="summary-value mono">{{ order.order_no || order.orderNo || order.id }}</span>
+              <span class="summary-value mono">{{ order.orderNo || order.id }}</span>
             </div>
-            <div v-if="order.ldc_trade_no" class="summary-item">
+            <div v-if="order.ldcTradeNo" class="summary-item">
               <span class="summary-label">编号</span>
-              <span class="summary-value mono">{{ order.ldc_trade_no }}</span>
+              <span class="summary-value mono">{{ order.ldcTradeNo }}</span>
             </div>
           </div>
         </div>
@@ -293,7 +294,7 @@
               </div>
               <div class="log-content">
                 <div class="log-action">{{ getLogText(log) }}</div>
-                <div class="log-time">{{ formatDateTime(log.created_at || log.createdAt || log.time) }}</div>
+                <div class="log-time">{{ formatDateTime(log.createdAt || log.time) }}</div>
               </div>
             </div>
           </div>
@@ -338,6 +339,7 @@
 </template>
 
 <script setup>
+import FulfillmentDeadline from '@/components/order/FulfillmentDeadline.vue'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -372,9 +374,12 @@ import {
   UserRound,
   UsersRound
 } from '@lucide/vue'
-import { useShopStore } from '@/stores/shop'
+import { useCatalogStore } from '@/stores/catalog'
+import { useOrderStore } from '@/stores/order'
 import { useToast } from '@/composables/useToast'
 import { useDialog } from '@/composables/useDialog'
+import { useOrderActions } from '@/composables/orders/useOrderActions'
+import { useOrderDetail } from '@/composables/orders/useOrderDetail'
 import { isMaintenanceFeatureEnabled, isRestrictedMaintenanceMode } from '@/config/maintenance'
 import EmptyState from '@/components/common/EmptyState.vue'
 import OrderRefundPanel from '@/components/order/OrderRefundPanel.vue'
@@ -392,43 +397,34 @@ import { resolveOrderPartyIdentity } from '@/utils/orderPartyIdentity'
 
 const route = useRoute()
 const router = useRouter()
-const shopStore = useShopStore()
+const catalogStore = useCatalogStore()
+const orderStore = useOrderStore()
 const toast = useToast()
 const dialog = useDialog()
 
-const loading = ref(true)
-const order = ref(null)
-const orderLogs = ref([])
 const showCdk = ref(false)
-const cancelling = ref(false)
-const paying = ref(false)
-const checkingPayment = ref(false)
-let pendingOrderAutoRefreshTimer = null
 const isPaymentMaintenanceBlocked = computed(() =>
   isRestrictedMaintenanceMode() && !isMaintenanceFeatureEnabled('orderPayment')
 )
 
 const couponSnapshot = computed(() => {
-  const value = order.value?.coupon_snapshot ?? order.value?.couponSnapshot
+  const value = order.value?.couponSnapshot
   if (!value) return {}
   if (typeof value === 'object') return value
   try { return JSON.parse(value) } catch { return {} }
 })
 const productSubtotal = computed(() => Number(
-  order.value?.product_subtotal
-  ?? order.value?.productSubtotal
+  order.value?.productSubtotal
   ?? order.value?.amount
   ?? 0
 ))
 const couponDiscountAmount = computed(() => Number(
-  order.value?.coupon_discount_amount
-  ?? order.value?.couponDiscountAmount
+  order.value?.couponDiscountAmount
   ?? couponSnapshot.value?.couponDiscountAmount
   ?? 0
 ))
 const hasCoupon = computed(() => !!(
-  order.value?.coupon_claim_id
-  ?? order.value?.couponClaimId
+  order.value?.couponClaimId
   ?? couponSnapshot.value?.campaignId
 ))
 const couponRuleText = computed(() => {
@@ -447,6 +443,25 @@ const buyerIdentity = computed(() => resolveOrderPartyIdentity(order.value, 'buy
 
 // 当前用户角色（买家/卖家）
 const currentRole = computed(() => route.meta.orderRole || route.query.role || 'buyer')
+const detailActions = useOrderActions()
+const orderDetailController = useOrderDetail({
+  orderId: computed(() => String(route.params.id || '')),
+  role: computed(() => String(currentRole.value)),
+  fetchDetail: (orderId, role, signal) => orderStore.fetchOrderDetail(orderId, role, { signal }),
+  onError: () => toast.error('加载订单详情失败')
+})
+const {
+  loading,
+  order,
+  logs: orderLogs,
+  load: loadOrder,
+  startAutoRefresh: startOrderAutoRefresh,
+  stopAutoRefresh: stopPendingOrderAutoRefresh,
+  stop: stopOrderDetail
+} = orderDetailController
+const cancelling = computed(() => detailActions.cancellingOrderId.value !== null)
+const paying = computed(() => detailActions.payingOrderId.value !== null)
+const checkingPayment = computed(() => detailActions.refreshingOrderId.value !== null)
 const backTarget = computed(() => {
   if (currentRole.value !== 'seller') return '/user/orders?tab=buyer'
   return route.query.from === 'refunds' ? '/seller/refunds?status=action_required' : '/seller/orders?source=product'
@@ -473,7 +488,7 @@ const canRefreshPaymentStatus = computed(() => {
 
 const categoryNameMap = computed(() => {
   const map = new Map()
-  const list = Array.isArray(shopStore.categories) ? shopStore.categories : []
+  const list = Array.isArray(catalogStore.categories) ? catalogStore.categories : []
   for (const cat of list) {
     if (cat?.id == null) continue
     map.set(String(cat.id), cat.name || '')
@@ -484,7 +499,6 @@ const categoryNameMap = computed(() => {
 const productDetailPath = computed(() => {
   const productId =
     order.value?.product?.id ??
-    order.value?.product_id ??
     order.value?.productId
 
   if (productId == null || productId === '') return ''
@@ -534,18 +548,14 @@ function requiresBuyerContactOrder(orderData) {
 
 function getProductCategoryText(orderData) {
   const directName =
-    orderData?.category_name ||
     orderData?.categoryName ||
-    orderData?.product?.category_name ||
     orderData?.product?.categoryName ||
     orderData?.product?.category?.name
 
   if (directName) return directName
 
   const categoryId =
-    orderData?.category_id ??
     orderData?.categoryId ??
-    orderData?.product?.category_id ??
     orderData?.product?.categoryId ??
     orderData?.product?.category?.id
 
@@ -560,7 +570,7 @@ function getProductCategoryText(orderData) {
 
 // 获取发货内容（处理多种可能的字段名）
 function getDeliveryContent(orderData) {
-  return orderData?.cdk || orderData?.delivery_content || orderData?.deliveryContent || ''
+  return orderData?.cdk || orderData?.deliveryContent || ''
 }
 
 function getDeliveryList(orderData) {
@@ -572,7 +582,7 @@ function getDeliveryList(orderData) {
 }
 
 function getOrderQuantity(orderData) {
-  const quantity = Number(orderData?.quantity ?? orderData?.product_quantity ?? 1)
+  const quantity = Number(orderData?.quantity ?? orderData?.productQuantity ?? 1)
   return Number.isInteger(quantity) && quantity > 0 ? quantity : 1
 }
 
@@ -581,53 +591,15 @@ function getProductDescription(orderData) {
   // 从物品快照或直接字段获取描述
   return orderData?.product?.description || 
          orderData?.productDescription || 
-         orderData?.product_description || 
          ''
-}
-
-// 加载订单详情
-async function loadOrder(options = {}) {
-  const silent = options?.silent === true
-  try {
-    if (!silent) {
-      loading.value = true
-    }
-    const orderId = route.params.id
-    const role = currentRole.value
-    const result = await shopStore.fetchOrderDetail(orderId, role)
-    // 解包可能嵌套的数据
-    order.value = result?.order || result?.data?.order || result
-    // 订单日志
-    orderLogs.value = result?.logs || result?.data?.logs || []
-  } catch (error) {
-    if (!silent) {
-      toast.error('加载订单详情失败')
-    }
-  } finally {
-    if (!silent) {
-      loading.value = false
-    }
-  }
 }
 
 function handleRefundUpdated() {
   loadOrder({ silent: true }).catch(() => {})
 }
 
-function stopPendingOrderAutoRefresh() {
-  if (pendingOrderAutoRefreshTimer) {
-    clearInterval(pendingOrderAutoRefreshTimer)
-    pendingOrderAutoRefreshTimer = null
-  }
-}
-
 function startPendingOrderAutoRefresh() {
-  stopPendingOrderAutoRefresh()
-  if (!canRefreshPaymentStatus.value) return
-
-  pendingOrderAutoRefreshTimer = setInterval(() => {
-    loadOrder({ silent: true }).catch(() => {})
-  }, 30000)
+  startOrderAutoRefresh(() => canRefreshPaymentStatus.value)
 }
 
 // 订单动态图标
@@ -666,7 +638,7 @@ function getLogText(log) {
     unlock_cdk: '释放CDK'
   }
   const actionText = actionMap[log.action] || log.action
-  const operator = log.operator_name || log.operator_type || ''
+  const operator = log.operatorName || log.operatorType || ''
   return operator ? `${actionText} (${operator})` : actionText
 }
 
@@ -678,7 +650,7 @@ function toTimestamp(value) {
 }
 
 function getLogTimestamp(log) {
-  return toTimestamp(log?.created_at || log?.createdAt || log?.time)
+  return toTimestamp(log?.createdAt || log?.time)
 }
 
 function isLogActionMatch(log, actions = []) {
@@ -705,17 +677,17 @@ function getStatusTimestamp(orderData, logs = []) {
     expired: getTimelineTimestampFromLogs(logs, ['expire'])
   }
   const fieldMap = {
-    delivered: orderData.delivered_at || orderData.deliveredAt,
-    completed: orderData.completed_at || orderData.completedAt || orderData.delivered_at || orderData.deliveredAt,
-    paid: orderData.paid_at || orderData.paidAt,
-    refunded: orderData.refunded_at || orderData.refundedAt,
-    external_dispute: orderData.updated_at || orderData.updatedAt,
-    cancelled: orderData.cancelled_at || orderData.cancelledAt,
-    expired: orderData.expired_at || orderData.expiredAt || orderData.pay_expired_at || orderData.payExpiredAt || orderData.expire_at || orderData.expireAt,
-    pending: orderData.created_at || orderData.createdAt,
-    paying: orderData.paid_at || orderData.paidAt || orderData.created_at || orderData.createdAt
+    delivered: orderData.deliveredAt,
+    completed: orderData.completedAt || orderData.deliveredAt,
+    paid: orderData.paidAt,
+    refunded: orderData.refundedAt,
+    external_dispute: orderData.updatedAt,
+    cancelled: orderData.cancelledAt,
+    expired: orderData.expiredAt || orderData.payExpiredAt || orderData.expireAt,
+    pending: orderData.createdAt,
+    paying: orderData.paidAt || orderData.createdAt
   }
-  return logTimestampMap[status] || toTimestamp(fieldMap[status]) || toTimestamp(orderData.updated_at || orderData.updatedAt || orderData.created_at || orderData.createdAt)
+  return logTimestampMap[status] || toTimestamp(fieldMap[status]) || toTimestamp(orderData.updatedAt || orderData.createdAt)
 }
 
 function getStatusTimeLabel(orderData) {
@@ -743,6 +715,7 @@ function getStatusText(status) {
     completed: '已完成',
     cancelled: '已取消',
     refunded: '已退款',
+    refund_pending: '退款处理中',
     external_dispute: '已转 Credit 处理',
     delivered: '已发货',
     expired: '已过期'
@@ -775,6 +748,7 @@ function getStatusClass(status) {
     completed: 'status-success',
     cancelled: 'status-cancelled',
     refunded: 'status-refunded',
+    refund_pending: 'status-info',
     external_dispute: 'status-external-dispute',
     delivered: 'status-info',
     expired: 'status-cancelled'
@@ -811,7 +785,7 @@ function downloadCdk() {
     return
   }
 
-  const orderNo = String(order.value?.order_no || order.value?.orderNo || order.value?.id || 'order').trim()
+  const orderNo = String(order.value?.orderNo || order.value?.id || 'order').trim()
   const blob = new Blob([`${lines.join('\n')}\n`], { type: 'text/plain;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -834,12 +808,12 @@ function extractErrorMessage(result, fallback) {
 async function handleRefreshPaymentStatus() {
   if (!canRefreshPaymentStatus.value || !order.value || checkingPayment.value) return
 
-  const orderNo = order.value?.order_no || order.value?.orderNo
+  const orderNo = order.value?.orderNo
   if (!orderNo) return
 
-  checkingPayment.value = true
   try {
-    const result = await shopStore.refreshOrderStatus(orderNo)
+    const result = await detailActions.run('refresh', orderNo, () => orderStore.refreshOrderStatus(orderNo))
+    if (!result) return
     if (!result?.success) {
       toast.error(extractErrorMessage(result, '检查支付状态失败'))
       return
@@ -859,23 +833,24 @@ async function handleRefreshPaymentStatus() {
     await loadOrder({ silent: true })
   } catch (error) {
     toast.error(error?.message || '检查支付状态失败')
-  } finally {
-    checkingPayment.value = false
   }
 }
 
 async function handleRepay() {
   if (!canRepay.value || !order.value) return
 
-  const orderNo = order.value?.order_no || order.value?.orderNo
+  const orderNo = order.value?.orderNo
   if (!orderNo || paying.value) return
 
   const loadingId = toast.loading('正在获取支付链接...')
   const preparedWindow = preparePaymentPopup()
-  paying.value = true
 
   try {
-    const result = await shopStore.getPaymentUrl(orderNo)
+    const result = await detailActions.run('payment', orderNo, () => orderStore.getPaymentUrl(orderNo))
+    if (!result) {
+      cleanupPreparedTab(preparedWindow)
+      return
+    }
     const paymentUrl = result?.data?.paymentUrl
 
     if (!result?.success || !paymentUrl) {
@@ -904,14 +879,12 @@ async function handleRepay() {
   } catch (error) {
     cleanupPreparedTab(preparedWindow)
     toast.update(loadingId, { type: 'error', message: error?.message || '获取支付链接失败' })
-  } finally {
-    paying.value = false
   }
 }
 
 // 取消订单
 async function handleCancelOrder() {
-  const productName = order.value?.product?.name || order.value?.product_name || '该物品'
+  const productName = order.value?.product?.name || order.value?.productName || '该物品'
   const confirmed = await dialog.confirm(`确定要取消订单「${productName}」吗？`, {
     title: '取消订单',
     confirmText: '确定取消',
@@ -921,22 +894,22 @@ async function handleCancelOrder() {
   if (!confirmed) return
   
   try {
-    cancelling.value = true
-    const orderNo = order.value?.order_no || order.value?.orderNo
-    await shopStore.cancelOrder(orderNo)
+    const orderNo = order.value?.orderNo
+    if (!orderNo) return
+    const result = await detailActions.run('cancel', orderNo, () => orderStore.cancelOrder(orderNo))
+    if (!result) return
+    if (!result.success) throw new Error(result.error || '取消失败')
     toast.success('订单已取消')
     goBack()
   } catch (error) {
     toast.error(error.message || '取消失败')
-  } finally {
-    cancelling.value = false
   }
 }
 
 onMounted(async () => {
   await Promise.all([
     loadOrder(),
-    shopStore.fetchCategories().catch(() => null)
+    catalogStore.fetchCategories()
   ])
   startPendingOrderAutoRefresh()
 })
@@ -949,8 +922,18 @@ watch(canRefreshPaymentStatus, (enabled) => {
   }
 })
 
+watch(
+  () => `${String(route.params.id || '')}|${String(currentRole.value)}`,
+  async (next, previous) => {
+    if (!previous || next === previous) return
+    await loadOrder()
+    startPendingOrderAutoRefresh()
+  }
+)
+
 onUnmounted(() => {
-  stopPendingOrderAutoRefresh()
+  stopOrderDetail()
+  detailActions.clear()
 })
 </script>
 
@@ -988,7 +971,7 @@ onUnmounted(() => {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .top-back-btn:hover {
@@ -1070,7 +1053,7 @@ onUnmounted(() => {
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .back-btn:hover {
@@ -1306,7 +1289,7 @@ onUnmounted(() => {
 }
 
 .info-link:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-primary) 40%, white);
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 40%, var(--palette-hex-ffffff));
   outline-offset: 3px;
   border-radius: 8px;
 }
@@ -1319,7 +1302,7 @@ onUnmounted(() => {
 .info-value.price {
   font-size: 20px;
   font-weight: 700;
-  color: #cfa76f;
+  color: var(--palette-hex-cfa76f);
 }
 
 /* 订单类型标签（避免和全局 .type-badge 冲突） */
@@ -1345,13 +1328,13 @@ onUnmounted(() => {
 }
 
 .order-type-badge.cdk {
-  background: #e8f5e8;
-  color: #5a8c5a;
+  background: var(--palette-hex-e8f5e8);
+  color: var(--palette-hex-5a8c5a);
 }
 
 .order-type-badge.link {
-  background: #e8f0f5;
-  color: #778d9c;
+  background: var(--palette-hex-e8f0f5);
+  color: var(--palette-hex-778d9c);
 }
 
 .order-type-badge.store {
@@ -1360,8 +1343,8 @@ onUnmounted(() => {
 }
 
 .order-type-badge.service {
-  background: #ece7f8;
-  color: #6f5a96;
+  background: var(--palette-hex-ece7f8);
+  color: var(--palette-hex-6f5a96);
 }
 
 /* CDK 展示框 */
@@ -1420,7 +1403,7 @@ onUnmounted(() => {
   font-size: 16px;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .icon-btn:hover {
@@ -1531,14 +1514,14 @@ onUnmounted(() => {
   gap: 8px;
   padding: 0 16px;
   min-height: 40px;
-  background: linear-gradient(135deg, #a5b4a3 0%, #95a493 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--palette-hex-a5b4a3) 0%, var(--palette-hex-95a493) 100%);
+  color: var(--palette-hex-ffffff);
   border-radius: 999px;
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
   text-align: center;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .top-support-btn {
@@ -1560,7 +1543,7 @@ onUnmounted(() => {
 .maintenance-action-hint {
   max-width: 568px;
   margin: 12px auto 0;
-  color: #b45309;
+  color: var(--palette-hex-b45309);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -1569,13 +1552,13 @@ onUnmounted(() => {
   flex: 1;
   padding: 16px 32px;
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
-  color: white;
+  color: var(--palette-hex-ffffff);
   border: none;
   border-radius: 14px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .pay-btn:hover:not(:disabled) {
@@ -1597,7 +1580,7 @@ onUnmounted(() => {
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .refresh-btn:hover:not(:disabled) {
@@ -1619,7 +1602,7 @@ onUnmounted(() => {
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .cancel-btn:hover:not(:disabled) {

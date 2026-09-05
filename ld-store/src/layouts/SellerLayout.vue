@@ -56,6 +56,7 @@
       </nav>
 
       <div class="seller-sidebar-footer">
+        <router-link to="/announcements" class="seller-market-link" @click="closeDrawer">公告中心</router-link>
         <router-link to="/" class="seller-market-link" @click="closeDrawer">
           <ArrowLeft :size="17" aria-hidden="true" />
           返回物品广场
@@ -134,7 +135,8 @@
 
       <main id="seller-main" ref="sellerMain" class="seller-main" tabindex="-1">
         <div class="seller-view-stage">
-          <router-view v-slot="{ Component, route: childRoute }">
+          <AnnouncementBar />
+      <router-view v-slot="{ Component, route: childRoute }">
             <transition name="seller-route">
               <component :is="Component" :key="resolveSellerViewKey(childRoute)" />
             </transition>
@@ -146,6 +148,7 @@
 </template>
 
 <script setup>
+import AnnouncementBar from '@/components/common/AnnouncementBar.vue'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
@@ -302,41 +305,41 @@ onUnmounted(() => {
 
 <style scoped>
 .seller-shell {
-  --seller-paper: #f4f1e8;
+  --seller-paper: var(--surface-paper-canvas);
   --seller-bg: var(--seller-paper);
-  --seller-surface: #fcfbf7;
-  --seller-surface-soft: #eeebe2;
-  --seller-surface-muted: #f5f2ea;
-  --seller-surface-strong: #fffefa;
-  --seller-navy: #10243e;
-  --seller-navy-soft: #193451;
-  --seller-ink: #1f2a34;
-  --seller-muted: #68737c;
-  --seller-jade: #718d7a;
-  --seller-jade-strong: #5f7968;
-  --seller-jade-soft: #e5ece5;
-  --seller-border: #d8d2c7;
-  --seller-border-strong: #c5beb1;
-  --seller-success: #54745e;
-  --seller-danger: #a5534d;
-  --seller-warning: #a7773f;
-  --seller-shadow-sm: 0 3px 12px rgba(31, 42, 52, 0.05);
-  --seller-shadow-md: 0 18px 48px rgba(31, 42, 52, 0.08);
+  --seller-surface: var(--surface-paper-card);
+  --seller-surface-soft: var(--surface-paper-soft);
+  --seller-surface-muted: var(--surface-paper-muted);
+  --seller-surface-strong: var(--surface-paper-strong);
+  --seller-navy: var(--action-paper-primary);
+  --seller-navy-soft: var(--action-paper-primary-hover);
+  --seller-ink: var(--text-paper-primary);
+  --seller-muted: var(--text-paper-secondary);
+  --seller-jade: var(--action-paper-accent);
+  --seller-jade-strong: var(--action-paper-accent-strong);
+  --seller-jade-soft: var(--action-paper-accent-soft);
+  --seller-border: var(--border-paper-default);
+  --seller-border-strong: var(--border-paper-strong);
+  --seller-success: var(--status-paper-success);
+  --seller-danger: var(--status-paper-danger);
+  --seller-warning: var(--status-paper-warning);
+  --seller-shadow-sm: var(--elevation-paper-sm);
+  --seller-shadow-md: var(--elevation-paper-md);
   --bg-primary: var(--seller-paper);
   --bg-secondary: var(--seller-surface-soft);
-  --bg-tertiary: #e5e1d8;
+  --bg-tertiary: var(--palette-hex-e5e1d8);
   --bg-card: var(--seller-surface);
-  --bg-card-hover: #ffffff;
+  --bg-card-hover: var(--palette-hex-ffffff);
   --text-primary: var(--seller-ink);
   --text-secondary: var(--seller-muted);
-  --text-tertiary: #899198;
+  --text-tertiary: var(--palette-hex-899198);
   --border-light: var(--seller-border);
-  --border-medium: #c5beb1;
+  --border-medium: var(--palette-hex-c5beb1);
   --border-color: var(--seller-border);
   --color-primary: var(--seller-jade);
-  --color-primary-hover: #5f7968;
+  --color-primary-hover: var(--palette-hex-5f7968);
   --color-primary-light: var(--seller-jade-soft);
-  --input-bg: #efede6;
+  --input-bg: var(--palette-hex-efede6);
   --input-focus-bg: var(--seller-surface);
   --dropdown-bg: var(--seller-surface);
   width: 100%;
@@ -352,32 +355,12 @@ onUnmounted(() => {
 }
 
 html.dark .seller-shell {
-  --seller-paper: #0d151d;
-  --seller-bg: var(--seller-paper);
-  --seller-surface: #16212a;
-  --seller-surface-soft: #1c2933;
-  --seller-surface-muted: #192630;
-  --seller-surface-strong: #1b2832;
-  --seller-navy: #0a1b2c;
-  --seller-navy-soft: #122c42;
-  --seller-ink: #e8e3d8;
-  --seller-muted: #aab2b5;
-  --seller-jade: #91b29a;
-  --seller-jade-strong: #a4c4ac;
-  --seller-jade-soft: #20382e;
-  --seller-border: #2b3943;
-  --seller-border-strong: #3a4a55;
-  --seller-success: #a4c8ad;
-  --seller-danger: #d4867f;
-  --seller-warning: #d5a76f;
-  --seller-shadow-sm: 0 3px 12px rgba(0, 0, 0, 0.18);
-  --seller-shadow-md: 0 18px 48px rgba(0, 0, 0, 0.28);
-  --bg-tertiary: #25343f;
-  --bg-card-hover: #1b2933;
-  --text-tertiary: #818d92;
-  --border-medium: #3a4a55;
-  --color-primary-hover: #a4c4ac;
-  --input-bg: #1b2832;
+  --bg-tertiary: var(--palette-hex-25343f);
+  --bg-card-hover: var(--palette-hex-1b2933);
+  --text-tertiary: var(--palette-hex-818d92);
+  --border-medium: var(--palette-hex-3a4a55);
+  --color-primary-hover: var(--palette-hex-a4c4ac);
+  --input-bg: var(--palette-hex-1b2832);
 }
 
 .seller-skip-link {
@@ -404,9 +387,9 @@ html.dark .seller-shell {
   flex-direction: column;
   padding: 20px 16px 16px;
   overflow-y: auto;
-  color: #e9edf0;
+  color: var(--palette-hex-e9edf0);
   background: var(--seller-navy);
-  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  border-right: 1px solid var(--palette-rgba-255-255-255-0p07);
 }
 
 .seller-brand-row,
@@ -419,13 +402,13 @@ html.dark .seller-shell {
 .seller-maintenance { display: flex; align-items: center; }
 
 .seller-brand-row { justify-content: space-between; margin-bottom: 24px; }
-.seller-brand { min-width: 0; gap: 11px; color: #fff; }
-.seller-brand-mark { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.16); border-radius: 11px; background: rgba(255,255,255,.07); }
+.seller-brand { min-width: 0; gap: 11px; color: var(--palette-hex-ffffff); }
+.seller-brand-mark { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid var(--palette-rgba-255-255-255-p16); border-radius: 11px; background: var(--palette-rgba-255-255-255-p07); }
 .seller-brand strong { display: block; font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 17px; letter-spacing: .05em; }
-.seller-brand small { display: block; margin-top: 2px; color: rgba(233,237,240,.58); font-size: 11px; letter-spacing: .12em; }
+.seller-brand small { display: block; margin-top: 2px; color: var(--palette-rgba-233-237-240-p58); font-size: 11px; letter-spacing: .12em; }
 
 .seller-icon-button { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 10px; color: inherit; transition: background 180ms ease, color 180ms ease; }
-.seller-icon-button:hover { background: rgba(255,255,255,.08); }
+.seller-icon-button:hover { background: var(--palette-rgba-255-255-255-p08); }
 .seller-icon-button:focus-visible,
 .seller-nav-item:focus-visible,
 .seller-market-link:focus-visible,
@@ -435,28 +418,28 @@ html.dark .seller-shell {
 
 .seller-nav { width: 100%; min-width: 0; display: grid; gap: 20px; }
 .seller-nav-group { width: 100%; min-width: 0; }
-.seller-nav-group h2 { margin: 0 0 7px 12px; color: rgba(233,237,240,.42); font-size: 11px; font-weight: 600; letter-spacing: .16em; }
-.seller-nav-item { width: 100%; min-width: 0; min-height: 44px; justify-self: stretch; box-sizing: border-box; display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; color: rgba(240,244,246,.76); font-size: 14px; line-height: 1; transition: background 180ms ease, color 180ms ease, transform 180ms ease; }
+.seller-nav-group h2 { margin: 0 0 7px 12px; color: var(--palette-rgba-233-237-240-p42); font-size: 11px; font-weight: 600; letter-spacing: .16em; }
+.seller-nav-item { width: 100%; min-width: 0; min-height: 44px; justify-self: stretch; box-sizing: border-box; display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; color: var(--palette-rgba-240-244-246-p76); font-size: 14px; line-height: 1; transition: background 180ms ease, color 180ms ease, transform 180ms ease; }
 .seller-nav-item > svg { display: block; align-self: center; justify-self: center; }
 .seller-nav-item > span:not(.seller-nav-badge) { min-width: 0; align-self: center; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.seller-nav-item:hover { color: #fff; background: rgba(255,255,255,.06); transform: translateX(2px); }
-.seller-nav-item.active { color: #fff; background: rgba(145,178,154,.18); box-shadow: inset 3px 0 0 var(--seller-jade); }
-.seller-nav-item.is-disabled { color: rgba(240,244,246,.34); cursor: not-allowed; }
-.seller-nav-badge { min-width: 22px; height: 22px; padding: 0 6px; display: grid; place-items: center; border-radius: 999px; background: #e8d4b8; color: #3d3021; font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.seller-nav-item:hover { color: var(--palette-hex-ffffff); background: var(--palette-rgba-255-255-255-p06); transform: translateX(2px); }
+.seller-nav-item.active { color: var(--palette-hex-ffffff); background: var(--palette-rgba-145-178-154-p18); box-shadow: inset 3px 0 0 var(--seller-jade); }
+.seller-nav-item.is-disabled { color: var(--palette-rgba-240-244-246-p34); cursor: not-allowed; }
+.seller-nav-badge { min-width: 22px; height: 22px; padding: 0 6px; display: grid; place-items: center; border-radius: 999px; background: var(--palette-hex-e8d4b8); color: var(--palette-hex-3d3021); font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 .seller-sidebar-footer { margin-top: auto; padding-top: 20px; }
-.seller-market-link { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; color: rgba(233,237,240,.7); font-size: 13px; }
-.seller-market-link:hover { color: #fff; }
-.seller-account { gap: 8px; margin-top: 10px; padding: 10px; border: 1px solid rgba(255,255,255,.09); border-radius: 13px; background: rgba(255,255,255,.04); }
-.seller-account-main { min-width: 0; flex: 1; gap: 9px; color: #fff; }
+.seller-market-link { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; color: var(--palette-rgba-233-237-240-p7); font-size: 13px; }
+.seller-market-link:hover { color: var(--palette-hex-ffffff); }
+.seller-account { gap: 8px; margin-top: 10px; padding: 10px; border: 1px solid var(--palette-rgba-255-255-255-p09); border-radius: 13px; background: var(--palette-rgba-255-255-255-p04); }
+.seller-account-main { min-width: 0; flex: 1; gap: 9px; color: var(--palette-hex-ffffff); }
 .seller-avatar { width: 36px; height: 36px; border-radius: 10px; }
 .seller-account-main span { min-width: 0; }
 .seller-account-main strong,
 .seller-account-main small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .seller-account-main strong { font-size: 13px; }
-.seller-account-main small { margin-top: 2px; color: rgba(233,237,240,.48); font-size: 11px; }
-.logout-button { flex: 0 0 38px; width: 38px; height: 38px; color: rgba(255,255,255,.62); }
-.logout-button:hover { color: #fff; background: rgba(165,83,77,.28); }
+.seller-account-main small { margin-top: 2px; color: var(--palette-rgba-233-237-240-p48); font-size: 11px; }
+.logout-button { flex: 0 0 38px; width: 38px; height: 38px; color: var(--palette-rgba-255-255-255-p62); }
+.logout-button:hover { color: var(--palette-hex-ffffff); background: var(--palette-rgba-165-83-77-p28); }
 
 .seller-workspace { min-width: 0; }
 .seller-topbar { position: sticky; top: 0; z-index: 40; justify-content: space-between; min-height: 72px; padding: 10px clamp(18px, 3vw, 38px); border-bottom: 1px solid color-mix(in srgb, var(--seller-border) 78%, transparent); background: color-mix(in srgb, var(--seller-paper) 90%, transparent); backdrop-filter: blur(14px); }
@@ -491,7 +474,7 @@ html.dark .seller-shell {
   .seller-shell { grid-template-columns: minmax(0, 1fr); }
   .seller-sidebar { position: fixed; left: 0; width: min(86vw, 288px); transform: translateX(-105%); box-shadow: none; transition: transform 220ms ease; }
   .seller-sidebar.is-open { transform: translateX(0); }
-  .seller-backdrop { position: fixed; inset: 0; z-index: 50; display: block; background: rgba(7,15,23,.48); backdrop-filter: blur(2px); }
+  .seller-backdrop { position: fixed; inset: 0; z-index: 50; display: block; background: var(--palette-rgba-7-15-23-p48); backdrop-filter: blur(2px); }
   .sidebar-close,
   .mobile-menu { display: grid; }
 }

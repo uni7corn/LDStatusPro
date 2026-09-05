@@ -72,23 +72,23 @@
         >
           <div class="report-card-top">
             <div class="report-main">
-              <h2 class="report-product">{{ item.current_product_name || item.product_name || '商品已删除' }}</h2>
+              <h2 class="report-product">{{ item.currentProductName || item.productName || '商品已删除' }}</h2>
               <div class="report-meta-line">
-                <span class="report-chip category">{{ categoryText(item.report_category, item.report_category_label) }}</span>
-                <span class="report-chip time">提交于 {{ formatDate(item.created_at) }}</span>
+                <span class="report-chip category">{{ categoryText(item.reportCategory, item.reportCategoryLabel) }}</span>
+                <span class="report-chip time">提交于 {{ formatDate(item.createdAt) }}</span>
               </div>
             </div>
             <span :class="['status-badge', item.status]">{{ statusText(item.status) }}</span>
           </div>
 
-          <p class="report-reason">{{ item.report_reason || '未填写举报原因' }}</p>
+          <p class="report-reason">{{ item.reportReason || '未填写举报原因' }}</p>
 
           <div class="report-footer">
             <div class="report-footer-meta">
-              <span v-if="item.updated_at">最近更新 {{ formatDate(item.updated_at) }}</span>
-              <span v-if="item.handled_at">处理于 {{ formatDate(item.handled_at) }}</span>
-              <span v-if="!item.handled_at && item.status === 'pending'">等待平台处理</span>
-              <span v-else-if="!item.handled_at && item.status === 'processing'">平台正在跟进</span>
+              <span v-if="item.updatedAt">最近更新 {{ formatDate(item.updatedAt) }}</span>
+              <span v-if="item.handledAt">处理于 {{ formatDate(item.handledAt) }}</span>
+              <span v-if="!item.handledAt && item.status === 'pending'">等待平台处理</span>
+              <span v-else-if="!item.handledAt && item.status === 'processing'">平台正在跟进</span>
             </div>
             <span class="detail-link">查看详情 →</span>
           </div>
@@ -101,7 +101,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useShopStore } from '@/stores/shop'
+import { useProductStore } from '@/stores/product'
 import LiquidTabs from '@/components/common/LiquidTabs.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 
@@ -114,7 +114,7 @@ const FILTER_OPTIONS = Object.freeze([
 ])
 
 const router = useRouter()
-const shopStore = useShopStore()
+const productStore = useProductStore()
 
 const loading = ref(false)
 const reports = ref([])
@@ -169,7 +169,7 @@ function formatDate(value) {
 async function loadReports() {
   loading.value = true
   try {
-    const result = await shopStore.fetchMyReports({ status: statusFilter.value, page: 1, pageSize: 50 })
+    const result = await productStore.fetchMyReports({ status: statusFilter.value, page: 1, pageSize: 50 })
     reports.value = result?.data?.reports || []
   } finally {
     loading.value = false
@@ -229,7 +229,7 @@ onMounted(() => {
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #8d7760;
+  color: var(--palette-hex-8d7760);
 }
 
 .page-title {
@@ -262,11 +262,11 @@ onMounted(() => {
 }
 
 .summary-card.tone-warm {
-  background: rgba(255, 243, 219, 0.7);
+  background: var(--palette-rgba-255-243-219-0p7);
 }
 
 .summary-card.tone-calm {
-  background: rgba(230, 243, 233, 0.7);
+  background: var(--palette-rgba-230-243-233-0p7);
 }
 
 .summary-label {
@@ -311,7 +311,7 @@ onMounted(() => {
 }
 
 .report-card:focus-visible {
-  outline: 2px solid rgba(98, 125, 102, 0.42);
+  outline: 2px solid var(--palette-rgba-98-125-102-0p42);
   outline-offset: 2px;
 }
 
@@ -321,19 +321,19 @@ onMounted(() => {
 }
 
 .report-card.status-pending {
-  border-color: rgba(221, 168, 90, 0.28);
+  border-color: var(--palette-rgba-221-168-90-0p28);
 }
 
 .report-card.status-processing {
-  border-color: rgba(106, 148, 210, 0.26);
+  border-color: var(--palette-rgba-106-148-210-0p26);
 }
 
 .report-card.status-resolved {
-  border-color: rgba(100, 164, 118, 0.24);
+  border-color: var(--palette-rgba-100-164-118-0p24);
 }
 
 .report-card.status-rejected {
-  border-color: rgba(208, 113, 113, 0.22);
+  border-color: var(--palette-rgba-208-113-113-0p22);
 }
 
 .report-card-top {
@@ -381,12 +381,12 @@ onMounted(() => {
 }
 
 .report-chip.category {
-  background: rgba(239, 244, 237, 0.92);
-  color: #5f745f;
+  background: var(--palette-rgba-239-244-237-0p92);
+  color: var(--palette-hex-5f745f);
 }
 
 .report-chip.time {
-  background: rgba(244, 240, 234, 0.88);
+  background: var(--palette-rgba-244-240-234-0p88);
 }
 
 .status-badge {
@@ -394,23 +394,23 @@ onMounted(() => {
 }
 
 .status-badge.pending {
-  background: rgba(255, 241, 204, 0.95);
-  color: #9a6312;
+  background: var(--palette-rgba-255-241-204-0p95);
+  color: var(--palette-hex-9a6312);
 }
 
 .status-badge.processing {
-  background: rgba(220, 235, 255, 0.96);
-  color: #2b66b1;
+  background: var(--palette-rgba-220-235-255-0p96);
+  color: var(--palette-hex-2b66b1);
 }
 
 .status-badge.resolved {
-  background: rgba(225, 243, 228, 0.96);
-  color: #2d7a43;
+  background: var(--palette-rgba-225-243-228-0p96);
+  color: var(--palette-hex-2d7a43);
 }
 
 .status-badge.rejected {
-  background: rgba(250, 226, 226, 0.96);
-  color: #b14c4c;
+  background: var(--palette-rgba-250-226-226-0p96);
+  color: var(--palette-hex-b14c4c);
 }
 
 .report-reason {
@@ -446,7 +446,7 @@ onMounted(() => {
   flex-shrink: 0;
   font-size: 13px;
   font-weight: 600;
-  color: #6b8068;
+  color: var(--palette-hex-6b8068);
 }
 
 .empty-wrap {
@@ -466,12 +466,12 @@ onMounted(() => {
   margin-top: 16px;
   padding: 0 16px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #7b957d, #66826a);
-  color: #fff;
+  background: linear-gradient(135deg, var(--palette-hex-7b957d), var(--palette-hex-66826a));
+  color: var(--palette-hex-ffffff);
   text-decoration: none;
   font-size: 13px;
   font-weight: 600;
-  box-shadow: 0 8px 18px rgba(102, 130, 106, 0.18);
+  box-shadow: 0 8px 18px var(--palette-rgba-102-130-106-0p18);
 }
 
 /* Skeleton */

@@ -26,6 +26,8 @@ function resolveHelpRoute(to) {
 
 // 路由配置
 const routes = [
+  { path: '/announcements', name: 'Announcements', component: () => import('@/views/Announcements.vue'), meta: { title: '公告中心 - LD士多' } },
+  { path: '/announcements/:id', name: 'AnnouncementDetail', component: () => import('@/views/Announcements.vue'), meta: { title: '公告详情 - LD士多' } },
   {
     path: '/',
     name: 'Home',

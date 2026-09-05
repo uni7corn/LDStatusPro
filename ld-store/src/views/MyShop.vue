@@ -37,12 +37,12 @@
           <section class="shop-preview-panel" aria-labelledby="shop-preview-title">
             <div class="panel-heading">
               <div><p class="panel-eyebrow">商城展示</p><h2 id="shop-preview-title">小店预览</h2></div>
-              <span class="view-count"><Eye :size="15" aria-hidden="true" /> {{ myShop.view_count || 0 }} 次浏览</span>
+              <span class="view-count"><Eye :size="15" aria-hidden="true" /> {{ myShop.viewCount || 0 }} 次浏览</span>
             </div>
 
             <div class="shop-card">
-          <div class="shop-image-wrapper" v-if="myShop.image_url">
-            <img :src="myShop.image_url" :alt="myShop.name" class="shop-image" />
+          <div class="shop-image-wrapper" v-if="myShop.imageUrl">
+            <img :src="myShop.imageUrl" :alt="myShop.name" class="shop-image" />
           </div>
               <div class="shop-image-placeholder" v-else><Store :size="34" aria-hidden="true" /></div>
 
@@ -54,22 +54,22 @@
                 :candidates="ownerAvatarCandidates"
                 :seed="ownerAvatarSeed"
                 :size="48"
-                :alt="myShop.owner_username"
+                :alt="myShop.ownerUsername"
                 class="owner-avatar"
               />
-              <span class="owner-name">{{ myShop.owner_username }}</span>
+              <span class="owner-name">{{ myShop.ownerUsername }}</span>
             </div>
 
             <p v-if="myShop.description" class="shop-description">{{ myShop.description }}</p>
 
             <a
-              v-if="myShop.shop_url"
-              :href="myShop.shop_url"
+              v-if="myShop.shopUrl"
+              :href="myShop.shopUrl"
               target="_blank"
               rel="noopener noreferrer"
               class="shop-url"
             >
-              {{ myShop.shop_url }}
+              {{ myShop.shopUrl }}
             </a>
 
             <div class="shop-tags" v-if="parsedTags.length > 0">
@@ -108,15 +108,15 @@
               <dl class="shop-facts">
                 <div><dt>审核状态</dt><dd>{{ statusText }}</dd></div>
                 <div><dt>展示标签</dt><dd>{{ parsedTags.length ? parsedTags.join('、') : '暂无标签' }}</dd></div>
-                <div><dt>访问地址</dt><dd class="truncate-value">{{ myShop.shop_url || '尚未填写' }}</dd></div>
-                <div><dt>累计浏览</dt><dd>{{ myShop.view_count || 0 }}</dd></div>
+                <div><dt>访问地址</dt><dd class="truncate-value">{{ myShop.shopUrl || '尚未填写' }}</dd></div>
+                <div><dt>累计浏览</dt><dd>{{ myShop.viewCount || 0 }}</dd></div>
               </dl>
               <p class="panel-note">修改资料后将按照现有规则重新进入审核；审核期间请保持访问地址可用。</p>
             </template>
 
             <div class="action-buttons" v-if="!showEditForm">
               <button class="btn btn-secondary" @click="showEditForm = true">{{ myShop.status === 'offline' ? '编辑并重新提交' : '编辑信息' }}</button>
-              <a v-if="myShop.status === 'active'" :href="myShop.shop_url" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+              <a v-if="myShop.status === 'active'" :href="myShop.shopUrl" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
                 访问小店 <ArrowUpRight :size="16" aria-hidden="true" />
               </a>
             </div>
@@ -152,7 +152,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { api } from '@/utils/api'
+import {
+  createShopRequest,
+  fetchMyShopRequest,
+  offlineShopRequest,
+  updateShopRequest
+} from '@/services/shop/shopService'
 import AvatarImage from '@/components/common/AvatarImage.vue'
 import ShopForm from '@/components/shop/ShopForm.vue'
 import SellerStatusBadge from '@/components/seller/SellerStatusBadge.vue'
@@ -169,9 +174,7 @@ const submitting = ref(false)
 const myShop = ref(null)
 const showEditForm = ref(false)
 const loadError = ref('')
-const shopRejectReason = computed(() => String(
-  myShop.value?.reject_reason || myShop.value?.rejectReason || ''
-).trim())
+const shopRejectReason = computed(() => String(myShop.value?.rejectReason || '').trim())
 
 // 解析标签
 const parsedTags = computed(() => {
@@ -186,12 +189,12 @@ const parsedTags = computed(() => {
 
 // 店主头像 URL
 const ownerAvatarSeed = computed(() =>
-  myShop.value?.owner_username || myShop.value?.owner_user_id || myShop.value?.name || 'shop'
+  myShop.value?.ownerUsername || myShop.value?.ownerUserId || myShop.value?.name || 'shop'
 )
 
 const ownerAvatarCandidates = computed(() => {
   if (!myShop.value) return []
-  return buildAvatarCandidates(myShop.value.owner_avatar_template, 48)
+  return buildAvatarCandidates(myShop.value.ownerAvatarTemplate, 48)
 })
 
 // 状态相关计算属性
@@ -242,7 +245,7 @@ async function loadMyShop() {
   loading.value = true
   loadError.value = ''
   try {
-    const result = await api.get('/api/shops/my')
+    const result = await fetchMyShopRequest()
     if (result.success && result.data) {
       myShop.value = result.data
     } else if (result.success) {
@@ -262,7 +265,7 @@ async function loadMyShop() {
 async function handleSubmit(formData) {
   submitting.value = true
   try {
-    const result = await api.post('/api/shops', formData)
+    const result = await createShopRequest(formData)
     if (result.success) {
       toast.success('入驻申请已提交，请等待审核！')
       await loadMyShop()
@@ -280,7 +283,7 @@ async function handleSubmit(formData) {
 async function handleUpdate(formData) {
   submitting.value = true
   try {
-    const result = await api.put('/api/shops/my', formData)
+    const result = await updateShopRequest(formData)
     if (result.success) {
       toast.success(result.message || '更新成功！')
       showEditForm.value = false
@@ -304,7 +307,7 @@ async function handleOffline() {
 
   submitting.value = true
   try {
-    const result = await api.post('/api/shops/my/offline')
+    const result = await offlineShopRequest()
     if (result.success) {
       toast.success('小店已下架')
       await loadMyShop()
@@ -349,7 +352,7 @@ onMounted(() => {
   font-size: 14px;
   padding: 8px 12px;
   border-radius: 10px;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .back-link:hover {
@@ -555,9 +558,9 @@ onMounted(() => {
 .shop-tag.tag-subscription { background: var(--color-success-light); color: var(--color-success); }
 .shop-tag.tag-service { background: var(--color-info-light); color: var(--color-info); }
 .shop-tag.tag-vps { background: var(--color-warning-light); color: var(--color-warning); }
-.shop-tag.tag-ai { background: #f3e8ff; color: #7c3aed; }
-.shop-tag.tag-entertainment { background: #ffe4e6; color: #be123c; }
-.shop-tag.tag-charity { background: #fce7f3; color: #be185d; }
+.shop-tag.tag-ai { background: var(--palette-hex-f3e8ff); color: var(--palette-hex-7c3aed); }
+.shop-tag.tag-entertainment { background: var(--palette-hex-ffe4e6); color: var(--palette-hex-be123c); }
+.shop-tag.tag-charity { background: var(--palette-hex-fce7f3); color: var(--palette-hex-be185d); }
 
 .shop-stats {
   font-size: 13px;
@@ -586,7 +589,7 @@ onMounted(() => {
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
   border: none;
 }
 
@@ -597,7 +600,7 @@ onMounted(() => {
 
 .btn-primary {
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
-  color: white;
+  color: var(--palette-hex-ffffff);
 }
 
 .btn-primary:hover:not(:disabled) {

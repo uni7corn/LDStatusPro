@@ -1,17 +1,17 @@
 /* Shared by the purchase page and its dialog outside the routed page layer. */
 .top-service-theme {
-  --service-gold:#cfa76f;
-  --service-gold-ink:#805c40;
-  --service-gold-soft:#f2e8d4;
-  --service-rose:#ad9090;
-  --service-rose-ink:#7a5f5f;
-  --service-rose-soft:#ebe2e2;
+  --service-gold:var(--palette-hex-cfa76f);
+  --service-gold-ink:var(--palette-hex-805c40);
+  --service-gold-soft:var(--palette-hex-f2e8d4);
+  --service-rose:var(--palette-hex-ad9090);
+  --service-rose-ink:var(--palette-hex-7a5f5f);
+  --service-rose-soft:var(--palette-hex-ebe2e2);
 }
 html.dark .top-service-theme {
-  --service-gold:#dcbe8f;
-  --service-gold-ink:#e8d5b4;
-  --service-gold-soft:#3a3023;
-  --service-rose:#ad9090;
-  --service-rose-ink:#dccece;
-  --service-rose-soft:#34292c;
+  --service-gold:var(--palette-hex-dcbe8f);
+  --service-gold-ink:var(--palette-hex-e8d5b4);
+  --service-gold-soft:var(--palette-hex-3a3023);
+  --service-rose:var(--palette-hex-ad9090);
+  --service-rose-ink:var(--palette-hex-dccece);
+  --service-rose-soft:var(--palette-hex-34292c);
 }

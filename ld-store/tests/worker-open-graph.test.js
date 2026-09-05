@@ -4,8 +4,10 @@ import worker, {
   handleOgImage,
   handleOembed,
   injectMetadataIntoHtml,
+  NOINDEX_POLICY,
   parseOgImagePath,
-  resolvePageMetadata
+  resolvePageMetadata,
+  STOREFRONT_CSP
 } from '../public/_worker.js'
 
 const env = {
@@ -54,7 +56,11 @@ function htmlAsset() {
     <link rel="canonical" href="https://old.example/path">
     <link rel="alternate" type="application/json+oembed" href="/old.json">
   </head><body><div id="app"></div></body></html>`, {
-    headers: { 'content-type': 'text/html', 'content-length': '999' }
+    headers: {
+      'content-type': 'text/html',
+      'content-length': '999',
+      'content-security-policy': "default-src 'self'; script-src 'self'; object-src 'none'"
+    }
   })
 }
 
@@ -203,7 +209,9 @@ describe('Worker responses and oEmbed', () => {
     const response = await worker.fetch(new Request('https://ldcstore.com/product/42'), workerEnv)
     expect(response.status).toBe(200)
     expect(response.headers.get('cache-control')).toBe('no-store, no-cache, must-revalidate')
-    expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow, noarchive')
+    expect(response.headers.get('x-robots-tag')).toBe(NOINDEX_POLICY)
+    expect(response.headers.get('content-security-policy')).toBe(STOREFRONT_CSP)
+    expect(response.headers.get('content-security-policy')).toContain("style-src-attr 'none'")
     expect(response.headers.get('content-length')).toBeNull()
     expect(await response.text()).toContain('property="og:title"')
 
@@ -218,17 +226,21 @@ describe('Worker responses and oEmbed', () => {
     const privateOrMissing = await worker.fetch(new Request('https://ldcstore.com/product/404'), workerEnv)
     expect(privateOrMissing.status).toBe(200)
     expect(await privateOrMissing.text()).toContain('商品暂不可公开预览 - LD士多')
-    expect((await worker.fetch(new Request('https://ldcstore.com/unknown'), workerEnv)).status).toBe(404)
+    const unknown = await worker.fetch(new Request('https://ldcstore.com/unknown'), workerEnv)
+    expect(unknown.status).toBe(404)
+    expect(unknown.headers.get('x-robots-tag')).toBe(NOINDEX_POLICY)
   })
 
   it('rejects cross-origin oEmbed targets and returns dynamic same-origin thumbnails', async () => {
     const invalid = await handleOembed(new Request('https://ldcstore.com/oembed.json?url=https%3A%2F%2Fevil.example%2F'), env)
     expect(invalid.status).toBe(400)
+    expect(invalid.headers.get('x-robots-tag')).toBe(NOINDEX_POLICY)
     expect(await invalid.json()).toEqual({ error: 'invalid_origin' })
 
     vi.stubGlobal('fetch', vi.fn(async () => apiResponse()))
     const valid = await handleOembed(new Request('https://ldcstore.com/oembed.json?url=https%3A%2F%2Fldcstore.com%2Fproduct%2F42'), env)
     expect(valid.status).toBe(200)
+    expect(valid.headers.get('x-robots-tag')).toBe(NOINDEX_POLICY)
     expect(await valid.json()).toMatchObject({
       type: 'link',
       title: productMetadata.title,
@@ -281,6 +293,7 @@ describe('same-origin OG image proxy', () => {
     expect(response.headers.get('content-type')).toBe('image/png')
     expect(response.headers.get('cache-control')).toContain('max-age=86400')
     expect(response.headers.get('access-control-allow-origin')).toBe('*')
+    expect(response.headers.get('x-robots-tag')).toBe(NOINDEX_POLICY)
     expect(new URL(upstreamFetch.mock.calls[0][0]).pathname).toBe('/api/shop/share-image/product/42')
     expect(edgeCache.put).toHaveBeenCalledOnce()
   })
@@ -301,6 +314,7 @@ describe('same-origin OG image proxy', () => {
       { ...env, ASSETS: { fetch: vi.fn() } }
     )
     expect(response.status).toBe(200)
+    expect(response.headers.get('x-robots-tag')).toBe(NOINDEX_POLICY)
     expect((await response.arrayBuffer()).byteLength).toBe(0)
     expect(upstreamFetch).not.toHaveBeenCalled()
   })
@@ -319,6 +333,7 @@ describe('same-origin OG image proxy', () => {
     )
     expect(response.status).toBe(200)
     expect(response.headers.get('cache-control')).toContain('max-age=300')
+    expect(response.headers.get('x-robots-tag')).toBe(NOINDEX_POLICY)
     expect(assetFetch).toHaveBeenCalledOnce()
     expect(edgeCache.put).not.toHaveBeenCalled()
   })
@@ -331,6 +346,29 @@ describe('same-origin OG image proxy', () => {
       { ...env, ASSETS: { fetch: vi.fn() } }
     )
     expect(response.status).toBe(404)
+    expect(response.headers.get('x-robots-tag')).toBe(NOINDEX_POLICY)
     expect(upstreamFetch).not.toHaveBeenCalled()
+  })
+
+  it('marks unavailable generated images as noindex', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('not an image')))
+    const response = await handleOgImage(
+      new Request('https://ldcstore.com/og/product/42.png'),
+      { ...env, ASSETS: { fetch: vi.fn(async () => new Response('invalid fallback')) } }
+    )
+
+    expect(response.status).toBe(502)
+    expect(response.headers.get('x-robots-tag')).toBe(NOINDEX_POLICY)
+  })
+})
+
+describe('announcement deep links', () => {
+  it.each(['/announcements','/announcements/11'])('serves %s without requesting personalized content at the edge',async path=>{
+    const externalFetch=vi.fn();vi.stubGlobal('fetch',externalFetch)
+    const response=await worker.fetch(new Request(`https://ldcstore.com${path}?context_synthetic=true`),{...env,ASSETS:{fetch:vi.fn(async()=>htmlAsset())}})
+    expect(response.status).toBe(200)
+    expect(response.headers.get('x-robots-tag')).toBe(NOINDEX_POLICY)
+    expect(await response.text()).toContain('公告中心 - LD士多')
+    expect(externalFetch).not.toHaveBeenCalled()
   })
 })

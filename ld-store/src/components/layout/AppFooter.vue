@@ -1,18 +1,22 @@
 <template>
-  <nav class="app-footer" v-if="showFooter">
+  <nav v-if="showFooter" class="app-footer" aria-label="移动端主导航">
     <router-link
       v-for="item in navItems"
       :key="item.path"
       :to="item.path"
       :class="['nav-item', { active: isActive(item.path) }]"
+      :aria-current="isActive(item.path) ? 'page' : undefined"
     >
-      <span class="nav-icon">{{ item.icon }}</span>
+      <span class="nav-icon" aria-hidden="true">
+        <component :is="item.iconComponent" :size="22" :stroke-width="2" />
+      </span>
       <span class="nav-label">{{ item.label }}</span>
     </router-link>
   </nav>
 </template>
 
 <script setup>
+import { ClipboardList, Megaphone, House, LogIn, Search, UserRound } from '@lucide/vue'
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
@@ -30,18 +34,19 @@ const showFooter = computed(() => {
 // 导航项
 const navItems = computed(() => {
   const items = [
-    { path: '/', icon: '🏪', label: '首页' },
-    { path: '/search', icon: '🔍', label: '搜索' }
+    { path: '/', iconComponent: House, label: '首页' },
+    { path: '/search', iconComponent: Search, label: '搜索' },
+    { path: '/announcements', iconComponent: Megaphone, label: '公告' }
   ]
   
   if (userStore.isLoggedIn) {
     items.push(
-      { path: '/user/orders', icon: '📋', label: '订单' },
-      { path: '/user', icon: '👤', label: '我的' }
+      { path: '/user/orders', iconComponent: ClipboardList, label: '订单' },
+      { path: '/user', iconComponent: UserRound, label: '我的' }
     )
   } else {
     items.push(
-      { path: '/login', icon: '🔐', label: '登录' }
+      { path: '/login', iconComponent: LogIn, label: '登录' }
     )
   }
   
@@ -78,14 +83,17 @@ function isActive(path) {
   justify-content: center;
   padding: 10px 0;
   text-decoration: none;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .nav-icon {
-  font-size: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 2px;
+  color: var(--text-tertiary);
   opacity: 0.6;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .nav-label {
@@ -95,6 +103,7 @@ function isActive(path) {
 }
 
 .nav-item.active .nav-icon {
+  color: var(--color-primary);
   opacity: 1;
   transform: scale(1.1);
 }

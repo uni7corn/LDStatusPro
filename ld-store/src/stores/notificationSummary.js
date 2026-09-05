@@ -1,10 +1,9 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { api } from '@/utils/api'
+import { fetchNotificationSummaryRequest, openNotificationStreamRequest } from '@/services/shop/messageService'
 import { consumeSseStream } from '@/utils/sse'
 import { createNotificationTabCoordinator } from '@/utils/notificationTabCoordinator'
 
-const STREAM_PATH = '/api/shop/notifications/stream'
 const FALLBACK_INTERVAL_MS = 60_000
 const HIDDEN_DISCONNECT_MS = 60_000
 const CONNECT_TIMEOUT_MS = 15_000
@@ -149,7 +148,7 @@ export const useNotificationSummaryStore = defineStore('notification-summary', (
   async function refresh({ force = false } = {}) {
     if (!force && activeRequest) return activeRequest
     const requestId = ++latestRequestId
-    const request = api.get('/api/shop/messages/unread-summary')
+    const request = fetchNotificationSummaryRequest()
       .then(result => {
         if (result?.success && requestId === latestRequestId) commitSummary(result.data)
         return result
@@ -281,7 +280,7 @@ export const useNotificationSummaryStore = defineStore('notification-summary', (
       if (streamController === controller && !controller.signal.aborted) controller.abort()
     }, CONNECT_TIMEOUT_MS)
 
-    const result = await api.openEventStream(STREAM_PATH, { signal: controller.signal })
+    const result = await openNotificationStreamRequest(controller.signal)
     if (connectTimer) window.clearTimeout(connectTimer)
     connectTimer = null
     if (generation !== streamGeneration) return

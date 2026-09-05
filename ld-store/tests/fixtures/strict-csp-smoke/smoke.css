@@ -1,0 +1,101 @@
+.smoke-shell {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 24px 0 64px;
+}
+
+.smoke-header,
+.smoke-section {
+  border: 1px solid var(--border-default-semantic);
+  border-radius: var(--radius-lg);
+  background: var(--surface-card);
+  box-shadow: var(--elevation-sm);
+}
+
+.smoke-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.smoke-header p,
+.smoke-header h1,
+.smoke-section h2 {
+  margin: 0;
+}
+
+.smoke-header p {
+  color: var(--text-secondary-semantic);
+  font-size: var(--text-size-sm);
+}
+
+.smoke-header h1 {
+  margin-top: var(--space-1);
+  color: var(--text-primary-semantic);
+  font-size: 24px;
+}
+
+.smoke-section {
+  margin-top: var(--space-4);
+  padding: var(--space-5);
+}
+
+.smoke-section h2 {
+  margin-bottom: var(--space-4);
+  color: var(--text-primary-semantic);
+  font-size: var(--text-size-lg);
+}
+
+.smoke-actions {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.smoke-button {
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--action-primary-text);
+  background: var(--action-primary);
+  cursor: pointer;
+}
+
+.smoke-progress {
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--surface-subtle);
+}
+
+.smoke-progress span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--status-success);
+  transform-origin: left center;
+}
+
+.smoke-media-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.smoke-media-grid > * {
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .smoke-shell {
+    width: min(100% - 24px, 1120px);
+    padding-top: 12px;
+  }
+
+  .smoke-media-grid {
+    grid-template-columns: 1fr;
+  }
+}

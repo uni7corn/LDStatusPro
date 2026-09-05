@@ -352,13 +352,13 @@ watch(() => [props.open, props.campaign?.id], async ([open, id], previous = []) 
 .discount-summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 9px; padding: 14px; border-radius: 11px; background: var(--seller-jade-soft); }
 .discount-summary span { color: var(--seller-muted); font-size: 13px; }.discount-summary strong { color: var(--seller-jade-strong); font-size: 16px; font-variant-numeric: tabular-nums; }
 .quota-editor { display: grid; gap: 7px; margin-top: 16px; padding: 15px; border: 1px solid var(--seller-border); border-radius: 12px; }
-.quota-editor label { color: var(--seller-ink); font-size: 13px; font-weight: 750; }.quota-editor > div { display: flex; gap: 8px; }.quota-editor input { min-width: 0; min-height: 44px; flex: 1; padding: 0 12px; border: 1px solid var(--seller-border); border-radius: 9px; color: var(--seller-ink); background: var(--seller-surface-strong); }.quota-editor button { min-height: 44px; padding: 0 14px; border-radius: 9px; color: #fff; background: var(--seller-navy); font-weight: 700; }.quota-editor small { color: var(--seller-muted); font-size: 11px; }
+.quota-editor label { color: var(--seller-ink); font-size: 13px; font-weight: 750; }.quota-editor > div { display: flex; gap: 8px; }.quota-editor input { min-width: 0; min-height: 44px; flex: 1; padding: 0 12px; border: 1px solid var(--seller-border); border-radius: 9px; color: var(--seller-ink); background: var(--seller-surface-strong); }.quota-editor button { min-height: 44px; padding: 0 14px; border-radius: 9px; color: var(--palette-hex-ffffff); background: var(--seller-navy); font-weight: 700; }.quota-editor small { color: var(--seller-muted); font-size: 11px; }
 .detail-tabs { margin-top: 24px; }
 .claim-filter { display: grid; grid-template-columns: minmax(0, 1fr) 130px auto; gap: 8px; margin: 16px 0 12px; }
 .claim-filter label { min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 11px; border: 1px solid var(--seller-border); border-radius: 9px; color: var(--seller-muted); background: var(--seller-surface-strong); }
 .claim-filter input { min-width: 0; width: 100%; border: 0; outline: 0; color: var(--seller-ink); background: transparent; }
 .claim-filter select { min-height: 44px; padding: 0 10px; border: 1px solid var(--seller-border); border-radius: 9px; color: var(--seller-ink); background: var(--seller-surface-strong); }
-.claim-filter > button { min-height: 44px; padding: 0 14px; border-radius: 9px; color: #fff; background: var(--seller-navy); font-weight: 700; }
+.claim-filter > button { min-height: 44px; padding: 0 14px; border-radius: 9px; color: var(--palette-hex-ffffff); background: var(--seller-navy); font-weight: 700; }
 .claim-loading, .claim-error { min-height: 190px; display: flex; align-items: center; justify-content: center; gap: 9px; color: var(--seller-muted); }
 .claim-error { flex-direction: column; color: var(--seller-danger); }
 .claim-table-wrap { overflow-x: auto; border: 1px solid var(--seller-border); border-radius: 11px; }

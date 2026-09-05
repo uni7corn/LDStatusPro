@@ -112,7 +112,7 @@ const displayValue = computed(() => (
 }
 
 .star-rating-display__icon.is-base {
-  color: rgba(203, 213, 225, 0.95);
+  color: var(--palette-rgba-203-213-225-0p95);
 }
 
 .star-rating-display__fill {
@@ -128,7 +128,7 @@ const displayValue = computed(() => (
 }
 
 .star-rating-display__icon.is-fill {
-  color: #f6ad1b;
+  color: var(--palette-hex-f6ad1b);
 }
 
 .star-rating-display__value {

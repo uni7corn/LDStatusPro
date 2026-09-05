@@ -344,12 +344,12 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   /* 浅色模式：使用莫兰迪灰棕色调 */
-  color: rgba(181, 168, 152, 0.15);
+  color: var(--palette-rgba-181-168-152-0p15);
 }
 
 /* 深色模式 */
 :global(html.dark) .doodle-pattern {
-  color: rgba(181, 168, 152, 0.08);
+  color: var(--palette-rgba-181-168-152-0p08);
 }
 
 /* 图标微动画 - 可选，按需启用 */

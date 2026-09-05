@@ -241,7 +241,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { ArrowRight, RefreshCw } from '@lucide/vue'
-import { api } from '@/utils/api'
+import { fetchTopServiceBoardRequest } from '@/services/shop/topServiceService'
 const quotaBoardLoading = ref(false)
 defineEmits(['purchase'])
 const quotaBoardLoaded = ref(false)
@@ -350,7 +350,7 @@ async function loadQuotaBoard() {
   if (quotaBoardLoading.value) return
   quotaBoardLoading.value = true
   try {
-    const response = await api.get('/api/shop/top-service/board')
+    const response = await fetchTopServiceBoardRequest()
     if (!response?.success) throw new Error('名额看板未能更新，请重试。')
     const result = response.data
     boardError.value = ''
@@ -440,8 +440,8 @@ defineExpose({ refresh: loadQuotaBoard })
 }
 
 .board-summary-card--special {
-  background: linear-gradient(180deg, rgba(249, 237, 214, 0.72) 0%, var(--services-card-bg) 100%);
-  border-color: rgba(198, 146, 68, 0.22);
+  background: linear-gradient(180deg, var(--palette-rgba-249-237-214-0p72) 0%, var(--services-card-bg) 100%);
+  border-color: var(--palette-rgba-198-146-68-0p22);
 }
 
 .board-summary-card--focus {

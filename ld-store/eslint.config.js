@@ -1,6 +1,7 @@
 import js from '@eslint/js'
 import globals from 'globals'
 import pluginVue from 'eslint-plugin-vue'
+import tseslint from 'typescript-eslint'
 
 const appFiles = ['src/**/*.{js,vue}']
 const toolFiles = [
@@ -15,7 +16,7 @@ const toolFiles = [
 
 export default [
   {
-    ignores: ['dist/**', 'node_modules/**', '.wrangler/**']
+    ignores: ['dist/**', '.csp-smoke-dist/**', 'node_modules/**', '.wrangler/**']
   },
   {
     ...js.configs.recommended,
@@ -26,6 +27,43 @@ export default [
     }
   },
   ...pluginVue.configs['flat/essential'],
+  {
+    files: ['**/*.ts'],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module'
+      },
+      globals: {
+        ...globals.browser
+      }
+    },
+    plugins: {
+      '@typescript-eslint': tseslint.plugin
+    },
+    rules: {
+      ...tseslint.configs.recommended.rules,
+      'no-undef': 'off',
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^(_|error|e)$'
+        }
+      ]
+    }
+  },
+  {
+    files: ['src/**/*.vue', 'tests/**/*.vue'],
+    languageOptions: {
+      parserOptions: {
+        parser: tseslint.parser
+      }
+    }
+  },
   {
     files: appFiles,
     languageOptions: {
@@ -43,6 +81,7 @@ export default [
           caughtErrorsIgnorePattern: '^(_|error|e)$'
         }
       ],
+      '@typescript-eslint/no-unused-vars': 'off',
       'vue/multi-word-component-names': 'off'
     }
   },

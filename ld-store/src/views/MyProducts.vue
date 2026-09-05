@@ -33,7 +33,7 @@
       <template #cell-product="{ row: product }">
         <div class="product-ledger-main">
           <button type="button" class="product-ledger-image" :style="getImageStyle(product)" :aria-label="`查看物品 ${product.name}`" @click="viewProduct(product)">
-            <img v-if="hasProductImage(product)" :src="product.image_url" alt="" loading="lazy" @error="handleImageError($event, product)" />
+            <img v-if="hasProductImage(product)" :src="product.imageUrl" alt="" loading="lazy" @error="handleImageError($event, product)" />
             <Package v-else :size="20" aria-hidden="true" />
           </button>
           <div class="product-ledger-copy">
@@ -47,9 +47,9 @@
                 <Check v-if="isProductIdCopied(product)" :size="12" aria-hidden="true" />
                 <Copy v-else :size="12" aria-hidden="true" />
               </button>
-              <span class="product-archive-badge category" :title="product.category_name || '其他'">
+              <span class="product-archive-badge category" :title="product.categoryName || '其他'">
                 <Tag :size="12" aria-hidden="true" />
-                <span>{{ product.category_name || '其他' }}</span>
+                <span>{{ product.categoryName || '其他' }}</span>
               </span>
               <span :class="['product-archive-badge', 'type', `type-${getProductType(product)}`]">
                 <component :is="getTypeIcon(getProductType(product))" :size="12" aria-hidden="true" />
@@ -77,14 +77,14 @@
           </div>
         </div>
       </template>
-      <template #cell-stock="{ row: product }"><template v-if="isPlatformOrderProductItem(product)"><strong :class="['ledger-number', { 'is-warning': isLowStock(product) }]">{{ getStockDisplay(product) }}</strong><small class="ledger-unit">库存 · 售出 {{ product.sold_count || 0 }}</small></template><span v-else class="ledger-muted">不适用</span></template>
-      <template #cell-views="{ row: product }"><strong class="ledger-number">{{ product.view_count || 0 }}</strong><small class="ledger-unit">次浏览</small></template>
+      <template #cell-stock="{ row: product }"><template v-if="isPlatformOrderProductItem(product)"><strong :class="['ledger-number', { 'is-warning': isLowStock(product) }]">{{ getStockDisplay(product) }}</strong><small class="ledger-unit">库存 · 售出 {{ product.soldCount || 0 }}</small></template><span v-else class="ledger-muted">不适用</span></template>
+      <template #cell-views="{ row: product }"><strong class="ledger-number">{{ product.viewCount || 0 }}</strong><small class="ledger-unit">次浏览</small></template>
       <template #cell-actions="{ row: product }"><ProductRowActions :product="product" :can-manage-cdk="isCdkItem(product)" :can-toggle="canToggleStatus(product)" :busy="isProductBusy(product)" :restricted="isRestrictedProductManagement" :toggle-label="getToggleLabel(product)" :delete-label="getDeleteLabel(product)" @edit="editProduct" @cdk="manageCdk" @toggle="toggleStatus" @delete="deleteProduct" /></template>
       <template #mobile-row="{ row: product }">
         <div class="product-mobile-head">
           <div class="product-ledger-main">
             <button type="button" class="product-ledger-image" :style="getImageStyle(product)" :aria-label="`查看物品 ${product.name}`" @click="viewProduct(product)">
-              <img v-if="hasProductImage(product)" :src="product.image_url" alt="" loading="lazy" @error="handleImageError($event, product)" />
+              <img v-if="hasProductImage(product)" :src="product.imageUrl" alt="" loading="lazy" @error="handleImageError($event, product)" />
               <Package v-else :size="20" aria-hidden="true" />
             </button>
             <div class="product-ledger-copy">
@@ -96,7 +96,7 @@
                   <Check v-if="isProductIdCopied(product)" :size="12" aria-hidden="true" />
                   <Copy v-else :size="12" aria-hidden="true" />
                 </button>
-                <span class="product-archive-badge category"><Tag :size="12" aria-hidden="true" /><span>{{ product.category_name || '其他' }}</span></span>
+                <span class="product-archive-badge category"><Tag :size="12" aria-hidden="true" /><span>{{ product.categoryName || '其他' }}</span></span>
                 <span :class="['product-archive-badge', 'type', `type-${getProductType(product)}`]">
                   <component :is="getTypeIcon(getProductType(product))" :size="12" aria-hidden="true" />
                   <span>{{ getTypeText(getProductType(product)) }}</span>
@@ -119,8 +119,8 @@
               <span v-else class="mobile-price-compare">无折扣</span>
             </dd>
           </div>
-          <div><dt>库存 / 售出</dt><dd>{{ isPlatformOrderProductItem(product) ? `${getStockDisplay(product)} / ${product.sold_count || 0}` : '不适用' }}</dd></div>
-          <div><dt>浏览</dt><dd>{{ product.view_count || 0 }}</dd></div>
+          <div><dt>库存 / 售出</dt><dd>{{ isPlatformOrderProductItem(product) ? `${getStockDisplay(product)} / ${product.soldCount || 0}` : '不适用' }}</dd></div>
+          <div><dt>浏览</dt><dd>{{ product.viewCount || 0 }}</dd></div>
         </dl>
         <ProductRowActions :product="product" mobile :can-manage-cdk="isCdkItem(product)" :can-toggle="canToggleStatus(product)" :busy="isProductBusy(product)" :restricted="isRestrictedProductManagement" :toggle-label="getToggleLabel(product)" :delete-label="getDeleteLabel(product)" @edit="editProduct" @cdk="manageCdk" @toggle="toggleStatus" @delete="deleteProduct" />
       </template>
@@ -138,7 +138,7 @@
         </div>
         
         <div class="modal-body">
-          <div v-if="currentProduct?.sharedCdkEnabled || Number(currentProduct?.shared_cdk_enabled || 0) === 1">
+          <div v-if="currentProduct?.sharedCdkEnabled">
             <div class="cdk-stats shared-mode">
               <div class="stat-item">
                 <span class="stat-value">∞</span>
@@ -273,7 +273,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Check, CircleAlert, Copy, Download, Hash, KeyRound, Link2, Package, PackageOpen, Plus, Search, Store, Tag, X } from '@lucide/vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useShopStore } from '@/stores/shop'
+import { useInventoryStore } from '@/stores/inventory'
 import { useMerchantEnforcementStore } from '@/stores/merchantEnforcement'
 import { isMaintenanceFeatureEnabled, isRestrictedMaintenanceMode } from '@/config/maintenance'
 import { useToast } from '@/composables/useToast'
@@ -284,8 +284,7 @@ import SellerPageToolbar from '@/components/seller/SellerPageToolbar.vue'
 import SellerPagination from '@/components/seller/SellerPagination.vue'
 import SellerReasonDisclosure from '@/components/seller/SellerReasonDisclosure.vue'
 import SellerStatusBadge from '@/components/seller/SellerStatusBadge.vue'
-import { api } from '@/utils/api'
-import { storage } from '@/utils/storage'
+import { exportCdkRequest } from '@/services/shop/inventoryService'
 import { CDK_UPLOAD_LIMITS } from '@/config/cdkQuota'
 import { buildSellerProductPrice, filterAndSortSellerProducts, paginateSellerRows, resolveSellerStatusTone } from '@/utils/sellerTables'
 import {
@@ -300,7 +299,7 @@ import {
 
 const router = useRouter()
 const route = useRoute()
-const shopStore = useShopStore()
+const inventoryStore = useInventoryStore()
 const merchantEnforcementStore = useMerchantEnforcementStore()
 const toast = useToast()
 const dialog = useDialog()
@@ -434,12 +433,9 @@ async function loadProducts() {
   try {
     loading.value = true
     
-    const result = await shopStore.fetchMyProducts()
-    
-    // result 可能是数组或者包含 products 的对象
-    let productList = Array.isArray(result) ? result : (result?.products || result || [])
-    
-    products.value = productList
+    const result = await inventoryStore.fetchProducts()
+    if (!result.success) throw new Error(result.error || '加载物品失败')
+    products.value = result.data.products
   } catch (error) {
     toast.error('加载物品失败')
   } finally {
@@ -514,7 +510,7 @@ async function toggleStatus(product) {
   try {
     if (isActive) {
       // 下架操作
-      const result = await shopStore.offlineProduct(product.id)
+      const result = await inventoryStore.offlineProduct(product.id)
       if (result?.success === false) {
         toast.update(loadingId, {
           type: 'error',
@@ -526,31 +522,24 @@ async function toggleStatus(product) {
       toast.update(loadingId, { type: 'success', message: '物品已下架' })
     } else {
       // 重新上架操作（重新提交审核）
-      const result = await shopStore.updateProduct(product.id, {
+      const result = await inventoryStore.updateProduct(product.id, {
         name: product.name,
-        categoryId: product.category_id,
+        categoryId: product.categoryId,
         description: product.description,
         price: product.price,
         discount: product.discount,
-        imageUrl: product.image_url || '',
+        imageUrl: product.imageUrl || '',
         stock: getProductType(product) === 'normal' ? Number(product.stock || 0) : undefined,
-        purchaseLimitType: product.purchase_limit_config?.mode
-          || product.purchaseLimitConfig?.mode
-          || product.purchase_limit_type
+        purchaseLimitType: product.purchaseLimitConfig?.mode
           || product.purchaseLimitType
           || 'none',
         maxPurchaseQuantity: Number(
-          product.purchase_limit_config?.quantity
-            ?? product.purchaseLimitConfig?.quantity
-            ?? product.max_purchase_quantity
+          product.purchaseLimitConfig?.quantity
             ?? product.maxPurchaseQuantity
             ?? 0
         ),
         purchaseLimitPeriodDays: Number(
-          product.purchase_limit_config?.periodDays
-            ?? product.purchase_limit_config?.period_days
-            ?? product.purchaseLimitConfig?.periodDays
-            ?? product.purchase_limit_period_days
+          product.purchaseLimitConfig?.periodDays
             ?? product.purchaseLimitPeriodDays
             ?? 0
         )
@@ -600,7 +589,7 @@ async function deleteProduct(product) {
   const loadingId = toast.loading('正在删除物品...')
 
   try {
-    const result = await shopStore.deleteProduct(product.id)
+    const result = await inventoryStore.deleteProduct(product.id)
     if (result?.success === false) {
       toast.update(loadingId, {
         type: 'error',
@@ -609,7 +598,7 @@ async function deleteProduct(product) {
       return
     }
     products.value = products.value.filter(p => p.id !== product.id)
-    toast.update(loadingId, { type: 'success', message: result?.message || '物品已删除' })
+    toast.update(loadingId, { type: 'success', message: result?.data?.message || result?.message || '物品已删除' })
   } catch (error) {
     toast.update(loadingId, {
       type: 'error',
@@ -661,7 +650,7 @@ async function addCdks() {
 
   addingCdk.value = true
   try {
-    const result = await shopStore.addProductCdks(currentProduct.value.id, codes)
+    const result = await inventoryStore.addCdk(currentProduct.value.id, codes)
     if (!result.success) {
       toast.error(result.error || '添加 CDK 失败')
       return
@@ -675,9 +664,11 @@ async function addCdks() {
     newCdkText.value = ''
 
     // 刷新 CDK 列表与统计（未售出余额实时更新）
-    const refreshed = await shopStore.fetchCdkList(currentProduct.value.id, { status: cdkStatusFilter.value })
-    cdkList.value = sortCdkListByStatus(refreshed?.cdks || [])
-    cdkStats.value = refreshed?.stats || cdkStats.value
+    const refreshed = await inventoryStore.fetchCdkList(currentProduct.value.id, { status: cdkStatusFilter.value })
+    if (refreshed.success) {
+      cdkList.value = sortCdkListByStatus(refreshed.data.cdks || [])
+      cdkStats.value = refreshed.data.stats || cdkStats.value
+    }
 
     // 更新库存（用后端返回的库存，避免去重导致的偏差）
     const index = products.value.findIndex(p => p.id === currentProduct.value.id)
@@ -698,35 +689,12 @@ async function exportCdks() {
   const loadingId = toast.loading('正在导出 CDK...')
 
   try {
-    const status = cdkStatusFilter.value || 'all'
-    const token = storage.get('token') || ''
-    const apiBase = api.BASE_URL || ''
-    const response = await fetch(`${apiBase}/api/shop/products/${currentProduct.value.id}/cdk/export?status=${encodeURIComponent(status)}&format=txt`, {
-      method: 'GET',
-      credentials: 'include',
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    })
-
-    if (!response.ok) {
-      let message = '导出 CDK 失败'
-      const contentType = response.headers.get('content-type') || ''
-      if (contentType.includes('application/json')) {
-        const data = await response.json().catch(() => null)
-        message = data?.error?.message || data?.error || data?.message || message
-      } else {
-        const text = await response.text().catch(() => '')
-        if (text) message = text
-      }
-      throw new Error(message)
-    }
-
-    const blob = await response.blob()
-    const url = URL.createObjectURL(blob)
+    const result = await exportCdkRequest(currentProduct.value.id, cdkStatusFilter.value || 'all')
+    if (!result.success) throw new Error(result.error || '导出 CDK 失败')
+    const url = URL.createObjectURL(result.data.blob)
     const link = document.createElement('a')
-    const disposition = response.headers.get('content-disposition') || ''
-    const match = disposition.match(/filename="([^"]+)"/)
     link.href = url
-    link.download = match?.[1] || `${currentProduct.value.id}-cdk.txt`
+    link.download = result.data.filename
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -757,7 +725,7 @@ function normalizeProductStatus(status) {
 }
 
 function getProductStatus(product) {
-  const rawStatus = product?.status || product?.product_status || product?.productStatus || 'pending_ai'
+  const rawStatus = product?.status || product?.productStatus || 'pending_ai'
   return normalizeProductStatus(rawStatus)
 }
 
@@ -775,7 +743,7 @@ function isCdkItem(product) {
 }
 
 function isSharedCdkProduct(product) {
-  return isCdkProduct(product) && !!(product?.sharedCdkEnabled || Number(product?.shared_cdk_enabled || 0) === 1)
+  return isCdkProduct(product) && !!product?.sharedCdkEnabled
 }
 
 // 状态文本
@@ -829,11 +797,11 @@ function isLowStock(product) {
 }
 
 function getProductImageKey(product) {
-  return `${product?.id ?? 'unknown'}:${product?.image_url || ''}`
+  return `${product?.id ?? 'unknown'}:${product?.imageUrl || ''}`
 }
 
 function hasProductImage(product) {
-  return Boolean(product?.image_url) && !failedProductImages.value.has(getProductImageKey(product))
+  return Boolean(product?.imageUrl) && !failedProductImages.value.has(getProductImageKey(product))
 }
 
 // 获取图片样式
@@ -841,13 +809,13 @@ function getImageStyle(product) {
   if (hasProductImage(product)) return {}
   // 根据分类生成渐变背景
   const colors = {
-    '游戏': 'linear-gradient(135deg, #a5b4a3 0%, #8fa38d 100%)',
-    '软件': 'linear-gradient(135deg, #b4a5a3 0%, #a38f8d 100%)',
-    '会员': 'linear-gradient(135deg, #cfa76f 0%, #c49a5f 100%)',
-    '点数': 'linear-gradient(135deg, #778d9c 0%, #6a8090 100%)',
-    'default': 'linear-gradient(135deg, #d5d0c9 0%, #c5c0b9 100%)'
+    '游戏': 'linear-gradient(135deg, var(--palette-hex-a5b4a3) 0%, var(--palette-hex-8fa38d) 100%)',
+    '软件': 'linear-gradient(135deg, var(--palette-hex-b4a5a3) 0%, var(--palette-hex-a38f8d) 100%)',
+    '会员': 'linear-gradient(135deg, var(--palette-hex-cfa76f) 0%, var(--palette-hex-c49a5f) 100%)',
+    '点数': 'linear-gradient(135deg, var(--palette-hex-778d9c) 0%, var(--palette-hex-6a8090) 100%)',
+    'default': 'linear-gradient(135deg, var(--palette-hex-d5d0c9) 0%, var(--palette-hex-c5c0b9) 100%)'
   }
-  const category = product.category_name || ''
+  const category = product.categoryName || ''
   for (const [key, gradient] of Object.entries(colors)) {
     if (category.includes(key)) {
       return { background: gradient }
@@ -913,11 +881,8 @@ function getRejectReason(product) {
   if (!shouldShowReason) return null
 
   const reason =
-    product.status_reason
-    || product.statusReason
-    || product.reject_reason
+    product.statusReason
     || product.rejectReason
-    || product.offline_reason
     || product.offlineReason
     || ''
 
@@ -953,15 +918,17 @@ function canToggleStatus(product) {
 const CDK_STATUS_PRIORITY = {
   locked: 0,
   available: 1,
-  sold: 2
+  sold: 2,
+  expired: 3,
+  disabled: 4
 }
 
 function normalizeCdkStatus(status) {
   const normalized = String(status || '').trim().toLowerCase()
-  if (normalized === 'locked' || normalized === 'available' || normalized === 'sold') {
+  if (['locked', 'available', 'sold', 'expired', 'disabled'].includes(normalized)) {
     return normalized
   }
-  return 'available'
+  return 'unknown'
 }
 
 function sortCdkListByStatus(list) {
@@ -972,8 +939,8 @@ function sortCdkListByStatus(list) {
     const priorityB = CDK_STATUS_PRIORITY[statusB] ?? 999
     if (priorityA !== priorityB) return priorityA - priorityB
 
-    const timeA = new Date(a?.created_at || 0).getTime()
-    const timeB = new Date(b?.created_at || 0).getTime()
+    const timeA = new Date(a?.createdAt || 0).getTime()
+    const timeB = new Date(b?.createdAt || 0).getTime()
     if (!Number.isNaN(timeA) && !Number.isNaN(timeB) && timeA !== timeB) {
       return timeB - timeA
     }
@@ -987,9 +954,12 @@ function getCdkStatusText(status) {
   const map = {
     locked: '锁定中',
     available: '可用',
-    sold: '已售出'
+    sold: '已售出',
+    expired: '已过期',
+    disabled: '已停用',
+    unknown: '未知状态'
   }
-  return map[status] || '可用'
+  return map[status] || map.unknown
 }
 
 function isCdkDeletable(cdk) {
@@ -1003,10 +973,11 @@ async function loadCdkList() {
   cdkLoading.value = true
   try {
     // fetchCdkList 返回 { cdks, stats, batches, pagination }
-    const result = await shopStore.fetchCdkList(currentProduct.value.id, { status: cdkStatusFilter.value })
-    cdkList.value = sortCdkListByStatus(result?.cdks || [])
-    cdkStats.value = result?.stats || { total: 0, available: 0, locked: 0, sold: 0 }
-    if (result?.sharedMode && currentProduct.value) {
+    const result = await inventoryStore.fetchCdkList(currentProduct.value.id, { status: cdkStatusFilter.value })
+    if (!result.success) throw new Error(result.error || '加载 CDK 列表失败')
+    cdkList.value = sortCdkListByStatus(result.data.cdks || [])
+    cdkStats.value = result.data.stats || { total: 0, available: 0, locked: 0, sold: 0 }
+    if (result.data.sharedMode && currentProduct.value) {
       currentProduct.value.sharedCdkEnabled = true
     }
   } catch (error) {
@@ -1032,7 +1003,8 @@ async function deleteCdkItem(cdk) {
   const loadingId = toast.loading('正在删除 CDK...')
 
   try {
-    await shopStore.deleteProductCdk(currentProduct.value.id, cdk.id)
+    const result = await inventoryStore.deleteCdk(currentProduct.value.id, cdk.id)
+    if (!result.success) throw new Error(result.error || '删除 CDK 失败')
     cdkList.value = cdkList.value.filter(item => item.id !== cdk.id)
     toast.update(loadingId, { type: 'success', message: 'CDK 已删除' })
 
@@ -1081,21 +1053,22 @@ async function clearAllCdks() {
   const loadingId = toast.loading('正在清空 CDK...')
   
   try {
-    const result = await shopStore.clearCdk(currentProduct.value.id)
+    const result = await inventoryStore.clearCdk(currentProduct.value.id)
+    if (!result.success) throw new Error(result.error || '清空 CDK 失败')
     
     // 重新加载 CDK 列表和统计
     await loadCdkList()
     
     toast.update(loadingId, {
       type: 'success',
-      message: `已清空 ${result?.deleted || availableCount} 个 CDK`
+      message: `已清空 ${result.data?.deleted || availableCount} 个 CDK`
     })
     
     // 更新产品库存
     const index = products.value.findIndex(p => p.id === currentProduct.value.id)
     if (index !== -1) {
       products.value[index].availableStock = 0
-      products.value[index].stock = result?.stock || 0
+      products.value[index].stock = result.data?.stock || 0
     }
   } catch (error) {
     console.error('Clear CDK error:', error)
@@ -1196,20 +1169,20 @@ watch(
 
 .add-btn {
   padding: 10px 20px;
-  background: #8fa38d;
-  color: white;
+  background: var(--palette-hex-8fa38d);
+  color: var(--palette-hex-ffffff);
   border-radius: 24px;
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  box-shadow: 0 2px 8px rgba(143, 163, 141, 0.3);
+  transition: color var(--motion-duration-standard) var(--motion-ease-emphasized), background-color var(--motion-duration-standard) var(--motion-ease-emphasized), border-color var(--motion-duration-standard) var(--motion-ease-emphasized), box-shadow var(--motion-duration-standard) var(--motion-ease-emphasized), opacity var(--motion-duration-standard) var(--motion-ease-emphasized), transform var(--motion-duration-standard) var(--motion-ease-emphasized);
+  box-shadow: 0 2px 8px var(--palette-rgba-143-163-141-0p3);
 }
 
 .add-btn:hover {
-  background: #7a8f78;
+  background: var(--palette-hex-7a8f78);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(143, 163, 141, 0.4);
+  box-shadow: 0 4px 12px var(--palette-rgba-143-163-141-0p4);
 }
 
 /* 加载骨架 */
@@ -1266,12 +1239,12 @@ watch(
   display: inline-block;
   padding: 12px 24px;
   background: var(--color-primary);
-  color: white;
+  color: var(--palette-hex-ffffff);
   border-radius: 12px;
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .publish-btn:hover {
@@ -1290,15 +1263,15 @@ watch(
   position: relative;
   background: var(--bg-card);
   border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px var(--palette-rgba-0-0-0-0p06);
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: color var(--motion-duration-standard) var(--motion-ease-emphasized), background-color var(--motion-duration-standard) var(--motion-ease-emphasized), border-color var(--motion-duration-standard) var(--motion-ease-emphasized), box-shadow var(--motion-duration-standard) var(--motion-ease-emphasized), opacity var(--motion-duration-standard) var(--motion-ease-emphasized), transform var(--motion-duration-standard) var(--motion-ease-emphasized);
   border: 1px solid var(--border-light);
   isolation: isolate;
 }
 
 .product-card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 24px var(--palette-rgba-0-0-0-0p1);
   transform: translateY(-3px);
 }
 
@@ -1318,28 +1291,28 @@ watch(
 .product-card.manual_approved::before,
 .product-card.approved::before,
 .product-card.active::before {
-  background: linear-gradient(180deg, #52c41a 0%, #73d13d 100%);
+  background: linear-gradient(180deg, var(--palette-hex-52c41a) 0%, var(--palette-hex-73d13d) 100%);
 }
 
 .product-card.pending_ai::before,
 .product-card.pending::before {
-  background: linear-gradient(180deg, #faad14 0%, #ffc53d 100%);
+  background: linear-gradient(180deg, var(--palette-hex-faad14) 0%, var(--palette-hex-ffc53d) 100%);
 }
 
 .product-card.pending_manual::before {
-  background: linear-gradient(180deg, #f59e0b 0%, #fbbf24 100%);
+  background: linear-gradient(180deg, var(--palette-hex-f59e0b) 0%, var(--palette-hex-fbbf24) 100%);
 }
 
 .product-card.ai_rejected::before,
 .product-card.manual_rejected::before,
 .product-card.rejected::before {
-  background: linear-gradient(180deg, #ff4d4f 0%, #ff7875 100%);
+  background: linear-gradient(180deg, var(--palette-hex-ff4d4f) 0%, var(--palette-hex-ff7875) 100%);
 }
 
 .product-card.offline_manual::before,
 .product-card.offline::before,
 .product-card.inactive::before {
-  background: linear-gradient(180deg, #8c8c8c 0%, #bfbfbf 100%);
+  background: linear-gradient(180deg, var(--palette-hex-8c8c8c) 0%, var(--palette-hex-bfbfbf) 100%);
 }
 
 .product-card.offline_manual,
@@ -1362,45 +1335,45 @@ watch(
   font-weight: 600;
   z-index: 2;
   backdrop-filter: blur(10px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px var(--palette-rgba-0-0-0-0p08);
 }
 
 .status-badge.ai_approved,
 .status-badge.manual_approved,
 .status-badge.approved,
 .status-badge.active {
-  background: linear-gradient(135deg, rgba(82, 196, 26, 0.15) 0%, rgba(115, 209, 61, 0.2) 100%);
-  color: #389e0d;
-  border: 1px solid rgba(82, 196, 26, 0.3);
+  background: linear-gradient(135deg, var(--palette-rgba-82-196-26-0p15) 0%, var(--palette-rgba-115-209-61-0p2) 100%);
+  color: var(--palette-hex-389e0d);
+  border: 1px solid var(--palette-rgba-82-196-26-0p3);
 }
 
 .status-badge.pending_ai,
 .status-badge.pending {
-  background: linear-gradient(135deg, rgba(250, 173, 20, 0.15) 0%, rgba(255, 197, 61, 0.2) 100%);
-  color: #d48806;
-  border: 1px solid rgba(250, 173, 20, 0.3);
+  background: linear-gradient(135deg, var(--palette-rgba-250-173-20-0p15) 0%, var(--palette-rgba-255-197-61-0p2) 100%);
+  color: var(--palette-hex-d48806);
+  border: 1px solid var(--palette-rgba-250-173-20-0p3);
 }
 
 .status-badge.pending_manual {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(251, 191, 36, 0.2) 100%);
-  color: #b45309;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: linear-gradient(135deg, var(--palette-rgba-245-158-11-0p15) 0%, var(--palette-rgba-251-191-36-0p2) 100%);
+  color: var(--palette-hex-b45309);
+  border: 1px solid var(--palette-rgba-245-158-11-0p3);
 }
 
 .status-badge.ai_rejected,
 .status-badge.manual_rejected,
 .status-badge.rejected {
-  background: linear-gradient(135deg, rgba(255, 77, 79, 0.15) 0%, rgba(255, 120, 117, 0.2) 100%);
-  color: #cf1322;
-  border: 1px solid rgba(255, 77, 79, 0.3);
+  background: linear-gradient(135deg, var(--palette-rgba-255-77-79-0p15) 0%, var(--palette-rgba-255-120-117-0p2) 100%);
+  color: var(--palette-hex-cf1322);
+  border: 1px solid var(--palette-rgba-255-77-79-0p3);
 }
 
 .status-badge.offline_manual,
 .status-badge.offline,
 .status-badge.inactive {
-  background: linear-gradient(135deg, rgba(140, 140, 140, 0.1) 0%, rgba(191, 191, 191, 0.15) 100%);
-  color: #595959;
-  border: 1px solid rgba(140, 140, 140, 0.2);
+  background: linear-gradient(135deg, var(--palette-rgba-140-140-140-0p1) 0%, var(--palette-rgba-191-191-191-0p15) 100%);
+  color: var(--palette-hex-595959);
+  border: 1px solid var(--palette-rgba-140-140-140-0p2);
 }
 
 .status-icon {
@@ -1523,7 +1496,7 @@ watch(
   line-height: 1.4;
   cursor: pointer;
   opacity: 0.55;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .copy-id-btn:hover {
@@ -1593,21 +1566,21 @@ watch(
 }
 
 .tag.type.cdk {
-  background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
-  color: #389e0d;
-  border: 1px solid #b7eb8f;
+  background: linear-gradient(135deg, var(--palette-hex-f6ffed) 0%, var(--palette-hex-d9f7be) 100%);
+  color: var(--palette-hex-389e0d);
+  border: 1px solid var(--palette-hex-b7eb8f);
 }
 
 .tag.type.normal {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  color: #1d4ed8;
-  border: 1px solid #93c5fd;
+  background: linear-gradient(135deg, var(--palette-hex-eff6ff) 0%, var(--palette-hex-dbeafe) 100%);
+  color: var(--palette-hex-1d4ed8);
+  border: 1px solid var(--palette-hex-93c5fd);
 }
 
 .tag.type.link {
-  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
-  color: #c2410c;
-  border: 1px solid #fdba74;
+  background: linear-gradient(135deg, var(--palette-hex-fff7ed) 0%, var(--palette-hex-ffedd5) 100%);
+  color: var(--palette-hex-c2410c);
+  border: 1px solid var(--palette-hex-fdba74);
 }
 
 /* 拒绝/下架原因 */
@@ -1616,8 +1589,8 @@ watch(
   align-items: flex-start;
   gap: 10px;
   padding: 12px 16px;
-  background: linear-gradient(135deg, #fef3e2 0%, #fef9f3 100%);
-  border-top: 1px solid #f5dbb8;
+  background: linear-gradient(135deg, var(--palette-hex-fef3e2) 0%, var(--palette-hex-fef9f3) 100%);
+  border-top: 1px solid var(--palette-hex-f5dbb8);
   border-radius: 0 0 14px 14px;
 }
 
@@ -1629,7 +1602,7 @@ watch(
 
 .reason-text {
   font-size: 13px;
-  color: #8b5a2b;
+  color: var(--palette-hex-8b5a2b);
   line-height: 1.5;
   word-break: break-word;
 }
@@ -1652,7 +1625,7 @@ watch(
   font-size: 13px;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: color var(--motion-duration-standard) var(--motion-ease-emphasized), background-color var(--motion-duration-standard) var(--motion-ease-emphasized), border-color var(--motion-duration-standard) var(--motion-ease-emphasized), box-shadow var(--motion-duration-standard) var(--motion-ease-emphasized), opacity var(--motion-duration-standard) var(--motion-ease-emphasized), transform var(--motion-duration-standard) var(--motion-ease-emphasized);
   font-weight: 500;
 }
 
@@ -1674,43 +1647,43 @@ watch(
 }
 
 .action-btn.edit:hover {
-  background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%);
-  border-color: #1890ff;
-  color: #1890ff;
+  background: linear-gradient(135deg, var(--palette-hex-e6f7ff) 0%, var(--palette-hex-bae7ff) 100%);
+  border-color: var(--palette-hex-1890ff);
+  color: var(--palette-hex-1890ff);
 }
 
 .action-btn.cdk {
-  background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
-  border-color: #b7eb8f;
-  color: #52c41a;
+  background: linear-gradient(135deg, var(--palette-hex-f6ffed) 0%, var(--palette-hex-d9f7be) 100%);
+  border-color: var(--palette-hex-b7eb8f);
+  color: var(--palette-hex-52c41a);
 }
 
 .action-btn.cdk:hover {
-  border-color: #52c41a;
-  box-shadow: 0 2px 6px rgba(82, 196, 26, 0.2);
+  border-color: var(--palette-hex-52c41a);
+  box-shadow: 0 2px 6px var(--palette-rgba-82-196-26-0p2);
 }
 
 .action-btn.offline:hover {
-  background: linear-gradient(135deg, #fffbe6 0%, #fff1b8 100%);
-  border-color: #faad14;
-  color: #d48806;
+  background: linear-gradient(135deg, var(--palette-hex-fffbe6) 0%, var(--palette-hex-fff1b8) 100%);
+  border-color: var(--palette-hex-faad14);
+  color: var(--palette-hex-d48806);
 }
 
 .action-btn.online {
-  background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
-  border-color: #b7eb8f;
-  color: #52c41a;
+  background: linear-gradient(135deg, var(--palette-hex-f6ffed) 0%, var(--palette-hex-d9f7be) 100%);
+  border-color: var(--palette-hex-b7eb8f);
+  color: var(--palette-hex-52c41a);
 }
 
 .action-btn.online:hover {
-  border-color: #52c41a;
-  box-shadow: 0 2px 6px rgba(82, 196, 26, 0.2);
+  border-color: var(--palette-hex-52c41a);
+  box-shadow: 0 2px 6px var(--palette-rgba-82-196-26-0p2);
 }
 
 .action-btn.delete:hover {
-  background: linear-gradient(135deg, #fff2f0 0%, #ffccc7 100%);
-  border-color: #ff4d4f;
-  color: #cf1322;
+  background: linear-gradient(135deg, var(--palette-hex-fff2f0) 0%, var(--palette-hex-ffccc7) 100%);
+  border-color: var(--palette-hex-ff4d4f);
+  color: var(--palette-hex-cf1322);
 }
 
 /* 加载更多 */
@@ -1727,7 +1700,7 @@ watch(
   font-size: 14px;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .load-more-btn:hover:not(:disabled) {
@@ -1798,7 +1771,7 @@ watch(
   font-size: 16px;
   color: var(--text-tertiary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .modal-close:hover {
@@ -1835,11 +1808,11 @@ watch(
 }
 
 .stat-item.locked {
-  background: #fff7e6;
+  background: var(--palette-hex-fff7e6);
 }
 
 .stat-item.locked .stat-value {
-  color: #d48806;
+  color: var(--palette-hex-d48806);
 }
 
 .stat-item.sold {
@@ -1889,36 +1862,36 @@ watch(
 
 .export-btn {
   padding: 8px 14px;
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--palette-hex-dbeafe);
+  color: var(--palette-hex-1d4ed8);
   border: none;
   border-radius: 10px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .export-btn:hover:not(:disabled) {
-  background: #bfdbfe;
+  background: var(--palette-hex-bfdbfe);
 }
 
 .clear-all-btn {
   flex: 1;
   padding: 8px 14px;
-  border: 1px solid #dc2626;
+  border: 1px solid var(--palette-hex-dc2626);
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
-  color: #dc2626;
-  background: #fef2f2;
+  color: var(--palette-hex-dc2626);
+  background: var(--palette-hex-fef2f2);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .clear-all-btn:hover:not(:disabled) {
-  background: #dc2626;
-  color: #fff;
+  background: var(--palette-hex-dc2626);
+  color: var(--palette-hex-ffffff);
 }
 
 .clear-all-btn:disabled {
@@ -1968,14 +1941,22 @@ watch(
 }
 
 .cdk-item.locked {
-  background: #fff7e6;
+  background: var(--palette-hex-fff7e6);
 }
 
 .cdk-item.sold {
   background: var(--bg-tertiary);
 }
 
-.cdk-item.sold .cdk-code {
+.cdk-item.expired,
+.cdk-item.disabled,
+.cdk-item.unknown {
+  background: var(--bg-tertiary);
+}
+
+.cdk-item.sold .cdk-code,
+.cdk-item.expired .cdk-code,
+.cdk-item.disabled .cdk-code {
   color: var(--text-placeholder);
   text-decoration: line-through;
 }
@@ -2009,11 +1990,18 @@ watch(
 }
 
 .cdk-status.locked {
-  background: #fff7e6;
-  color: #d48806;
+  background: var(--palette-hex-fff7e6);
+  color: var(--palette-hex-d48806);
 }
 
 .cdk-status.sold {
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+}
+
+.cdk-status.expired,
+.cdk-status.disabled,
+.cdk-status.unknown {
   background: var(--bg-tertiary);
   color: var(--text-tertiary);
 }
@@ -2026,7 +2014,7 @@ watch(
   font-size: 14px;
   cursor: pointer;
   opacity: 0.6;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .cdk-delete-btn:disabled {
@@ -2091,7 +2079,7 @@ watch(
 }
 
 .add-count.limit-error {
-  color: var(--color-danger, #e74c3c);
+  color: var(--color-danger, var(--palette-hex-e74c3c));
 }
 
 .add-quota-hint {
@@ -2105,9 +2093,9 @@ watch(
   border: none;
   border-radius: 10px;
   font-size: 14px;
-  color: white;
+  color: var(--palette-hex-ffffff);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .add-btn-primary:hover:not(:disabled) {
@@ -2132,7 +2120,7 @@ watch(
   font-size: 13px;
   font-weight: 700;
 }
-.seller-primary-button { color: #fff; border-color: var(--seller-navy); background: var(--seller-navy); }
+.seller-primary-button { color: var(--palette-hex-ffffff); border-color: var(--seller-navy); background: var(--seller-navy); }
 .seller-secondary-button { color: var(--seller-muted); background: var(--seller-surface); }
 .product-search { min-width: min(100%, 280px); height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid var(--seller-border); border-radius: 10px; color: var(--seller-muted); background: var(--seller-surface); }
 .product-search:focus-within { border-color: var(--seller-jade); box-shadow: 0 0 0 3px color-mix(in srgb, var(--seller-jade) 18%, transparent); }
@@ -2159,13 +2147,13 @@ watch(
 .product-id-badge { max-width: 100%; color: var(--seller-muted); background: var(--seller-surface-soft); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; cursor: copy; transition: color 160ms ease, border-color 160ms ease, background 160ms ease; }
 .product-id-badge > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .product-id-badge:hover { color: var(--seller-ink); border-color: var(--seller-jade); background: var(--seller-jade-soft); }
-.product-id-badge.copied { color: #54745e; border-color: color-mix(in srgb, var(--seller-jade) 48%, var(--seller-border)); background: var(--seller-jade-soft); }
+.product-id-badge.copied { color: var(--palette-hex-54745e); border-color: color-mix(in srgb, var(--seller-jade) 48%, var(--seller-border)); background: var(--seller-jade-soft); }
 .product-archive-badge > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .product-archive-badge.category { max-width: 96px; color: var(--seller-muted); background: color-mix(in srgb, var(--seller-paper) 56%, var(--seller-surface-soft)); }
-.product-archive-badge.type-normal { color: #557388; border-color: color-mix(in srgb, #557388 27%, var(--seller-border)); background: color-mix(in srgb, #557388 8%, var(--seller-surface)); }
-.product-archive-badge.type-cdk { color: #54745e; border-color: color-mix(in srgb, var(--seller-jade) 36%, var(--seller-border)); background: var(--seller-jade-soft); }
+.product-archive-badge.type-normal { color: var(--palette-hex-557388); border-color: color-mix(in srgb, var(--palette-hex-557388) 27%, var(--seller-border)); background: color-mix(in srgb, var(--palette-hex-557388) 8%, var(--seller-surface)); }
+.product-archive-badge.type-cdk { color: var(--palette-hex-54745e); border-color: color-mix(in srgb, var(--seller-jade) 36%, var(--seller-border)); background: var(--seller-jade-soft); }
 .product-archive-badge.type-link { color: var(--seller-warning); border-color: color-mix(in srgb, var(--seller-warning) 34%, var(--seller-border)); background: color-mix(in srgb, var(--seller-warning) 8%, var(--seller-surface)); }
-.product-archive-badge.type-store { color: #755e88; border-color: color-mix(in srgb, #755e88 28%, var(--seller-border)); background: color-mix(in srgb, #755e88 8%, var(--seller-surface)); }
+.product-archive-badge.type-store { color: var(--palette-hex-755e88); border-color: color-mix(in srgb, var(--palette-hex-755e88) 28%, var(--seller-border)); background: color-mix(in srgb, var(--palette-hex-755e88) 8%, var(--seller-surface)); }
 .ledger-status-cell { min-width: 0; }
 .ledger-price { min-width: 0; display: grid; gap: 6px; }
 .ledger-price-current { display: flex; align-items: baseline; gap: 4px; font-variant-numeric: tabular-nums; }
@@ -2200,9 +2188,9 @@ watch(
 .mobile-price-compare em { margin-left: 6px; padding: 2px 6px; border-radius: 999px; color: var(--seller-danger); background: color-mix(in srgb, var(--seller-danger) 8%, var(--seller-surface)); font-style: normal; font-weight: 750; }
 .my-products-page :deep(tbody > tr:not(.seller-expanded-row)) { height: 82px; }
 :global(html.dark) .product-id-badge.copied,
-:global(html.dark) .product-archive-badge.type-cdk { color: #a4c8ad; }
-:global(html.dark) .product-archive-badge.type-normal { color: #9ebed1; }
-:global(html.dark) .product-archive-badge.type-store { color: #c2a9d4; }
+:global(html.dark) .product-archive-badge.type-cdk { color: var(--palette-hex-a4c8ad); }
+:global(html.dark) .product-archive-badge.type-normal { color: var(--palette-hex-9ebed1); }
+:global(html.dark) .product-archive-badge.type-store { color: var(--palette-hex-c2a9d4); }
 .seller-empty-ledger { display: grid; justify-items: center; gap: 8px; color: var(--seller-muted); }
 .seller-empty-ledger strong { color: var(--seller-ink); font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 18px; }
 .seller-empty-ledger p { margin: 0 0 8px; font-size: 13px; }

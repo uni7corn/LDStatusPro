@@ -41,6 +41,8 @@
         </router-link>
       </section>
 
+      <SellerFulfillmentPanel placement="summary" :state="fulfillmentState" />
+
       <section v-if="isNewSeller" class="opening-checklist" aria-labelledby="opening-title">
         <div class="section-heading opening-heading">
           <div>
@@ -99,14 +101,19 @@
             </div>
             <LiquidTabs v-model="chartView" class="chart-view-switch" :tabs="chartViews" size="sm" aria-label="趋势图指标" />
           </div>
-          <Suspense>
-            <SellerTrendChart :trend="dashboard.trend" :view="chartView" />
-            <template #fallback>
-              <div class="seller-chart-async-placeholder skeleton" role="status">
-                <span class="sr-only">趋势图加载中</span>
-              </div>
-            </template>
-          </Suspense>
+          <div ref="chartLoadTarget" class="seller-chart-load-boundary">
+            <Suspense v-if="shouldLoadChart">
+              <SellerTrendChart :trend="dashboard.trend" :view="chartView" />
+              <template #fallback>
+                <div class="seller-chart-async-placeholder skeleton" role="status">
+                  <span class="sr-only">趋势图加载中</span>
+                </div>
+              </template>
+            </Suspense>
+            <div v-else class="seller-chart-async-placeholder skeleton" role="status">
+              <span class="sr-only">趋势图将在接近视口时加载</span>
+            </div>
+          </div>
           <div v-if="chartView !== 'views'" class="source-summary">
             <div>
               <span>商品销售</span>
@@ -254,11 +261,15 @@
         </div>
       </section>
     </template>
+    <SellerFulfillmentPanel placement="details" :state="fulfillmentState" :error="fulfillmentError" :loading="fulfillmentLoading" @refresh="loadFulfillment" />
   </div>
 </template>
 
 <script setup>
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
+import { fetchSellerFulfillment } from '@/services/shop/fulfillmentService'
+import { useUserStore } from '@/stores/user'
+import SellerFulfillmentPanel from '@/components/seller/SellerFulfillmentPanel.vue'
+import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import {
   AlertCircle, ArrowUpRight, CalendarDays, ChevronDown, ChevronRight, CircleCheck, ClipboardList,
   CreditCard, Eye, Minus, PackageCheck, PackageOpen, Plus, RefreshCw, ShoppingBag,
@@ -283,7 +294,10 @@ const errorMessage = ref('')
 const dashboard = ref(null)
 const selectedRange = ref('30d')
 const chartView = ref('revenue')
+const chartLoadTarget = ref(null)
+const shouldLoadChart = ref(false)
 let requestSequence = 0
+let chartObserver = null
 
 const rangeOptions = [
   { value: '7d', label: '近 7 天' },
@@ -406,7 +420,48 @@ function changeRange(range) {
   loadDashboard({ preserve: true })
 }
 
-onMounted(loadDashboard)
+function setupDeferredChart() {
+  if (shouldLoadChart.value || !chartLoadTarget.value) return
+  chartObserver?.disconnect()
+  if (typeof IntersectionObserver !== 'function') {
+    shouldLoadChart.value = true
+    return
+  }
+  chartObserver = new IntersectionObserver((entries) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return
+    shouldLoadChart.value = true
+    chartObserver?.disconnect()
+    chartObserver = null
+  }, { rootMargin: '200px 0px' })
+  chartObserver.observe(chartLoadTarget.value)
+}
+
+const fulfillmentState = ref(null)
+const fulfillmentError = ref('')
+const fulfillmentLoading = ref(false)
+const fulfillmentUser = useUserStore()
+let fulfillmentRequest = 0
+async function loadFulfillment() {
+  const request = ++fulfillmentRequest
+  fulfillmentLoading.value = true
+  const result = await fetchSellerFulfillment()
+  if (request !== fulfillmentRequest) return
+  fulfillmentLoading.value = false
+  fulfillmentError.value = result.success ? '' : result.error
+  if (result.success) fulfillmentState.value = result.data
+}
+watch(() => `${fulfillmentUser.currentUser?.site}:${fulfillmentUser.currentUser?.id}`, () => {
+  fulfillmentState.value = null
+  void loadFulfillment()
+})
+onMounted(() => { void loadDashboard(); void loadFulfillment() })
+onUnmounted(() => { fulfillmentRequest++ })
+watch(dashboard, async (value) => {
+  if (!value) return
+  await nextTick()
+  setupDeferredChart()
+})
+onUnmounted(() => chartObserver?.disconnect())
 </script>
 
 <style scoped>
@@ -431,8 +486,8 @@ onMounted(loadDashboard)
 .note-priority span, .note-priority strong { display: block; }
 .note-priority span { margin-bottom: 6px; color: var(--seller-muted); font-size: 11px; letter-spacing: .08em; }
 .note-priority strong { font-size: 14px; line-height: 1.55; }
-.primary-action { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 17px; border-radius: 10px; color: #fff; background: var(--seller-navy); font-size: 14px; font-weight: 650; box-shadow: 0 8px 20px color-mix(in srgb, var(--seller-navy) 18%, transparent); }
-html.dark .primary-action { color: #0d151d; background: var(--seller-jade); }
+.primary-action { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 17px; border-radius: 10px; color: var(--palette-hex-ffffff); background: var(--seller-navy); font-size: 14px; font-weight: 650; box-shadow: 0 8px 20px color-mix(in srgb, var(--seller-navy) 18%, transparent); }
+html.dark .primary-action { color: var(--palette-hex-0d151d); background: var(--seller-jade); }
 
 .opening-checklist { padding: 22px; }
 .opening-heading { align-items: center; margin-bottom: 16px; }
@@ -468,6 +523,7 @@ html.dark .primary-action { color: #0d151d; background: var(--seller-jade); }
 .dashboard-primary-grid { display: grid; grid-template-columns: minmax(0,1.9fr) minmax(290px,.8fr); gap: 16px; }
 .dashboard-secondary-grid { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(300px,.7fr); gap: 16px; }
 .trend-card { min-width: 0; }
+.seller-chart-load-boundary { min-height: 300px; }
 .seller-chart-async-placeholder { min-height: 300px; border-radius: 0; }
 .chart-view-switch button { padding: 0 10px; }
 .source-summary { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1px; margin: 0 22px 16px; overflow: hidden; border: 1px solid var(--seller-border); border-radius: 10px; background: var(--seller-border); }
@@ -550,7 +606,7 @@ html.dark .primary-action { color: #0d151d; background: var(--seller-jade); }
 .dashboard-error svg { color: var(--seller-warning); }
 .dashboard-error h2 { margin: 0; color: var(--seller-ink); font: 600 23px/1.3 "Noto Serif SC", "Songti SC", serif; }
 .dashboard-error p { margin: 0; font-size: 13px; }
-.dashboard-error button { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; margin-top: 6px; padding: 0 16px; border-radius: 10px; color: #fff; background: var(--seller-navy); }
+.dashboard-error button { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; margin-top: 6px; padding: 0 16px; border-radius: 10px; color: var(--palette-hex-ffffff); background: var(--seller-navy); }
 .dashboard-loading { display: grid; gap: 16px; }
 .skeleton { border-radius: 14px; background: linear-gradient(90deg, var(--seller-surface-soft), var(--seller-surface), var(--seller-surface-soft)); background-size: 200% 100%; animation: skeleton-move 1.4s ease infinite; }
 .brief-skeleton { height: 172px; }.skeleton-row { display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.kpi-skeleton{height:145px}.chart-skeleton{height:420px}

@@ -88,7 +88,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useShopStore } from '@/stores/shop'
+import { useOrderStore } from '@/stores/order'
 import { isMaintenanceFeatureEnabled, isRestrictedMaintenanceMode } from '@/config/maintenance'
 import { useToast } from '@/composables/useToast'
 import { formatPrice } from '@/utils/format'
@@ -98,7 +98,7 @@ import { ORDER_LIST_SCROLL_SOURCE, readOrderScrollSnapshot } from '@/utils/order
 
 const route = useRoute()
 const router = useRouter()
-const shopStore = useShopStore()
+const orderStore = useOrderStore()
 const toast = useToast()
 
 const loading = ref(true)
@@ -195,7 +195,7 @@ async function loadOrderDetail() {
 
   loading.value = true
   try {
-    const result = await shopStore.getBuyOrderDetail(orderNo.value)
+    const result = await orderStore.getBuyOrderDetail(orderNo.value)
     if (!result.success) {
       toast.error(result.error || '加载订单详情失败')
       order.value = null
@@ -221,7 +221,7 @@ async function handleRepay() {
 
   const preparedWindow = preparePaymentPopup()
   try {
-    const result = await shopStore.getBuyOrderPaymentUrl(orderNo.value)
+    const result = await orderStore.getBuyOrderPaymentUrl(orderNo.value)
     const paymentUrl = result?.data?.paymentUrl || ''
     if (!result?.success || !paymentUrl) {
       cleanupPreparedTab(preparedWindow)
@@ -260,7 +260,7 @@ async function handleRefresh() {
   if (!orderNo.value || refreshing.value) return
   refreshing.value = true
   try {
-    const result = await shopStore.refreshBuyOrderStatus(orderNo.value)
+    const result = await orderStore.refreshBuyOrderStatus(orderNo.value)
     if (!result?.success) {
       toast.error(result?.error || '刷新状态失败')
       return
@@ -311,7 +311,7 @@ onMounted(loadOrderDetail)
   font-weight: 500;
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .back-btn:hover {
@@ -362,13 +362,13 @@ onMounted(loadOrderDetail)
 }
 
 .status-pending {
-  background: rgba(245, 158, 11, 0.12);
-  color: #b45309;
+  background: var(--palette-rgba-245-158-11-0p12);
+  color: var(--palette-hex-b45309);
 }
 
 .status-paid {
-  background: rgba(59, 130, 246, 0.12);
-  color: #1d4ed8;
+  background: var(--palette-rgba-59-130-246-0p12);
+  color: var(--palette-hex-1d4ed8);
 }
 
 .status-completed {
@@ -433,7 +433,7 @@ onMounted(loadOrderDetail)
 .action-btn.primary {
   background: var(--color-success);
   border-color: var(--color-success);
-  color: #fff;
+  color: var(--palette-hex-ffffff);
 }
 
 .action-hint {

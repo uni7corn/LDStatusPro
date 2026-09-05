@@ -236,11 +236,15 @@
 import { onMounted, onUnmounted, reactive, ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
-import { api } from '@/utils/api'
+import {
+  fetchSystemMessagesRequest,
+  markAllSystemMessagesReadRequest,
+  markSystemMessageReadRequest
+} from '@/services/shop/messageService'
 import { useNotificationSummaryStore } from '@/stores/notificationSummary'
 import { useToast } from '@/composables/useToast'
 import { formatMessageTime, formatPrice, formatRelativeTime, formatStandardDateTime } from '@/utils/format'
-import { fetchMyConversations, resolveConversationPath } from '@/utils/conversation'
+import { fetchMyConversations, resolveConversationPath } from '@/services/shop/conversationService'
 import AppSelect from '@/components/common/AppSelect.vue'
 import LiquidTabs from '@/components/common/LiquidTabs.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -356,6 +360,22 @@ function systemMessageTypeText(type) {
     system: '系统通知',
     notification: '系统通知',
     seller_pending_delivery: '待发货提醒',
+    seller_fulfillment_deadline: '卖家发货时限提醒',
+    buyer_fulfillment_deadline: '买家发货保障通知',
+    seller_fulfillment_policy: '卖家履约记录通知',
+    buyer_refund_processing: '退款处理中',
+    seller_refund_processing: '退款处理通知',
+    buyer_refund_succeeded: '退款成功通知',
+    seller_refund_succeeded: '退款成功通知',
+    buyer_refund_failed: '退款异常通知',
+    seller_refund_failed: '退款异常通知',
+    buyer_refund_unknown: '退款待核对通知',
+    seller_refund_unknown: '退款待核对通知',
+    buyer_refund_exception: '退款异常通知',
+    seller_refund_exception: '退款异常通知',
+    refund_reconciled: '退款核对结果',
+    buyer_refund_external_dispute: 'Credit 处理通知',
+    seller_refund_external_dispute: 'Credit 处理通知',
     zero_stock_auto_offline: '库存下架提醒',
     product_offline: '物品下架通知',
     product_comment: '商品评论通知',
@@ -381,14 +401,12 @@ async function loadSystemMessages(reset = false) {
 
   systemLoading.value = true
   try {
-    const params = new URLSearchParams({
-      page: String(systemPagination.page),
-      pageSize: String(systemPagination.pageSize)
+    const result = await fetchSystemMessagesRequest({
+      page: systemPagination.page,
+      pageSize: systemPagination.pageSize,
+      readStatus: systemFilter.readStatus,
+      search: systemFilter.search
     })
-    if (systemFilter.readStatus) params.set('readStatus', systemFilter.readStatus)
-    if (systemFilter.search.trim()) params.set('search', systemFilter.search.trim())
-
-    const result = await api.get(`/api/shop/messages/system?${params.toString()}`)
     if (!result.success) {
       toast.error(result.error || '加载系统消息失败')
       return
@@ -427,7 +445,7 @@ async function markSystemMessageRead(item) {
 
   markingSystemId.value = messageId
   try {
-    const result = await api.post(`/api/shop/messages/system/${messageId}/read`)
+    const result = await markSystemMessageReadRequest(messageId)
     if (!result.success) {
       toast.error(result.error || '标记已读失败')
       return
@@ -449,7 +467,7 @@ async function markAllSystemRead() {
 
   markAllSystemLoading.value = true
   try {
-    const result = await api.post('/api/shop/messages/system/read-all')
+    const result = await markAllSystemMessagesReadRequest()
     if (!result.success) {
       toast.error(result.error || '全部标记已读失败')
       return
@@ -746,12 +764,12 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid rgba(143, 163, 141, 0.25);
+  border: 1px solid var(--palette-rgba-143-163-141-0p25);
   border-radius: 10px;
-  background: rgba(143, 163, 141, 0.1);
+  background: var(--palette-rgba-143-163-141-0p1);
   backdrop-filter: blur(12px) saturate(180%);
   -webkit-backdrop-filter: blur(12px) saturate(180%);
-  color: #6b8068;
+  color: var(--palette-hex-6b8068);
   font-size: 13px;
   font-weight: 500;
   padding: 0 10px;
@@ -762,8 +780,8 @@ onUnmounted(() => {
 }
 
 .toolbar-link-btn:hover:not(:disabled) {
-  border-color: rgba(143, 163, 141, 0.45);
-  color: #5a7060;
+  border-color: var(--palette-rgba-143-163-141-0p45);
+  color: var(--palette-hex-5a7060);
 }
 
 .toolbar-link-btn:disabled {
@@ -792,8 +810,8 @@ onUnmounted(() => {
 }
 
 .system-card.unread {
-  border-color: rgba(220, 38, 38, 0.35);
-  box-shadow: 0 10px 28px rgba(220, 38, 38, 0.08);
+  border-color: var(--palette-rgba-220-38-38-0p35);
+  box-shadow: 0 10px 28px var(--palette-rgba-220-38-38-0p08);
 }
 
 .system-top {
@@ -845,8 +863,8 @@ onUnmounted(() => {
 }
 
 .status-pill.unread {
-  color: #dc2626;
-  background: rgba(220, 38, 38, 0.1);
+  color: var(--palette-hex-dc2626);
+  background: var(--palette-rgba-220-38-38-0p1);
 }
 
 .status-pill.read {
@@ -892,7 +910,7 @@ onUnmounted(() => {
 }
 
 .mini-btn.mark-read-btn {
-  color: #6b8068;
+  color: var(--palette-hex-6b8068);
 }
 
 .mini-btn.primary {
@@ -914,8 +932,8 @@ onUnmounted(() => {
 }
 
 .session-card.has-unread {
-  border-color: rgba(220, 38, 38, 0.35);
-  box-shadow: 0 10px 28px rgba(220, 38, 38, 0.08);
+  border-color: var(--palette-rgba-220-38-38-0p35);
+  box-shadow: 0 10px 28px var(--palette-rgba-220-38-38-0p08);
 }
 
 .card-top {
@@ -939,8 +957,8 @@ onUnmounted(() => {
   font-size: 12px;
   border-radius: 999px;
   padding: 2px 10px;
-  background: rgba(220, 38, 38, 0.1);
-  color: #dc2626;
+  background: var(--palette-rgba-220-38-38-0p1);
+  color: var(--palette-hex-dc2626);
   font-weight: 700;
 }
 
@@ -980,8 +998,8 @@ onUnmounted(() => {
 }
 
 .status-paid_pending_confirm {
-  background: rgba(245, 158, 11, 0.14);
-  color: #b45309;
+  background: var(--palette-rgba-245-158-11-0p14);
+  color: var(--palette-hex-b45309);
 }
 
 .status-paid {
@@ -999,8 +1017,8 @@ onUnmounted(() => {
   font-size: 12px;
   border-radius: 999px;
   padding: 2px 10px;
-  background: rgba(16, 185, 129, 0.16);
-  color: #047857;
+  background: var(--palette-rgba-16-185-129-0p16);
+  color: var(--palette-hex-047857);
   font-weight: 600;
 }
 
@@ -1044,8 +1062,8 @@ onUnmounted(() => {
   padding: 4px 10px;
   font-size: 12px;
   font-weight: 600;
-  background: rgba(220, 38, 38, 0.1);
-  color: #dc2626;
+  background: var(--palette-rgba-220-38-38-0p1);
+  color: var(--palette-hex-dc2626);
 }
 
 .unread-badge.muted {
@@ -1057,7 +1075,7 @@ onUnmounted(() => {
   border: none;
   border-radius: 10px;
   background: var(--color-success);
-  color: #fff;
+  color: var(--palette-hex-ffffff);
   font-size: 13px;
   padding: 8px 14px;
 }

@@ -1,467 +1,60 @@
-<template>
-  <Teleport to="body">
-    <Transition name="announcement-popup">
-      <div
-        v-if="activePopup"
-        class="announcement-popup__overlay"
-        @click.self="dismissForSession"
-      >
-        <div class="announcement-popup__card" role="dialog" aria-modal="true" aria-label="站内公告">
-          <div class="announcement-popup__header">
-            <div class="announcement-popup__meta">
-              <span class="announcement-popup__icon">{{ typeIconMap[activePopup.type] || '📢' }}</span>
-              <div class="announcement-popup__title-block">
-                <p class="announcement-popup__eyebrow">{{ typeLabelMap[activePopup.type] || '站内公告' }}</p>
-                <h3 class="announcement-popup__title">{{ activePopup.title || popupTitleMap[activePopup.type] || '公告提醒' }}</h3>
-              </div>
-            </div>
-            <button
-              class="announcement-popup__close"
-              type="button"
-              aria-label="本次关闭公告"
-              @click="dismissForSession"
-            >×</button>
-          </div>
-          <div class="announcement-popup__body" v-html="renderedContent"></div>
-          <div class="announcement-popup__footer">
-            <p class="announcement-popup__hint">右上角关闭仅对本次访问生效</p>
-            <div class="announcement-popup__actions">
-              <button
-                type="button"
-                class="announcement-popup__button announcement-popup__button--ghost"
-                @click="dismissForToday"
-              >
-                今日关闭
-              </button>
-              <button type="button" class="announcement-popup__button" @click="dismissForever">永久关闭</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
-</template>
-
 <script setup>
-import { computed, ref } from 'vue'
+import { announcementImpression as vAnnouncementImpression, trackAnnouncement } from '@/utils/announcementTelemetry'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { Megaphone, X } from '@lucide/vue'
 import { useAnnouncement } from '@/composables/useAnnouncement'
-import { renderAnnouncementContent } from '@/utils/renderAnnouncementContent'
-
-const { announcementItems } = useAnnouncement()
-const sessionDismissedKeys = ref(new Set())
-
-const typeIconMap = {
-  info: '📢',
-  warning: '⚠️',
-  success: '🎉'
+import { useUserStore } from '@/stores/user'
+import { announcementIdentity, announcementPreferenceRevision, sessionHasPopup, markPopupShown, isAnnouncementDismissed, dismissAnnouncement } from '@/utils/announcementPreferences'
+import AnnouncementContent from './AnnouncementContent.vue'
+const route = useRoute(), store = useUserStore()
+const { announcementItems, announcementPreferencesReady } = useAnnouncement()
+const identity = computed(() => announcementIdentity(store))
+const active = ref(null), dialog = ref(null), title = ref(null)
+const safeRoutes = new Set(['Home','Category','Search','MerchantProfile','ShopDetail','Shop','SellerDashboard'])
+let returnFocus = null, previousOverflow = '', openedIdentity = ''
+function dismiss(mode = 'session', countClose = true) {
+  if (!active.value) return
+  if (countClose) trackAnnouncement(active.value, 'close', route.meta.layout === 'seller' ? 'seller' : 'storefront')
+  dismissAnnouncement(openedIdentity, active.value, mode)
+  active.value = null
 }
-
-const typeLabelMap = {
-  info: '站内公告',
-  warning: '重要提醒',
-  success: '最新动态'
+function backdrop(event) {
+  if (event.target !== dialog.value) return
+  const rect = dialog.value.getBoundingClientRect()
+  if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dismiss()
 }
-
-const popupTitleMap = {
-  info: '公告提醒',
-  warning: '重要提醒',
-  success: '好消息'
-}
-
-function buildReadKey(item) {
-  return `ld-shop-popup-read:${item.popupDismissKey || `popup-${item.id}`}`
-}
-
-function getEndOfDay() {
-  const end = new Date()
-  end.setHours(23, 59, 59, 999)
-  return end.getTime()
-}
-
-function parseDismissRecord(raw) {
-  if (!raw) return null
-  if (raw === 'permanent') {
-    return { mode: 'forever' }
+watch([announcementItems, announcementPreferencesReady, () => route.name, identity, announcementPreferenceRevision, () => store.sessionReady], () => {
+  if (active.value) {
+    const latest = announcementItems.value.find(item => item.id === active.value.id)
+    if (identity.value !== openedIdentity || !safeRoutes.has(route.name) || !latest || isAnnouncementDismissed(identity.value, latest)) active.value = null
+    else active.value = latest
+    return
   }
-  try {
-    const parsed = JSON.parse(raw)
-    if (parsed && typeof parsed === 'object') {
-      return parsed
-    }
-  } catch (_) {
-    if (/^\d+$/.test(raw)) {
-      return { mode: 'forever', dismissedAt: Number(raw) }
-    }
+  if (!store.sessionReady || !announcementPreferencesReady.value || !safeRoutes.has(route.name) || sessionHasPopup(identity.value)) return
+  const item = announcementItems.value.find(item => item.mode === 'popup' && !isAnnouncementDismissed(identity.value, item))
+  if (item) { openedIdentity = identity.value; active.value = item }
+}, { immediate: true })
+watch(active, async (item, old) => {
+  await nextTick()
+  if (item && active.value && dialog.value && !dialog.value.open) {
+    returnFocus = document.activeElement; previousOverflow = document.body.style.overflow
+    dialog.value.showModal(); document.body.style.overflow = 'hidden'; title.value?.focus()
+    markPopupShown(openedIdentity)
+  } else if (!item && old) {
+    dialog.value?.close(); document.body.style.overflow = previousOverflow; returnFocus?.focus?.()
   }
-  return null
-}
-
-function markSessionDismissed(item) {
-  const key = buildReadKey(item)
-  sessionDismissedKeys.value = new Set([...sessionDismissedKeys.value, key])
-}
-
-function isDismissed(item) {
-  const key = buildReadKey(item)
-  if (sessionDismissedKeys.value.has(key)) {
-    return true
-  }
-
-  try {
-    const record = parseDismissRecord(localStorage.getItem(key))
-    if (!record) return false
-    if (record.mode === 'forever') {
-      return true
-    }
-    if (record.mode === 'today') {
-      const expiresAt = Number(record.expiresAt || 0)
-      if (expiresAt > Date.now()) {
-        return true
-      }
-      localStorage.removeItem(key)
-    }
-  } catch (_) {
-    return false
-  }
-
-  return false
-}
-
-function markDismissed(item, record) {
-  markSessionDismissed(item)
-  try {
-    localStorage.setItem(buildReadKey(item), JSON.stringify(record))
-  } catch (_) {
-  }
-}
-
-const activePopup = computed(() => announcementItems.value.find((item) => {
-  if (!item || item.mode !== 'popup' || !item.content) return false
-  return !isDismissed(item)
-}) || null)
-
-const renderedContent = computed(() => {
-  if (!activePopup.value) return ''
-  return renderAnnouncementContent(activePopup.value.content, activePopup.value.contentType)
-})
-
-function dismissForSession() {
-  if (!activePopup.value) return
-  markSessionDismissed(activePopup.value)
-}
-
-function dismissForToday() {
-  if (!activePopup.value) return
-  markDismissed(activePopup.value, {
-    mode: 'today',
-    expiresAt: getEndOfDay(),
-    dismissedAt: Date.now()
-  })
-}
-
-function dismissForever() {
-  if (!activePopup.value) return
-  markDismissed(activePopup.value, {
-    mode: 'forever',
-    dismissedAt: Date.now()
-  })
-}
+}, { immediate: true })
+onBeforeUnmount(() => { if (dialog.value?.open) { dialog.value.close(); document.body.style.overflow = previousOverflow; returnFocus?.focus?.() } })
 </script>
-
+<template>
+  <Teleport to="body"><dialog ref="dialog" class="announcement-dialog" aria-labelledby="announcement-popup-title" @cancel.prevent="dismiss()" @click="backdrop">
+    <template v-if="active"><header><div><p><Megaphone :size="16" aria-hidden="true" />站内公告</p><h2 id="announcement-popup-title" ref="title" tabindex="-1">{{ active.title || '公告提醒' }}</h2></div><button class="announcement-close" aria-label="本次关闭公告" @click="dismiss()"><X :size="22" aria-hidden="true" /></button></header>
+      <div v-announcement-impression="{item:active,placement:route.meta.layout === 'seller' ? 'seller' : 'storefront'}" class="announcement-dialog-body"><AnnouncementContent :content="active.content" :content-type="active.contentType" /></div>
+      <footer><a v-if="active.actionUrl" class="announcement-dismiss announcement-action" :href="active.actionUrl" :target="active.actionUrl.startsWith('/') ? undefined : '_blank'" rel="noopener noreferrer" @click="trackAnnouncement(active, 'action', route.meta.layout === 'seller' ? 'seller' : 'storefront')">{{ active.actionLabel }}</a><router-link :to="`/announcements/${active.id}`" class="announcement-detail-link" @click="dismiss('session', false)">查看详情与历史公告</router-link><p>关闭后仍可在公告中心查阅。</p><div><button class="announcement-dismiss secondary" @click="dismiss('today')">今日不提醒</button><button class="announcement-dismiss" @click="dismiss('forever')">不再提醒本条</button></div></footer>
+    </template>
+  </dialog></Teleport>
+</template>
 <style scoped>
-.announcement-popup__overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9997;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background:
-    radial-gradient(circle at top, rgba(181, 168, 152, 0.18), transparent 45%),
-    rgba(61, 61, 61, 0.16);
-  backdrop-filter: blur(10px);
-}
-
-.announcement-popup__card {
-  position: relative;
-  width: min(100%, 720px);
-  max-height: min(84vh, 780px);
-  overflow: auto;
-  border-radius: 28px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 24%, var(--border-light));
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(250, 249, 247, 0.96));
-  box-shadow:
-    0 24px 80px rgba(61, 61, 61, 0.14),
-    0 8px 28px rgba(181, 168, 152, 0.12);
-}
-
-.announcement-popup__card::before {
-  content: '';
-  position: sticky;
-  top: 0;
-  display: block;
-  height: 5px;
-  background: linear-gradient(90deg, #d8cbbb, var(--color-primary), #c9b7a2);
-}
-
-.announcement-popup__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 28px 28px 18px;
-}
-
-.announcement-popup__meta {
-  min-width: 0;
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-}
-
-.announcement-popup__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 52px;
-  flex: 0 0 auto;
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(181, 168, 152, 0.18), rgba(216, 203, 187, 0.3));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
-  font-size: 24px;
-}
-
-.announcement-popup__title-block {
-  min-width: 0;
-}
-
-.announcement-popup__eyebrow {
-  margin: 0 0 6px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--color-primary) 78%, #7d6c59);
-}
-
-.announcement-popup__title {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: 24px;
-  line-height: 1.35;
-}
-
-.announcement-popup__close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  flex: 0 0 auto;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--border-light));
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.76);
-  color: var(--text-secondary);
-  font-size: 24px;
-  line-height: 1;
-  cursor: pointer;
-  transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
-}
-
-.announcement-popup__close:hover {
-  transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--color-primary) 36%, var(--border-light));
-  background: #ffffff;
-  color: var(--text-primary);
-}
-
-.announcement-popup__body {
-  padding: 0 28px 26px;
-  color: var(--text-secondary);
-  line-height: 1.8;
-}
-
-.announcement-popup__body :deep(h1),
-.announcement-popup__body :deep(h2),
-.announcement-popup__body :deep(h3),
-.announcement-popup__body :deep(h4) {
-  margin: 0 0 14px;
-  color: var(--text-primary);
-  line-height: 1.35;
-}
-
-.announcement-popup__body :deep(p) {
-  margin: 0 0 14px;
-}
-
-.announcement-popup__body :deep(ul),
-.announcement-popup__body :deep(ol) {
-  margin: 0 0 14px;
-  padding-left: 22px;
-}
-
-.announcement-popup__body :deep(li + li) {
-  margin-top: 8px;
-}
-
-.announcement-popup__body :deep(a) {
-  color: color-mix(in srgb, var(--color-primary) 72%, #7c6041);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  word-break: break-word;
-}
-
-.announcement-popup__body :deep(blockquote) {
-  margin: 0 0 14px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  border: 1px solid rgba(181, 168, 152, 0.18);
-  border-left: 4px solid var(--color-primary);
-  background: rgba(181, 168, 152, 0.08);
-  color: var(--text-primary);
-}
-
-.announcement-popup__body :deep(code),
-.announcement-popup__body :deep(pre) {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-.announcement-popup__body :deep(code) {
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: rgba(181, 168, 152, 0.12);
-  color: var(--text-primary);
-}
-
-.announcement-popup__body :deep(pre) {
-  margin: 0 0 14px;
-  padding: 14px 16px;
-  overflow: auto;
-  border-radius: 16px;
-  border: 1px solid rgba(181, 168, 152, 0.16);
-  background: rgba(250, 249, 247, 0.96);
-}
-
-.announcement-popup__body :deep(table) {
-  width: 100%;
-  margin: 0 0 14px;
-  border-collapse: collapse;
-  overflow: hidden;
-  border-radius: 14px;
-  border-style: hidden;
-  box-shadow: 0 0 0 1px rgba(181, 168, 152, 0.18);
-}
-
-.announcement-popup__body :deep(th),
-.announcement-popup__body :deep(td) {
-  padding: 10px 12px;
-  text-align: left;
-  border: 1px solid rgba(181, 168, 152, 0.18);
-}
-
-.announcement-popup__body :deep(th) {
-  background: rgba(181, 168, 152, 0.1);
-  color: var(--text-primary);
-}
-
-.announcement-popup__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 0 28px 28px;
-}
-
-.announcement-popup__hint {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-
-.announcement-popup__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.announcement-popup__button {
-  min-width: 120px;
-  border: 1px solid transparent;
-  border-radius: 14px;
-  padding: 12px 18px;
-  background: linear-gradient(135deg, #c8b9a6, var(--color-primary));
-  color: #ffffff;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 10px 22px rgba(181, 168, 152, 0.18);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
-}
-
-.announcement-popup__button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 14px 28px rgba(181, 168, 152, 0.24);
-}
-
-.announcement-popup__button--ghost {
-  border-color: rgba(181, 168, 152, 0.26);
-  background: rgba(255, 255, 255, 0.78);
-  color: var(--text-primary);
-  box-shadow: none;
-}
-
-.announcement-popup-enter-active,
-.announcement-popup-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.announcement-popup-enter-from,
-.announcement-popup-leave-to {
-  opacity: 0;
-}
-
-@media (max-width: 768px) {
-  .announcement-popup__overlay {
-    padding: 14px;
-    align-items: flex-end;
-  }
-
-  .announcement-popup__card {
-    width: 100%;
-    max-height: min(88vh, 760px);
-    border-radius: 24px 24px 20px 20px;
-  }
-
-  .announcement-popup__header {
-    padding: 22px 18px 14px;
-  }
-
-  .announcement-popup__body {
-    padding: 0 18px 20px;
-  }
-
-  .announcement-popup__footer {
-    padding: 0 18px 18px;
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .announcement-popup__title {
-    font-size: 20px;
-  }
-
-  .announcement-popup__actions {
-    flex-direction: column;
-  }
-
-  .announcement-popup__button {
-    width: 100%;
-  }
-
-  .announcement-popup__hint {
-    text-align: center;
-  }
-}
+.announcement-dialog{width:min(calc(100% - 32px),680px);max-height:86dvh;max-height:min(86dvh,800px);margin:auto;padding:0;border:1px solid var(--border-default-semantic);border-radius:var(--radius-lg);background:var(--surface-card);color:var(--text-primary-semantic);box-shadow:var(--elevation-lg);overflow:hidden}.announcement-dialog[open]{display:flex;flex-direction:column}.announcement-dialog::backdrop{background:var(--surface-overlay)}.announcement-dialog header{display:flex;justify-content:space-between;align-items:start;gap:var(--space-4);padding:var(--space-6);flex-shrink:0;border-bottom:1px solid var(--border-default-semantic)}.announcement-dialog header>div{min-width:0}.announcement-dialog header p{display:flex;align-items:center;gap:var(--space-2);color:var(--text-secondary-semantic);font-size:var(--text-size-sm);margin:0 0 var(--space-2)}.announcement-dialog h2{font-weight:600;font-size:var(--text-size-lg);line-height:1.5;margin:0;overflow-wrap:anywhere}.announcement-close{display:flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;border:1px solid var(--border-default-semantic);background:var(--surface-subtle);color:inherit;border-radius:var(--radius-sm);cursor:pointer}.announcement-dialog-body{min-height:0;padding:var(--space-6);overflow-y:auto;overscroll-behavior:contain}.announcement-dialog footer{flex-shrink:0;border-top:1px solid var(--border-default-semantic);padding:var(--space-4) var(--space-6)}.announcement-dialog footer p{font-size:var(--text-size-xs);color:var(--text-muted-semantic);margin:var(--space-2) 0 var(--space-3)}.announcement-dialog footer>div{display:flex;justify-content:flex-end;gap:var(--space-3);flex-wrap:wrap}.announcement-action{display:inline-flex;align-items:center;margin-bottom:var(--space-2);margin-right:var(--space-3);text-decoration:none}.announcement-detail-link{color:var(--text-link);text-decoration:underline;display:inline-flex;min-height:44px;align-items:center}.announcement-dismiss{min-height:44px;padding:var(--space-2) var(--space-4);border:1px solid var(--border-default-semantic);border-radius:var(--radius-sm);background:var(--action-primary);color:var(--action-primary-text);cursor:pointer}.announcement-dismiss.secondary{background:var(--action-secondary);color:var(--action-secondary-text)}@media(max-width:600px){.announcement-dialog{max-height:90dvh;margin:auto auto max(12px,env(safe-area-inset-bottom))}.announcement-dialog header,.announcement-dialog-body{padding:var(--space-4)}.announcement-dialog footer{padding:var(--space-3) var(--space-4)}.announcement-dismiss{flex:1}}
 </style>

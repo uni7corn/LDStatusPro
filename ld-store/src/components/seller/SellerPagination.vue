@@ -60,7 +60,7 @@ function go(nextPage) {
 .seller-pagination-controls { display: flex; align-items: center; gap: 6px; }
 .seller-pagination-controls button { min-width: 36px; height: 36px; display: grid; place-items: center; padding: 0 9px; border: 1px solid transparent; border-radius: 9px; color: var(--seller-muted); background: transparent; font-variant-numeric: tabular-nums; }
 .seller-pagination-controls button:hover:not(:disabled) { color: var(--seller-ink); border-color: var(--seller-border); background: var(--seller-surface); }
-.seller-pagination-controls button.active { color: #fff; background: var(--seller-navy); }
+.seller-pagination-controls button.active { color: var(--palette-hex-ffffff); background: var(--seller-navy); }
 .seller-pagination-controls button:disabled { opacity: .35; cursor: not-allowed; }
 @media (max-width: 640px) {
   .seller-pagination { align-items: flex-start; flex-direction: column; }

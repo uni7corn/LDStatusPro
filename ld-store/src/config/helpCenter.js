@@ -1,4 +1,4 @@
-export const HELP_UPDATED_AT = '2026-08-23'
+export const HELP_UPDATED_AT = '2026-09-04'
 
 export const HELP_GROUPS = Object.freeze([
   { id: 'start', title: '快速开始' },
@@ -62,6 +62,17 @@ export const HELP_ARTICLES = Object.freeze([
     icon: 'RotateCcw',
     loader: () => import('@/components/docs/DocRefunds.vue'),
     related: ['buy-guide', 'seller-orders', 'account-safety']
+  },
+  {
+    id: 'shipping-deadline',
+    group: 'buyer',
+    title: '发货时限与超时退款',
+    summary: '普通物品 48 小时下架、72 小时自动退款，以及超时计次和异常处理规则。',
+    audience: ['买家', '卖家'],
+    keywords: ['72小时', '48小时', '发货截止', '自动退款', '未发货', '卖家限制', '超时记录', '主动退款'],
+    icon: 'TimerReset',
+    loader: () => import('@/components/docs/DocShippingDeadline.vue'),
+    related: ['seller-orders', 'refunds', 'buy-guide']
   },
   {
     id: 'collections-blocks',
@@ -220,6 +231,9 @@ export const HELP_ARTICLES = Object.freeze([
 ])
 
 export const HELP_SEARCH_ENTRIES = Object.freeze([
+  { articleId: 'shipping-deadline', anchor: 'timeline', title: '普通物品 48 与 72 小时规则', keywords: ['未发货自动退款', '物品下架', '发货倒计时'] },
+  { articleId: 'shipping-deadline', anchor: 'seller-restriction', title: '3 笔超时退款与 7 天卖家限制', keywords: ['封禁卖家', '168小时', '申诉撤销'] },
+  { articleId: 'shipping-deadline', anchor: 'refund-results', title: '自动退款失败或待核对怎么办', keywords: ['余额不足', '结果未知', 'credit处理'] },
   { articleId: 'collections-blocks', anchor: 'block-product', title: '将物品标记为不感兴趣', keywords: ['拉黑商品', '隐藏商品', '屏蔽物品', '二次确认'] },
   { articleId: 'collections-blocks', anchor: 'restore-product', title: '恢复已隐藏的物品', keywords: ['取消拉黑', '恢复展示', '找回商品'] },
   { articleId: 'product-types', anchor: 'independent-cdk', title: '独立卡密如何发货', keywords: ['独立库存', '一单一码', '卡密库存'] },

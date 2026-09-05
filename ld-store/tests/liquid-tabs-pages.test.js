@@ -224,7 +224,7 @@ describe('migrated seller pages', () => {
     expect(router.currentRoute.value.query.status).toBe('other')
     expect(router.currentRoute.value.query.page).toBeUndefined()
     const orderCalls = requests.get.mock.calls.map(([url]) => url).filter(url => url.startsWith('/api/shop/orders?'))
-    expect(new URL(orderCalls.at(-1), 'http://test.invalid').searchParams.get('status')).toBe('refunded,external_dispute')
+    expect(new URL(orderCalls.at(-1), 'http://test.invalid').searchParams.get('status')).toBe('refund_pending,refunded,external_dispute')
     await buttonByText(wrapper.findAllComponents(LiquidTabs)[0], '求购服务').trigger('click')
     await vi.advanceTimersByTimeAsync(150)
     await flushPromises()

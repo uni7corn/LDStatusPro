@@ -1,5 +1,5 @@
 const ORDER_STATUS_TABS = new Set(['paid', 'delivered', 'cancelled', 'other'])
-const OTHER_ORDER_STATUSES = ['refunded', 'external_dispute']
+const OTHER_ORDER_STATUSES = ['refund_pending', 'refunded', 'external_dispute']
 
 export function normalizeOrderStatusFilter(value) {
   const status = String(value || '').trim()

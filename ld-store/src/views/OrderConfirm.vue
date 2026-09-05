@@ -39,6 +39,7 @@
           </div>
         </div>
 
+        <FulfillmentPolicyNotice v-if="!isCdk" />
         <div class="checkout-grid">
           <div class="checkout-main-column">
             <section class="checkout-card product-card" aria-labelledby="product-card-title">
@@ -300,6 +301,7 @@
 </template>
 
 <script setup>
+import FulfillmentPolicyNotice from '@/components/order/FulfillmentPolicyNotice.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import {
@@ -315,7 +317,8 @@ import {
   ShoppingBag,
   TicketPercent,
 } from '@lucide/vue'
-import { useShopStore } from '@/stores/shop'
+import { useProductStore } from '@/stores/product'
+import { useOrderStore } from '@/stores/order'
 import { useUserStore } from '@/stores/user'
 import { shouldPreserveCheckoutDraft, useCheckoutStore } from '@/stores/checkout'
 import { useToast } from '@/composables/useToast'
@@ -355,7 +358,8 @@ defineOptions({ name: 'OrderConfirm' })
 
 const route = useRoute()
 const router = useRouter()
-const shopStore = useShopStore()
+const productStore = useProductStore()
+const orderStore = useOrderStore()
 const userStore = useUserStore()
 const checkoutStore = useCheckoutStore()
 const toast = useToast()
@@ -382,8 +386,8 @@ const productId = computed(() => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 0
 })
 const productName = computed(() => String(product.value?.name || '未命名物品'))
-const productImage = computed(() => String(product.value?.image_url || product.value?.imageUrl || ''))
-const sellerUsername = computed(() => String(product.value?.seller_username || product.value?.sellerUsername || '未知'))
+const productImage = computed(() => String(product.value?.imageUrl || ''))
+const sellerUsername = computed(() => String(product.value?.sellerUsername || '未知'))
 const isCdk = computed(() => isCdkProduct(product.value))
 const isPlatformOrder = computed(() => isPlatformOrderProduct(product.value))
 const originalUnitPrice = computed(() => Number(product.value?.price || 0))
@@ -475,13 +479,13 @@ const viewerTrustLevel = computed(() => {
   return Number.isInteger(parsed) ? parsed : 0
 })
 const purchaseTrustLevel = computed(() => {
-  const parsed = Number(product.value?.purchase_trust_level ?? product.value?.purchaseTrustLevel ?? 0)
+  const parsed = Number(product.value?.purchaseTrustLevel ?? 0)
   return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, 4) : 0
 })
 const isSeller = computed(() => (
-  String(userStore.user?.id || '') === String(product.value?.seller_user_id ?? product.value?.sellerUserId ?? '')
+  String(userStore.user?.id || '') === String(product.value?.sellerUserId ?? '')
 ))
-const isTestMode = computed(() => !!(product.value?.is_test_mode || product.value?.isTestMode))
+const isTestMode = computed(() => !!product.value?.isTestMode)
 const isOrderCreationMaintenanceBlocked = computed(() => (
   isRestrictedMaintenanceMode() && !isMaintenanceFeatureEnabled('orderCreate')
 ))
@@ -642,7 +646,8 @@ function scheduleQuote() {
 }
 
 async function loadProduct({ force = true } = {}) {
-  const nextProduct = await shopStore.fetchProduct(productId.value, force)
+  const result = await productStore.fetchProduct(productId.value, force)
+  const nextProduct = result.success ? result.data.product : null
   if (!nextProduct) {
     product.value = null
     loadError.value = '物品不存在、已下架或暂时无法读取。'
@@ -732,7 +737,7 @@ async function submitOrder() {
       return
     }
 
-    const result = await shopStore.createOrder(productId.value, normalizedQuantity, selectedCouponClaimId.value)
+    const result = await orderStore.createOrder(productId.value, normalizedQuantity, selectedCouponClaimId.value)
     const orderNo = result?.data?.orderNo
 
     if (result?.success && orderNo) {
@@ -1609,7 +1614,7 @@ button.order-option-row:disabled {
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid var(--border-light);
     background: var(--glass-bg-heavy);
-    box-shadow: 0 -10px 30px rgba(0, 0, 0, .08);
+    box-shadow: 0 -10px 30px var(--palette-rgba-0-0-0-p08);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
   }

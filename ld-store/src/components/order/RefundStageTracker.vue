@@ -39,10 +39,10 @@ function getStageStateLabel(stage) {
 
 <style scoped>
 .refund-stages {
-  --stage-success: var(--color-success, #3f7a52);
-  --stage-info: var(--color-info, #277da1);
-  --stage-warning: var(--color-warning, #a66b24);
-  --stage-danger: var(--color-danger, #b54a4a);
+  --stage-success: var(--color-success, var(--palette-hex-3f7a52));
+  --stage-info: var(--color-info, var(--palette-hex-277da1));
+  --stage-warning: var(--color-warning, var(--palette-hex-a66b24));
+  --stage-danger: var(--color-danger, var(--palette-hex-b54a4a));
   --stage-brand: var(--color-primary-hover, var(--color-primary));
   display: grid;
   gap: 0;
@@ -123,7 +123,7 @@ function getStageStateLabel(stage) {
 
 .refund-stages li.is-done .refund-stage__marker {
   border-color: var(--stage-success);
-  color: #fff;
+  color: var(--palette-hex-ffffff);
   background: var(--stage-success);
 }
 

@@ -180,7 +180,7 @@ export const useUiStore = defineStore('ui', () => {
       dialog.value = {
         visible: true,
         title: options.title || '提示',
-        content: options.content || '',
+        content: String(options.content ?? ''),
         type: options.type || 'confirm',
         icon: options.icon || '',
         danger: options.danger || false,

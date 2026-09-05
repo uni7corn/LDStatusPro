@@ -24,8 +24,10 @@ describe('卖家禁用状态 UI', () => {
 
   it('状态存储轮询专用权限接口且不复用收款配置状态', () => {
     const store = readSource('../src/stores/merchantEnforcement.js')
-    expect(store).toContain("api.get('/api/shop/merchant/enforcement')")
+    const service = readSource('../src/services/shop/merchantService.ts')
+    expect(store).toContain('fetchMerchantEnforcementRequest()')
+    expect(service).toContain("api.get('/api/shop/merchant/enforcement')")
     expect(store).toContain("enforcement.value.status === 'disabled'")
-    expect(store).not.toContain('/api/shop/merchant/config')
+    expect(store).not.toContain('@/utils/api')
   })
 })

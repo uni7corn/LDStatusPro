@@ -230,6 +230,7 @@ import {
   ShoppingBag,
   Store,
   TicketPercent,
+  TimerReset,
   Wrench,
   X
 } from '@lucide/vue'
@@ -266,7 +267,8 @@ const iconMap = {
   ShieldCheck,
   ShoppingBag,
   Store,
-  TicketPercent
+  TicketPercent,
+  TimerReset
 }
 
 const componentMap = new Map(HELP_ARTICLES.map(article => [article.id, defineAsyncComponent(article.loader)]))

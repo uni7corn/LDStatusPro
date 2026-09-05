@@ -182,7 +182,7 @@ onUnmounted(() => {
   padding: 0;
   border: none;
   background: transparent;
-  color: #6b8068;
+  color: var(--palette-hex-6b8068);
   font: inherit;
   font-size: 12px;
   font-weight: 600;

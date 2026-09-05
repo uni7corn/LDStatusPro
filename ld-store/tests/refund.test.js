@@ -12,6 +12,7 @@ import {
 } from '../src/utils/refund'
 
 const refundPanelSource = readFileSync(new URL('../src/components/order/OrderRefundPanel.vue', import.meta.url), 'utf8')
+const refundControllerSource = readFileSync(new URL('../src/composables/orders/useOrderRefund.ts', import.meta.url), 'utf8')
 const ordersSource = readFileSync(new URL('../src/views/Orders.vue', import.meta.url), 'utf8')
 const orderDetailSource = readFileSync(new URL('../src/views/OrderDetail.vue', import.meta.url), 'utf8')
 const sellerRefundsSource = readFileSync(new URL('../src/views/seller/SellerRefunds.vue', import.meta.url), 'utf8')
@@ -30,7 +31,7 @@ describe('订单退款买家流程', () => {
     expect(requestButton).not.toContain('v-if=')
     expect(requestButton).toContain(':disabled="!canApplyRefund"')
     expect(requestButton).toContain('aria-describedby="refund-action-availability"')
-    expect(refundPanelSource).toContain('联系卖家是可选的协商方式，不影响申请资格')
+    expect(refundControllerSource).toContain('联系卖家是可选的协商方式，不影响申请资格')
   })
 
   it('校验原因与 10-500 字问题说明', () => {
@@ -79,7 +80,8 @@ describe('订单退款买家流程', () => {
     expect(stages[2].description).toBe('未从 LD 士多发起退款')
     expect(stages[3]).toMatchObject({ label: 'Credit 处理', tone: 'warning' })
     expect(refundPanelSource).toContain('不代表争议已通过或积分已退回')
-    expect(refundPanelSource).toContain("refundState.value?.refund?.status === 'external_dispute'")
+    expect(refundControllerSource).toContain("refundState.value?.refund?.status === 'external_dispute'")
+    expect(refundControllerSource).toContain('本站状态不代表积分已经退回')
   })
 
   it('订单列表归并终态，详情与卖家退款台账保留独立语义', () => {

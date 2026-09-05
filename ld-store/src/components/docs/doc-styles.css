@@ -1,36 +1,24 @@
 .help-page {
-  --help-paper: #f7f5ef;
-  --help-paper-deep: #ebe7df;
-  --help-navy: #10243e;
-  --help-navy-soft: #243b55;
-  --help-jade: #718d7a;
-  --help-jade-dark: #506d5a;
-  --help-ink: #1f2a34;
-  --help-muted: #647078;
-  --help-line: rgba(16, 36, 62, 0.13);
-  --help-surface: rgba(255, 254, 249, 0.91);
-  --help-white: #fffefa;
-  --help-focus: #506d5a;
+  --help-paper: var(--surface-document-canvas);
+  --help-paper-deep: var(--surface-document-deep);
+  --help-navy: var(--action-document-primary);
+  --help-navy-soft: var(--action-document-primary-hover);
+  --help-jade: var(--action-document-accent);
+  --help-jade-dark: var(--action-document-accent-strong);
+  --help-ink: var(--text-document-primary);
+  --help-muted: var(--text-document-secondary);
+  --help-line: var(--border-document-default);
+  --help-surface: var(--surface-document-glass);
+  --help-white: var(--surface-document-card);
+  --help-focus: var(--focus-document);
   min-height: calc(100vh - 56px);
   color: var(--help-ink);
-  background: var(--bg-primary, #faf9f7);
+  background: var(--bg-primary, var(--palette-hex-faf9f7));
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
 
 html.dark .help-page {
-  --help-paper: #111a21;
-  --help-paper-deep: #17242d;
-  --help-navy: #dce8f1;
-  --help-navy-soft: #b9cbd7;
-  --help-jade: #9ab5a1;
-  --help-jade-dark: #bdd0c2;
-  --help-ink: #e7ecef;
-  --help-muted: #a7b2b9;
-  --help-line: rgba(214, 228, 237, 0.14);
-  --help-surface: rgba(22, 32, 40, 0.94);
-  --help-white: #18242c;
-  --help-focus: #9ab5a1;
-  background: var(--bg-primary, #121212);
+  background: var(--bg-primary, var(--palette-hex-121212));
   color-scheme: dark;
 }
 
@@ -53,7 +41,7 @@ html.dark .help-page {
 
 .help-page :focus-visible,
 .help-drawer-layer :focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--help-focus, #506d5a) 82%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--help-focus, var(--palette-hex-506d5a)) 82%, transparent);
   outline-offset: 2px;
 }
 
@@ -77,8 +65,8 @@ html.dark .help-page {
   min-height: 44px;
   padding: 11px 16px;
   border-radius: 10px;
-  color: #fff !important;
-  background: #10243e;
+  color: var(--palette-hex-ffffff) !important;
+  background: var(--palette-hex-10243e);
   transform: translateY(-160%);
   transition: transform 0.18s ease;
 }
@@ -120,15 +108,15 @@ html.dark .help-page {
   width: 42px;
   height: 42px;
   place-items: center;
-  border: 1px solid rgba(16, 36, 62, 0.15);
+  border: 1px solid var(--palette-rgba-16-36-62-0p15);
   border-radius: 14px 14px 14px 5px;
-  color: #fff;
+  color: var(--palette-hex-ffffff);
   background: var(--help-navy);
-  box-shadow: 0 8px 22px rgba(16, 36, 62, 0.15);
+  box-shadow: 0 8px 22px var(--palette-rgba-16-36-62-0p15);
 }
 
 html.dark .help-brand__mark {
-  color: #10243e;
+  color: var(--palette-hex-10243e);
 }
 
 .help-brand > span:last-child {
@@ -164,7 +152,7 @@ html.dark .help-brand__mark {
   border-radius: 13px;
   color: var(--help-muted);
   background: var(--help-surface);
-  box-shadow: 0 4px 15px rgba(16, 36, 62, 0.05);
+  box-shadow: 0 4px 15px var(--palette-rgba-16-36-62-0p05);
 }
 
 .help-search__field:focus-within {
@@ -233,7 +221,7 @@ html.dark .help-brand__mark {
   border: 1px solid var(--help-line);
   border-radius: 16px;
   background: var(--help-white);
-  box-shadow: 0 20px 48px rgba(16, 36, 62, 0.18);
+  box-shadow: 0 20px 48px var(--palette-rgba-16-36-62-0p18);
 }
 
 .help-search__results > button {
@@ -463,7 +451,7 @@ html.dark .help-brand__mark {
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--help-jade) 18%, transparent), transparent 45%),
     var(--help-surface);
-  box-shadow: 0 22px 60px rgba(16, 36, 62, 0.09);
+  box-shadow: 0 22px 60px var(--palette-rgba-16-36-62-0p09);
 }
 
 .help-hero::after {
@@ -514,13 +502,13 @@ html.dark .help-brand__mark {
   padding: 0 15px 0 18px;
   border-radius: 17px;
   background: var(--help-white);
-  box-shadow: 0 12px 30px rgba(16, 36, 62, 0.11);
+  box-shadow: 0 12px 30px var(--palette-rgba-16-36-62-0p11);
 }
 
 .help-search--hero .help-search__field:focus-within {
   box-shadow:
     0 0 0 3px color-mix(in srgb, var(--help-jade) 18%, transparent),
-    0 12px 30px rgba(16, 36, 62, 0.11);
+    0 12px 30px var(--palette-rgba-16-36-62-0p11);
 }
 
 .help-search--hero .help-search__field input {
@@ -557,7 +545,7 @@ html.dark .help-brand__mark {
 
 .help-route:hover {
   border-color: color-mix(in srgb, var(--help-jade) 55%, transparent);
-  box-shadow: 0 10px 22px rgba(16, 36, 62, 0.09);
+  box-shadow: 0 10px 22px var(--palette-rgba-16-36-62-0p09);
   transform: translateY(-2px);
 }
 
@@ -597,7 +585,7 @@ html.dark .help-brand__mark {
   border: 1px solid var(--help-line);
   border-radius: 24px 24px 24px 8px;
   background: var(--help-surface);
-  box-shadow: 0 14px 44px rgba(16, 36, 62, 0.07);
+  box-shadow: 0 14px 44px var(--palette-rgba-16-36-62-0p07);
 }
 
 .help-hero + .help-article {
@@ -828,33 +816,20 @@ html.dark .help-brand__mark {
 }
 
 .help-drawer-layer {
-  --help-paper: #f4f1e8;
-  --help-navy: #10243e;
-  --help-jade: #718d7a;
-  --help-jade-dark: #506d5a;
-  --help-ink: #1f2a34;
-  --help-muted: #647078;
-  --help-line: rgba(16, 36, 62, 0.13);
-  --help-surface: #fffefa;
-  --help-white: #fffefa;
-  --help-focus: #d18e45;
+  --help-paper: var(--surface-paper-canvas);
+  --help-navy: var(--action-document-primary);
+  --help-jade: var(--action-document-accent);
+  --help-jade-dark: var(--action-document-accent-strong);
+  --help-ink: var(--text-document-primary);
+  --help-muted: var(--text-document-secondary);
+  --help-line: var(--border-document-default);
+  --help-surface: var(--surface-document-card);
+  --help-white: var(--surface-document-card);
+  --help-focus: var(--focus-document-drawer);
   position: fixed;
   inset: 0;
   z-index: 800;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-}
-
-html.dark .help-drawer-layer {
-  --help-paper: #111a21;
-  --help-navy: #dce8f1;
-  --help-jade: #9ab5a1;
-  --help-jade-dark: #bdd0c2;
-  --help-ink: #e7ecef;
-  --help-muted: #a7b2b9;
-  --help-line: rgba(214, 228, 237, 0.14);
-  --help-surface: #18242c;
-  --help-white: #18242c;
-  --help-focus: #efb875;
 }
 
 .help-drawer-backdrop {
@@ -864,7 +839,7 @@ html.dark .help-drawer-layer {
   height: 100%;
   padding: 0;
   border: 0;
-  background: rgba(8, 18, 29, 0.55);
+  background: var(--palette-rgba-8-18-29-0p55);
   backdrop-filter: blur(2px);
 }
 
@@ -878,7 +853,7 @@ html.dark .help-drawer-layer {
   overflow: hidden;
   color: var(--help-ink);
   background: var(--help-paper);
-  box-shadow: 18px 0 50px rgba(5, 14, 22, 0.28);
+  box-shadow: 18px 0 50px var(--palette-rgba-5-14-22-0p28);
   animation: help-drawer-in 0.2s ease-out;
 }
 
@@ -1082,7 +1057,7 @@ html.dark .help-drawer-layer {
 
 .help-callout--info,
 .highlight-box.info {
-  border-left-color: #66849c;
+  border-left-color: var(--palette-hex-66849c);
 }
 
 .help-callout--success,
@@ -1093,14 +1068,14 @@ html.dark .help-drawer-layer {
 
 .help-callout--warning,
 .highlight-box.warning {
-  border-left-color: #bf8548;
-  background: color-mix(in srgb, #d7a15d 9%, var(--help-surface));
+  border-left-color: var(--palette-hex-bf8548);
+  background: color-mix(in srgb, var(--palette-hex-d7a15d) 9%, var(--help-surface));
 }
 
 .help-callout--danger,
 .highlight-box.danger {
-  border-left-color: #b7615f;
-  background: color-mix(in srgb, #c86e69 8%, var(--help-surface));
+  border-left-color: var(--palette-hex-b7615f);
+  background: color-mix(in srgb, var(--palette-hex-c86e69) 8%, var(--help-surface));
 }
 
 .help-callout__icon {
@@ -1293,7 +1268,7 @@ a.decision-card {
 a.task-card:hover,
 a.decision-card:hover {
   border-color: var(--help-jade);
-  box-shadow: 0 8px 22px rgba(16, 36, 62, 0.07);
+  box-shadow: 0 8px 22px var(--palette-rgba-16-36-62-0p07);
 }
 
 .task-card h3,
@@ -1391,7 +1366,7 @@ a.decision-card:hover {
 
 html.dark .help-actions a,
 html.dark .inline-actions a {
-  color: #10243e;
+  color: var(--palette-hex-10243e);
 }
 
 .help-actions a.secondary,

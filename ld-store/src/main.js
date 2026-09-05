@@ -7,12 +7,15 @@ import { useUiStore } from '@/stores/ui'
 import { initTheme } from '@/composables/useTheme'
 import { AUTH_EXPIRED_EVENT } from '@/utils/auth'
 import { captureStorefrontError, initializeStorefrontTelemetry } from '@/observability/faro'
+import { initializeMxaAnalytics } from '@/observability/mxa'
+import './styles/tokens.css'
 import './styles/main.css'
 import './styles/markdown-content.css'
 import './styles/seller.css'
 
 // 可选客户端基础设施异步启动；初始化失败不得阻塞商城渲染或业务请求。
 void initializeStorefrontTelemetry(router)
+void initializeMxaAnalytics()
 
 // 创建应用实例
 const app = createApp(App)

@@ -1,0 +1,46 @@
+name: Storefront CI
+
+on:
+  push:
+    paths:
+      - 'ld-store/**'
+      - '.github/workflows/storefront-ci.yml'
+  pull_request:
+    paths:
+      - 'ld-store/**'
+      - '.github/workflows/storefront-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: storefront-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ld-store
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ld-store/package-lock.json
+      - run: npm ci
+      - run: npm audit --audit-level=low
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run check:architecture
+      - run: npm run check:styles
+      - run: npm run check:csp
+      - run: npm run validate:noindex
+      - run: npm run test
+      - run: npm run build
+      - run: npm run check:csp:build
+      - run: npm run validate:noindex:build
+      - run: npm run validate:og
+      - run: npm run check:bundle

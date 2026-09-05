@@ -3,7 +3,7 @@
     ref="rootRef"
     v-bind="forwardedAttrs"
     :class="['avatar-image', attrs.class, { 'avatar-image--loading': isLoading }]"
-    :style="attrs.style"
+    :style="forwardedStyle"
     :data-avatar-state="loadState"
     :aria-busy="String(isLoading)"
   >
@@ -100,6 +100,11 @@ const forwardedAttrs = computed(() => {
     ...rest
   } = attrs
   return rest
+})
+
+const forwardedStyle = computed(() => {
+  const style = attrs.style
+  return style && typeof style === 'object' && !Array.isArray(style) ? style : undefined
 })
 
 const avatarSources = computed(() => {
@@ -421,7 +426,7 @@ onUnmounted(() => {
 .avatar-image__placeholder {
   background: var(
     --avatar-placeholder-bg,
-    linear-gradient(135deg, var(--glass-shine-strong), rgba(255, 255, 255, 0)),
+    linear-gradient(135deg, var(--glass-shine-strong), var(--palette-rgba-255-255-255-0)),
     color-mix(in srgb, var(--bg-tertiary) 72%, transparent)
   );
 }

@@ -46,123 +46,20 @@
       
       <!-- 编辑表单 -->
       <form v-else class="edit-form seller-edit-form" @submit.prevent="submitForm">
-        <!-- 基本信息 -->
-        <div class="form-card">
-          <h2 class="card-title">基本信息</h2>
-          
-          <div class="form-group">
-            <label class="form-label required">物品名称</label>
-            <input
-              v-model="form.name"
-              type="text"
-              class="form-input"
-              placeholder="请输入物品名称（2-50字符）"
-              maxlength="50"
-            />
-            <p class="form-counter">{{ form.name.length }}/50</p>
-          </div>
-          
-          <div class="form-group">
-            <div class="form-label-row">
-              <label class="form-label required">物品描述</label>
-              <div class="desc-mode-tabs">
-                <button
-                  type="button"
-                  :class="['desc-mode-tab', { active: descMode === 'write' }]"
-                  @click="descMode = 'write'"
-                >编辑</button>
-                <button
-                  type="button"
-                  :class="['desc-mode-tab', { active: descMode === 'preview' }]"
-                  @click="descMode = 'preview'"
-                >预览</button>
-              </div>
-            </div>
-            <textarea
-              v-if="descMode === 'write'"
-              v-model="form.description"
-              class="form-textarea"
-              placeholder="请输入物品描述（10-1000字符）"
-              rows="4"
-              maxlength="1000"
-            ></textarea>
-            <div
-              v-else
-              class="form-textarea-preview markdown-content"
-              :class="{ 'is-empty': !descriptionPreview }"
-              v-html="descriptionPreview || '暂无内容，切换到「编辑」填写物品描述'"
-            ></div>
-            <p class="form-hint">支持 Markdown：**加粗**、*斜体*、++下划线++、`代码`；网址和图片语法显示为可点击链接（新窗口打开）</p>
-            <p class="form-counter">{{ form.description.length }}/1000</p>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label required">物品分类</label>
-            <div class="category-select">
-              <button
-                v-for="cat in categories"
-                :key="cat.id"
-                type="button"
-                :class="['category-btn', { active: form.categoryId === cat.id }]"
-                @click="form.categoryId = cat.id"
-              >
-                {{ cat.name }}
-              </button>
-            </div>
-          </div>
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label required">价格 (LDC)</label>
-              <input
-                v-model="form.price"
-                type="number"
-                class="form-input"
-                placeholder="0.00"
-                min="0.01"
-                max="99999999"
-                step="0.01"
-              />
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">折扣</label>
-              <input
-                v-model="form.discount"
-                type="number"
-                class="form-input"
-                placeholder="1"
-                min="0.01"
-                max="1"
-                step="0.01"
-              />
-              <p class="form-hint">范围 0.01-1</p>
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label required">物品图片</label>
-            <input
-              v-model="form.imageUrl"
-              type="url"
-              class="form-input"
-              :class="{ 'input-error': imageUrlError || imageLoadError }"
-              placeholder="https://..."
-              :maxlength="MAX_PRODUCT_IMAGE_URL_LENGTH"
-              @blur="validateImageLoad"
-            />
-            <p v-if="imageUrlError" class="form-error">{{ imageUrlError }}</p>
-            <p v-else-if="imageLoadError" class="form-error">{{ imageLoadError }}</p>
-            <p v-else-if="imageValidating" class="form-hint loading-hint">正在验证图片...</p>
-            <p v-else-if="imageValidated" class="form-hint success-hint">图片验证通过</p>
-            <p v-else class="form-hint">推荐尺寸 16:9，必须使用 HTTPS 链接，不支持 linux.do 图床</p>
-            
-            <!-- 图片预览 -->
-            <div v-if="imagePreviewUrl && !imageLoadError" class="image-preview">
-              <img :src="imagePreviewUrl" alt="图片预览" @error="onPreviewError" />
-            </div>
-          </div>
-        </div>
+        <ProductEditorForm
+          v-model="form"
+          v-model:desc-mode="descMode"
+          variant="edit"
+          :categories="categories"
+          :description-preview="descriptionPreview"
+          :errors="{ image: imageUrlError || imageLoadError }"
+          :image-validating="imageValidating"
+          :image-validated="imageValidated"
+          :image-load-error="imageLoadError"
+          :image-preview-url="imagePreviewUrl"
+          @validate-image="validateImageLoad"
+          @preview-error="onPreviewError"
+        />
         
         <!-- 物品类型（只读） -->
         <div class="form-card">
@@ -326,7 +223,8 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useShopStore } from '@/stores/shop'
+import { useCatalogStore } from '@/stores/catalog'
+import { useInventoryStore } from '@/stores/inventory'
 import { useToast } from '@/composables/useToast'
 import { useDialog } from '@/composables/useDialog'
 import { validateProductName, validateProductDescription, validatePrice } from '@/utils/security'
@@ -334,6 +232,17 @@ import { renderProductDescription } from '@/utils/renderProductDescription'
 import EmptyState from '@/components/common/EmptyState.vue'
 import SellerStickySummary from '@/components/seller/SellerStickySummary.vue'
 import PurchaseLimitSelector from '@/components/product/PurchaseLimitSelector.vue'
+import ProductEditorForm from '@/components/product-editor/ProductEditorForm.vue'
+import {
+  buildProductUpdatePayload,
+  createProductEditorFormState,
+  useProductEditor
+} from '@/composables/product-editor/useProductEditor'
+import {
+  hasExpectedProductState,
+  isUncertainMutationResult,
+  reconcileByPolling
+} from '@/composables/product-editor/useSubmissionReconciliation'
 import { Clock3, Image as ImageIcon } from '@lucide/vue'
 import {
   getProductType as resolveProductType,
@@ -341,15 +250,11 @@ import {
   isLegacyLinkProduct,
   isNormalProduct
 } from '@/utils/shopProduct'
-import {
-  MAX_PRODUCT_IMAGE_URL_LENGTH,
-  getProductImageUrlError,
-  preloadProductImage
-} from '@/utils/productImageValidation'
 
 const route = useRoute()
 const router = useRouter()
-const shopStore = useShopStore()
+const catalogStore = useCatalogStore()
+const inventoryStore = useInventoryStore()
 const toast = useToast()
 const dialog = useDialog()
 
@@ -358,17 +263,8 @@ const submitting = ref(false)
 const updateConfirming = ref(false)
 const descMode = ref('write')
 const product = ref(null)
-// 图片加载验证状态
-const imageValidating = ref(false)
-const imageValidated = ref(false)
-const imageLoadError = ref('')
-const imagePreviewUrl = ref('')
 const stockInput = ref(null)
 const maxPurchaseQuantityInput = ref(null)
-const lastValidatedUrl = ref('')
-let imageValidationSequence = 0
-let pendingImageValidation = null
-let pendingImageValidationUrl = ''
 const EDIT_SAVE_TIMEOUT_MS = 90000
 const EDIT_SAVE_STATUS_MAX_RETRIES = 8
 const EDIT_SAVE_STATUS_RETRY_INTERVAL_MS = 2000
@@ -381,22 +277,20 @@ const categories = ref([
 ])
 
 // 表单数据
-const form = ref({
-  name: '',
-  description: '',
-  categoryId: null,
-  price: '',
-  discount: 1,
-  imageUrl: '',
-  stock: '',
-  purchaseTrustLevel: 0,
-  sharedCdkEnabled: false,
-  sharedCdkCode: '',
-  purchaseLimitType: 'none',
-  maxPurchaseQuantity: '',
-  purchaseLimitPeriodDays: 0,
-  isTestMode: false
-})
+const form = ref(createProductEditorFormState())
+const {
+  errors: editorErrors,
+  finalPrice: editFinalPrice,
+  purchaseLimitSummary,
+  imageValidating,
+  imageValidated,
+  imageLoadError,
+  imagePreviewUrl,
+  lastValidatedUrl,
+  resetImageValidation,
+  validateImageLoad,
+  onPreviewError
+} = useProductEditor(form, { minimumStock: 0, requireCdkCodes: false })
 const purchaseTrustLevelOptions = [0, 1, 2, 3, 4]
 
 const updateBusy = computed(() => submitting.value || updateConfirming.value)
@@ -410,20 +304,7 @@ const editOverlayDescription = computed(() => {
 })
 
 const descriptionPreview = computed(() => renderProductDescription(form.value.description))
-const editFinalPrice = computed(() => Number(form.value.price || 0) * Number(form.value.discount || 1))
 const selectedCategoryName = computed(() => categories.value.find(category => Number(category.id) === Number(form.value.categoryId))?.name || '未选择分类')
-const purchaseLimitSummary = computed(() => {
-  if (getProductType(product.value) === 'cdk' && form.value.sharedCdkEnabled) return '每位用户永久累计 1 件'
-  const quantity = Number(form.value.maxPurchaseQuantity || 0)
-  if (form.value.purchaseLimitType === 'per_order' && quantity > 0) return `每单 ${quantity} 件`
-  if (form.value.purchaseLimitType === 'per_user' && quantity > 0) {
-    const periodDays = Number(form.value.purchaseLimitPeriodDays || 0)
-    return periodDays > 0
-      ? `每位用户最近 ${periodDays} 天 ${quantity} 件`
-      : `每位用户永久累计 ${quantity} 件`
-  }
-  return '不限制'
-})
 const submitButtonText = computed(() => {
   if (updateConfirming.value) return '正在确认保存结果...'
   if (submitting.value) return '保存中...'
@@ -435,10 +316,10 @@ const initialTestModeEnabled = computed(() => !!(product.value?.is_test_mode || 
 // 加载分类
 async function loadCategories() {
   try {
-    const result = await shopStore.fetchCategories()
-    if (result && result.length > 0) {
+    const result = await catalogStore.fetchCategories()
+    if (result.success && result.data.categories.length > 0) {
       // 过滤掉小店分类（小店入驻使用独立的小店集市）
-      categories.value = result
+      categories.value = result.data.categories
         .filter(cat => cat.name !== '小店' && cat.name !== '友情小店')
         .map(cat => ({
           id: cat.id,
@@ -451,47 +332,11 @@ async function loadCategories() {
   }
 }
 
-// 图片URL验证
-const imageUrlError = computed(() => {
-  return getProductImageUrlError(form.value.imageUrl) || null
-})
-
-// 图片预加载验证
-const stockError = computed(() => {
-  if (!isNormalProduct(product.value)) return ''
-  const raw = String(form.value.stock ?? '').trim()
-  if (!raw) return '请输入库存数量'
-  const value = Number(raw)
-  if (!Number.isInteger(value) || value < 0) return '库存必须是大于等于 0 的整数'
-  if (value > 1000000) return '库存不能超过 1000000'
-  return ''
-})
-
-const maxPurchaseQuantityError = computed(() => {
-  if (form.value.purchaseLimitType === 'none') return ''
-  const raw = String(form.value.maxPurchaseQuantity ?? '').trim()
-  if (!raw) return '请输入购买上限'
-  const value = Number(raw)
-  if (!Number.isInteger(value) || value < 1) return '购买上限必须是大于 0 的整数'
-  if (value > 1000) return '购买上限不能超过 1000'
-  return ''
-})
-
-const purchaseLimitPeriodDaysError = computed(() => {
-  if (form.value.purchaseLimitType !== 'per_user') return ''
-  const raw = String(form.value.purchaseLimitPeriodDays ?? '').trim()
-  if (!raw) return '请输入滚动周期'
-  const value = Number(form.value.purchaseLimitPeriodDays || 0)
-  if (value === 0) return ''
-  if (!Number.isInteger(value) || value < 1 || value > 365) return '滚动周期必须是 1-365 天之间的整数'
-  return ''
-})
-
-const sharedCdkCodeError = computed(() => {
-  if (getProductType(product.value) !== 'cdk' || !form.value.sharedCdkEnabled) return ''
-  const value = String(form.value.sharedCdkCode || '').trim()
-  return value ? '' : '请输入共享 CDK 卡密'
-})
+const imageUrlError = computed(() => editorErrors.value.imageUrl || null)
+const stockError = computed(() => isNormalProduct(product.value) ? editorErrors.value.stock : '')
+const maxPurchaseQuantityError = computed(() => editorErrors.value.maxPurchaseQuantity)
+const purchaseLimitPeriodDaysError = computed(() => editorErrors.value.purchaseLimitPeriodDays)
+const sharedCdkCodeError = computed(() => editorErrors.value.cdkCodes)
 
 // 共享卡密模式切换：与已保存模式不一致时弹确认（说明迁移/暂停语义），
 // 改回已保存模式（误触撤销）不弹窗
@@ -515,174 +360,16 @@ async function toggleSharedCdkMode() {
   }
 }
 
-function resetImageValidation() {
-  imageValidationSequence += 1
-  pendingImageValidation = null
-  pendingImageValidationUrl = ''
-  imageValidating.value = false
-  imageValidated.value = false
-  imageLoadError.value = ''
-  imagePreviewUrl.value = ''
-  lastValidatedUrl.value = ''
-}
-
-// 验证图片是否可加载
-async function validateImageLoad() {
-  const url = form.value.imageUrl?.trim()
-  
-  if (!url || imageUrlError.value) {
-    resetImageValidation()
-    return false
-  }
-  
-  if (url === lastValidatedUrl.value && imageValidated.value) return true
-  if (pendingImageValidation && pendingImageValidationUrl === url) {
-    return pendingImageValidation
-  }
-
-  const validationSequence = ++imageValidationSequence
-  pendingImageValidationUrl = url
-  imageValidating.value = true
-  imageValidated.value = false
-  imageLoadError.value = ''
-  imagePreviewUrl.value = ''
-
-  const validationPromise = (async () => {
-    try {
-      await preloadProductImage(url)
-      if (validationSequence !== imageValidationSequence || form.value.imageUrl?.trim() !== url) return false
-
-      imageValidated.value = true
-      imagePreviewUrl.value = url
-      lastValidatedUrl.value = url
-      return true
-    } catch (error) {
-      if (validationSequence !== imageValidationSequence || form.value.imageUrl?.trim() !== url) return false
-      imageLoadError.value = '图片无法加载，请检查链接是否有效'
-      lastValidatedUrl.value = ''
-      return false
-    } finally {
-      if (validationSequence === imageValidationSequence) {
-        imageValidating.value = false
-      }
-      if (pendingImageValidation === validationPromise) {
-        pendingImageValidation = null
-        pendingImageValidationUrl = ''
-      }
-    }
-  })()
-
-  pendingImageValidation = validationPromise
-  return validationPromise
-}
-
-// 预览图片加载失败
-function onPreviewError() {
-  imageValidationSequence += 1
-  imageLoadError.value = '图片加载失败，请检查链接是否有效'
-  imagePreviewUrl.value = ''
-  imageValidated.value = false
-  lastValidatedUrl.value = ''
-}
-
-function wait(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-function isUncertainUpdateResult(result) {
-  const status = Number(result?.status || 0)
-  const message = String(result?.error || '').toLowerCase()
-  if (status === 0) return true
-  return message.includes('超时')
-    || message.includes('网络')
-    || message.includes('failed to fetch')
-    || message.includes('network')
-    || message.includes('abort')
-}
-
-function hasExpectedProductState(latestProduct, expectedData, expectedType) {
-  if (!latestProduct) return false
-
-  const latestName = String(latestProduct.name || '').trim()
-  const latestDescription = String(latestProduct.description || '').trim()
-  const latestCategoryId = Number(latestProduct.category_id || latestProduct.categoryId || 0)
-  const latestPrice = Number(latestProduct.price || 0)
-  const latestDiscount = Number(latestProduct.discount || 1)
-  const latestImageUrl = String(latestProduct.image_url || latestProduct.imageUrl || '').trim()
-
-  const expectedName = String(expectedData.name || '').trim()
-  const expectedDescription = String(expectedData.description || '').trim()
-  const expectedCategoryId = Number(expectedData.categoryId || 0)
-  const expectedPrice = Number(expectedData.price || 0)
-  const expectedDiscount = Number(expectedData.discount || 1)
-  const expectedImageUrl = String(expectedData.imageUrl || '').trim()
-
-  const floatEquals = (a, b, epsilon = 1e-8) => Math.abs(Number(a || 0) - Number(b || 0)) <= epsilon
-
-  if (latestName !== expectedName) return false
-  if (latestDescription !== expectedDescription) return false
-  if (latestCategoryId !== expectedCategoryId) return false
-  if (!floatEquals(latestPrice, expectedPrice)) return false
-  if (!floatEquals(latestDiscount, expectedDiscount)) return false
-  if (latestImageUrl !== expectedImageUrl) return false
-
-  if (expectedType === 'normal') {
-    const latestStock = Number(latestProduct.stock || 0)
-    const expectedStock = Number(expectedData.stock || 0)
-    if (latestStock !== expectedStock) return false
-  }
-
-  const latestPurchaseTrustLevel = Number(
-    latestProduct.purchase_trust_level ?? latestProduct.purchaseTrustLevel ?? 0
-  )
-  const expectedPurchaseTrustLevel = Number(expectedData.purchaseTrustLevel || 0)
-  if (latestPurchaseTrustLevel !== expectedPurchaseTrustLevel) return false
-
-  const latestLimitConfig = latestProduct.purchase_limit_config || latestProduct.purchaseLimitConfig || {}
-  const latestLimitType = String(latestLimitConfig.mode || latestProduct.purchase_limit_type || latestProduct.purchaseLimitType || 'none')
-  const expectedLimitType = String(expectedData.purchaseLimitType || 'none')
-  if (latestLimitType !== expectedLimitType) return false
-  const latestLimit = Number(latestLimitConfig.quantity ?? latestProduct.max_purchase_quantity ?? latestProduct.maxPurchaseQuantity ?? 0)
-  const expectedLimit = Number(expectedData.maxPurchaseQuantity || 0)
-  if (latestLimit !== expectedLimit) return false
-  const latestLimitPeriodDays = Number(
-    latestLimitConfig.periodDays
-      ?? latestLimitConfig.period_days
-      ?? latestProduct.purchase_limit_period_days
-      ?? latestProduct.purchaseLimitPeriodDays
-      ?? 0
-  )
-  const expectedLimitPeriodDays = Number(expectedData.purchaseLimitPeriodDays || 0)
-  if (latestLimitPeriodDays !== expectedLimitPeriodDays) return false
-
-  if (expectedType === 'cdk') {
-    const latestSharedCdkEnabled = !!(latestProduct.sharedCdkEnabled || Number(latestProduct.shared_cdk_enabled || 0) === 1)
-    const expectedSharedCdkEnabled = !!expectedData.sharedCdkEnabled
-    if (latestSharedCdkEnabled !== expectedSharedCdkEnabled) return false
-
-    const latestSharedCdkCode = String(latestProduct.shared_cdk_code || latestProduct.sharedCdkCode || '')
-    const expectedSharedCdkCode = String(expectedData.sharedCdkCode || '')
-    if (latestSharedCdkCode !== expectedSharedCdkCode) return false
-
-    const latestTestMode = !!(latestProduct.is_test_mode || latestProduct.isTestMode)
-    const expectedTestMode = !!expectedData.isTestMode
-    if (latestTestMode !== expectedTestMode) return false
-  }
-
-  return true
-}
-
 async function pollUpdateResult(productId, expectedData, expectedType) {
-  for (let i = 0; i < EDIT_SAVE_STATUS_MAX_RETRIES; i += 1) {
-    const latestProduct = await shopStore.fetchMyProductDetail(productId)
-    if (hasExpectedProductState(latestProduct, expectedData, expectedType)) {
-      return { confirmed: true, product: latestProduct }
-    }
-    if (i < EDIT_SAVE_STATUS_MAX_RETRIES - 1) {
-      await wait(EDIT_SAVE_STATUS_RETRY_INTERVAL_MS)
-    }
-  }
-  return { confirmed: false, product: null }
+  const result = await reconcileByPolling(
+    async () => {
+      const latestResult = await inventoryStore.fetchProductDetail(productId)
+      return latestResult.success ? latestResult.data.product : null
+    },
+    latestProduct => hasExpectedProductState(latestProduct, expectedData, expectedType),
+    { retries: EDIT_SAVE_STATUS_MAX_RETRIES, intervalMs: EDIT_SAVE_STATUS_RETRY_INTERVAL_MS }
+  )
+  return { confirmed: result.confirmed, product: result.value }
 }
 
 async function confirmUpdateAfterUncertainResult(productId, expectedData, expectedType) {
@@ -750,17 +437,20 @@ async function loadProduct() {
   try {
     loading.value = true
     const productId = route.params.id
-    product.value = await shopStore.fetchMyProductDetail(productId)
+    const result = await inventoryStore.fetchProductDetail(productId)
+    product.value = result.success ? result.data.product : null
     
     if (product.value) {
       // 填充表单，处理多种字段名格式
       form.value = {
+        ...createProductEditorFormState(),
         name: product.value.name || '',
         description: product.value.description || '',
         categoryId: product.value.category_id || product.value.categoryId || null,
         price: product.value.price || '',
         discount: product.value.discount || 1,
         imageUrl: product.value.image_url || product.value.imageUrl || '',
+        productType: getProductType(product.value),
         stock: Number(product.value.stock ?? 0),
         purchaseTrustLevel: Number(
           product.value.purchase_trust_level ?? product.value.purchaseTrustLevel ?? 0
@@ -907,41 +597,16 @@ async function submitForm() {
   submitting.value = true
   
   try {
-    // 构建更新数据（与客户端脚本保持一致）
-    const updateData = {
-      name: form.value.name.trim(),
-      categoryId: form.value.categoryId,
-      description: form.value.description.trim(),
-      price: parseFloat(form.value.price),
-      discount: parseFloat(form.value.discount) || 1,
-      imageUrl,
-      purchaseTrustLevel: Number(form.value.purchaseTrustLevel) || 0,
-      purchaseLimitType: form.value.purchaseLimitType,
-      maxPurchaseQuantity: form.value.purchaseLimitType === 'none'
-        ? 0
-        : Number(form.value.maxPurchaseQuantity),
-      purchaseLimitPeriodDays: form.value.purchaseLimitType === 'per_user'
-        ? Number(form.value.purchaseLimitPeriodDays || 0)
-        : 0
-    }
-    
-    // 类型特定数据
-    if (productType === 'normal') {
-      updateData.stock = Number(form.value.stock)
-    } else if (productType === 'cdk') {
-      updateData.sharedCdkEnabled = form.value.sharedCdkEnabled
-      updateData.sharedCdkCode = form.value.sharedCdkEnabled ? form.value.sharedCdkCode.trim() : ''
-      if (initialTestModeEnabled.value) {
-        updateData.isTestMode = form.value.isTestMode
-      }
-    }
+    const updateData = buildProductUpdatePayload(form.value, productType, {
+      includeTestMode: initialTestModeEnabled.value
+    })
     
     // 更新物品
-    const result = await shopStore.updateProduct(product.value.id, updateData, { timeout: EDIT_SAVE_TIMEOUT_MS })
+    const result = await inventoryStore.updateProduct(product.value.id, updateData, { timeout: EDIT_SAVE_TIMEOUT_MS })
     
     // 检查返回结果
     if (result?.success === false) {
-      if (isUncertainUpdateResult(result)) {
+      if (isUncertainMutationResult(result)) {
         await confirmUpdateAfterUncertainResult(product.value.id, updateData, productType)
         return
       }
@@ -1066,7 +731,7 @@ watch(
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .back-btn:hover {
@@ -1144,7 +809,7 @@ watch(
 
 .desc-mode-tab.active {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--palette-hex-ffffff);
   font-weight: 600;
 }
 
@@ -1281,7 +946,7 @@ watch(
   font-size: 14px;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .category-btn:hover {
@@ -1353,10 +1018,10 @@ watch(
   left: 2px;
   width: 20px;
   height: 20px;
-  background: #fff;
+  background: var(--palette-hex-ffffff);
   border-radius: 50%;
   transition: transform 0.2s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px var(--palette-rgba-0-0-0-0p1);
 }
 
 .toggle-track.active .toggle-thumb {
@@ -1431,14 +1096,14 @@ watch(
   max-width: 568px;
   margin: 0 auto;
   padding: 16px 32px;
-  background: linear-gradient(135deg, #a5b4a3 0%, #95a493 100%);
+  background: linear-gradient(135deg, var(--palette-hex-a5b4a3) 0%, var(--palette-hex-95a493) 100%);
   border: none;
   border-radius: 14px;
   font-size: 16px;
   font-weight: 600;
-  color: white;
+  color: var(--palette-hex-ffffff);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .submit-btn:hover:not(:disabled) {
@@ -1460,7 +1125,7 @@ watch(
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: var(--overlay-bg, rgba(24, 28, 34, 0.45));
+  background: var(--overlay-bg, var(--palette-rgba-24-28-34-0p45));
   backdrop-filter: blur(2px);
 }
 
@@ -1480,7 +1145,7 @@ watch(
   height: 44px;
   margin: 0 auto 14px;
   border-radius: 50%;
-  border: 3px solid rgba(126, 179, 126, 0.25);
+  border: 3px solid var(--palette-rgba-126-179-126-0p25);
   border-top-color: var(--color-success);
   animation: submit-mask-spin 0.8s linear infinite;
 }

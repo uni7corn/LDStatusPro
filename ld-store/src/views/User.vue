@@ -211,7 +211,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useShopStore } from '@/stores/shop'
+import { useCatalogStore } from '@/stores/catalog'
 import { useUserStore } from '@/stores/user'
 import AvatarImage from '@/components/common/AvatarImage.vue'
 import { useDialog } from '@/composables/useDialog'
@@ -240,7 +240,7 @@ const otherLinks = [
 
 const router = useRouter()
 const userStore = useUserStore()
-const shopStore = useShopStore()
+const catalogStore = useCatalogStore()
 const dialog = useDialog()
 const toast = useToast()
 
@@ -353,13 +353,13 @@ async function loadDashboard() {
   dashboardLoading.value = true
   dashboardError.value = ''
   try {
-    const result = await shopStore.fetchUserDashboard()
-    if (result) {
-      dashboard.value = result
+    const result = await catalogStore.fetchUserDashboard()
+    if (result.success) {
+      dashboard.value = result.data
       return
     }
     dashboard.value = null
-    dashboardError.value = shopStore.consumeLastError?.() || '个人统计加载失败，请稍后重试'
+    dashboardError.value = result.error || '个人统计加载失败，请稍后重试'
   } catch (error) {
     dashboard.value = null
     dashboardError.value = error.message || '个人统计加载失败，请稍后重试'
@@ -392,90 +392,90 @@ async function handleLogout() {
   padding-bottom: 80px;
   background: var(--bg-primary);
   color-scheme: light;
-  --user-card-border: #dfd6ca;
-  --user-card-bg: #fcfaf6;
-  --user-card-shadow: 0 14px 32px rgba(61, 61, 61, 0.06);
-  --user-subtle-bg: #f5f3ef;
-  --user-subtle-strong-bg: #f0ede8;
-  --user-subtle-border: #e4dbcf;
-  --user-hover-border: #cad6cb;
-  --user-hover-shadow: 0 10px 22px rgba(61, 61, 61, 0.06);
-  --user-balance-border: #e5ddd1;
-  --user-balance-bg: #faf8f5;
-  --user-empty-bg: #f8f5ef;
-  --user-track-bg: #e7dfd3;
-  --user-accent-expense: #b7aa9b;
-  --user-accent-income: #7f9681;
-  --user-badge-bg: #f0ece6;
-  --user-badge-border: #e1d8cc;
-  --user-badge-primary-bg: #edf2ea;
-  --user-badge-primary-border: #d4ded0;
-  --user-badge-primary-text: #617862;
-  --user-balance-amount: #a57950;
-  --user-balance-accent: #738a76;
-  --user-avatar-border: rgba(255, 255, 255, 0.92);
-  --user-avatar-shadow: 0 10px 24px rgba(61, 61, 61, 0.12);
-  --user-tone-sage: #eef3ed;
-  --user-tone-stone: #f2ede7;
-  --user-tone-gold: #f5eee3;
-  --user-tone-moss: #eaf1ea;
-  --user-option-active-text: #5f7565;
-  --user-option-active-bg: #edf2ea;
-  --user-switch-shell-bg: #f7f3ec;
-  --user-switch-shell-accent-bg: #f4f0e9;
-  --user-skeleton-bg: #e2e8f0;
-  --user-skeleton-shine: rgba(255, 255, 255, 0.68);
-  --user-menu-bg: #fcfaf6;
-  --user-menu-hover-bg: #f4f0e9;
-  --user-menu-border: #e4dbcf;
-  --user-logout-bg: #fcfaf6;
-  --avatar-surface-bg: #dfe3e8;
-  --avatar-placeholder-bg: #f2f0ed;
-  --avatar-shimmer-bg: linear-gradient(100deg, transparent 18%, rgba(255, 255, 255, 0.52) 50%, transparent 82%);
+  --user-card-border: var(--palette-hex-dfd6ca);
+  --user-card-bg: var(--palette-hex-fcfaf6);
+  --user-card-shadow: 0 14px 32px var(--palette-rgba-61-61-61-0p06);
+  --user-subtle-bg: var(--palette-hex-f5f3ef);
+  --user-subtle-strong-bg: var(--palette-hex-f0ede8);
+  --user-subtle-border: var(--palette-hex-e4dbcf);
+  --user-hover-border: var(--palette-hex-cad6cb);
+  --user-hover-shadow: 0 10px 22px var(--palette-rgba-61-61-61-0p06);
+  --user-balance-border: var(--palette-hex-e5ddd1);
+  --user-balance-bg: var(--palette-hex-faf8f5);
+  --user-empty-bg: var(--palette-hex-f8f5ef);
+  --user-track-bg: var(--palette-hex-e7dfd3);
+  --user-accent-expense: var(--palette-hex-b7aa9b);
+  --user-accent-income: var(--palette-hex-7f9681);
+  --user-badge-bg: var(--palette-hex-f0ece6);
+  --user-badge-border: var(--palette-hex-e1d8cc);
+  --user-badge-primary-bg: var(--palette-hex-edf2ea);
+  --user-badge-primary-border: var(--palette-hex-d4ded0);
+  --user-badge-primary-text: var(--palette-hex-617862);
+  --user-balance-amount: var(--palette-hex-a57950);
+  --user-balance-accent: var(--palette-hex-738a76);
+  --user-avatar-border: var(--palette-rgba-255-255-255-0p92);
+  --user-avatar-shadow: 0 10px 24px var(--palette-rgba-61-61-61-0p12);
+  --user-tone-sage: var(--palette-hex-eef3ed);
+  --user-tone-stone: var(--palette-hex-f2ede7);
+  --user-tone-gold: var(--palette-hex-f5eee3);
+  --user-tone-moss: var(--palette-hex-eaf1ea);
+  --user-option-active-text: var(--palette-hex-5f7565);
+  --user-option-active-bg: var(--palette-hex-edf2ea);
+  --user-switch-shell-bg: var(--palette-hex-f7f3ec);
+  --user-switch-shell-accent-bg: var(--palette-hex-f4f0e9);
+  --user-skeleton-bg: var(--palette-hex-e2e8f0);
+  --user-skeleton-shine: var(--palette-rgba-255-255-255-0p68);
+  --user-menu-bg: var(--palette-hex-fcfaf6);
+  --user-menu-hover-bg: var(--palette-hex-f4f0e9);
+  --user-menu-border: var(--palette-hex-e4dbcf);
+  --user-logout-bg: var(--palette-hex-fcfaf6);
+  --avatar-surface-bg: var(--palette-hex-dfe3e8);
+  --avatar-placeholder-bg: var(--palette-hex-f2f0ed);
+  --avatar-shimmer-bg: linear-gradient(100deg, transparent 18%, var(--palette-rgba-255-255-255-0p52) 50%, transparent 82%);
 }
 
 :global(html.dark .user-page) {
   color-scheme: dark;
-  --user-card-border: #302a24;
-  --user-card-bg: #1f1b18;
-  --user-card-shadow: 0 18px 42px rgba(0, 0, 0, 0.26);
-  --user-subtle-bg: #2b2520;
-  --user-subtle-strong-bg: #302923;
-  --user-subtle-border: #302a24;
-  --user-hover-border: #424443;
-  --user-hover-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
-  --user-balance-border: #302a24;
-  --user-balance-bg: #29231e;
-  --user-empty-bg: #261c1c;
-  --user-track-bg: #41372f;
-  --user-accent-expense: #c5b8a8;
-  --user-accent-income: #8fb090;
-  --user-badge-bg: #38312a;
-  --user-badge-border: #302a24;
-  --user-badge-primary-bg: #2f322a;
-  --user-badge-primary-border: #33362e;
-  --user-badge-primary-text: #cfe0cf;
-  --user-balance-amount: #dfb27a;
-  --user-balance-accent: #a7c4aa;
-  --user-avatar-border: #352e24;
-  --user-avatar-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
-  --user-tone-sage: #2e342a;
-  --user-tone-stone: #393029;
-  --user-tone-gold: #423523;
-  --user-tone-moss: #2e362b;
-  --user-option-active-text: #d7ead3;
-  --user-option-active-bg: #2f322a;
-  --user-switch-shell-bg: #372f28;
-  --user-switch-shell-accent-bg: #3c342c;
-  --user-skeleton-bg: #413931;
-  --user-skeleton-shine: rgba(255, 255, 255, 0.08);
-  --user-menu-bg: #221d19;
-  --user-menu-hover-bg: #312a24;
-  --user-menu-border: #302a24;
-  --user-logout-bg: #1f1b18;
-  --avatar-surface-bg: #2c2a26;
-  --avatar-placeholder-bg: #2a2521;
-  --avatar-shimmer-bg: linear-gradient(100deg, transparent 18%, rgba(255, 255, 255, 0.14) 50%, transparent 82%);
+  --user-card-border: var(--palette-hex-302a24);
+  --user-card-bg: var(--palette-hex-1f1b18);
+  --user-card-shadow: 0 18px 42px var(--palette-rgba-0-0-0-0p26);
+  --user-subtle-bg: var(--palette-hex-2b2520);
+  --user-subtle-strong-bg: var(--palette-hex-302923);
+  --user-subtle-border: var(--palette-hex-302a24);
+  --user-hover-border: var(--palette-hex-424443);
+  --user-hover-shadow: 0 12px 28px var(--palette-rgba-0-0-0-0p24);
+  --user-balance-border: var(--palette-hex-302a24);
+  --user-balance-bg: var(--palette-hex-29231e);
+  --user-empty-bg: var(--palette-hex-261c1c);
+  --user-track-bg: var(--palette-hex-41372f);
+  --user-accent-expense: var(--palette-hex-c5b8a8);
+  --user-accent-income: var(--palette-hex-8fb090);
+  --user-badge-bg: var(--palette-hex-38312a);
+  --user-badge-border: var(--palette-hex-302a24);
+  --user-badge-primary-bg: var(--palette-hex-2f322a);
+  --user-badge-primary-border: var(--palette-hex-33362e);
+  --user-badge-primary-text: var(--palette-hex-cfe0cf);
+  --user-balance-amount: var(--palette-hex-dfb27a);
+  --user-balance-accent: var(--palette-hex-a7c4aa);
+  --user-avatar-border: var(--palette-hex-352e24);
+  --user-avatar-shadow: 0 12px 28px var(--palette-rgba-0-0-0-0p28);
+  --user-tone-sage: var(--palette-hex-2e342a);
+  --user-tone-stone: var(--palette-hex-393029);
+  --user-tone-gold: var(--palette-hex-423523);
+  --user-tone-moss: var(--palette-hex-2e362b);
+  --user-option-active-text: var(--palette-hex-d7ead3);
+  --user-option-active-bg: var(--palette-hex-2f322a);
+  --user-switch-shell-bg: var(--palette-hex-372f28);
+  --user-switch-shell-accent-bg: var(--palette-hex-3c342c);
+  --user-skeleton-bg: var(--palette-hex-413931);
+  --user-skeleton-shine: var(--palette-rgba-255-255-255-0p08);
+  --user-menu-bg: var(--palette-hex-221d19);
+  --user-menu-hover-bg: var(--palette-hex-312a24);
+  --user-menu-border: var(--palette-hex-302a24);
+  --user-logout-bg: var(--palette-hex-1f1b18);
+  --avatar-surface-bg: var(--palette-hex-2c2a26);
+  --avatar-placeholder-bg: var(--palette-hex-2a2521);
+  --avatar-shimmer-bg: linear-gradient(100deg, transparent 18%, var(--palette-rgba-255-255-255-0p14) 50%, transparent 82%);
 }
 
 .page-container {
@@ -569,7 +569,7 @@ async function handleLogout() {
 .distribution-item,
 .panel-title-trigger,
 .panel-title-option {
-  transition: all 0.2s ease;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .trust-chip,
@@ -588,75 +588,75 @@ async function handleLogout() {
 }
 
 .trust-chip.trust-unknown {
-  color: #667085;
-  background: #eef1f5;
-  border-color: #d8dee7;
+  color: var(--palette-hex-667085);
+  background: var(--palette-hex-eef1f5);
+  border-color: var(--palette-hex-d8dee7);
 }
 
 .trust-chip.trust-new {
-  color: #7b6c5f;
-  background: #f2ebe2;
-  border-color: #dfd3c5;
+  color: var(--palette-hex-7b6c5f);
+  background: var(--palette-hex-f2ebe2);
+  border-color: var(--palette-hex-dfd3c5);
 }
 
 .trust-chip.trust-basic {
-  color: #6d7b66;
-  background: #edf2ea;
-  border-color: #d4ded0;
+  color: var(--palette-hex-6d7b66);
+  background: var(--palette-hex-edf2ea);
+  border-color: var(--palette-hex-d4ded0);
 }
 
 .trust-chip.trust-mid {
-  color: #617a71;
-  background: #e7efeb;
-  border-color: #d0ddd7;
+  color: var(--palette-hex-617a71);
+  background: var(--palette-hex-e7efeb);
+  border-color: var(--palette-hex-d0ddd7);
 }
 
 .trust-chip.trust-high {
-  color: #587168;
-  background: #e2ebe7;
-  border-color: #c4d4ce;
+  color: var(--palette-hex-587168);
+  background: var(--palette-hex-e2ebe7);
+  border-color: var(--palette-hex-c4d4ce);
 }
 
 .trust-chip.trust-elite {
-  color: #4e685f;
-  background: #dce7e3;
-  border-color: #bfcec8;
+  color: var(--palette-hex-4e685f);
+  background: var(--palette-hex-dce7e3);
+  border-color: var(--palette-hex-bfcec8);
 }
 
 :global(html.dark .user-page .trust-chip.trust-unknown) {
-  color: #d7dce4;
-  background: #2f3134;
-  border-color: #343026;
+  color: var(--palette-hex-d7dce4);
+  background: var(--palette-hex-2f3134);
+  border-color: var(--palette-hex-343026);
 }
 
 :global(html.dark .user-page .trust-chip.trust-new) {
-  color: #ecd4b8;
-  background: #413427;
-  border-color: #3a3022;
+  color: var(--palette-hex-ecd4b8);
+  background: var(--palette-hex-413427);
+  border-color: var(--palette-hex-3a3022);
 }
 
 :global(html.dark .user-page .trust-chip.trust-basic) {
-  color: #d7ead3;
-  background: #343b2e;
-  border-color: #33362e;
+  color: var(--palette-hex-d7ead3);
+  background: var(--palette-hex-343b2e);
+  border-color: var(--palette-hex-33362e);
 }
 
 :global(html.dark .user-page .trust-chip.trust-mid) {
-  color: #d3ebe3;
-  background: #323b36;
-  border-color: #323530;
+  color: var(--palette-hex-d3ebe3);
+  background: var(--palette-hex-323b36);
+  border-color: var(--palette-hex-323530);
 }
 
 :global(html.dark .user-page .trust-chip.trust-high) {
-  color: #d6ede3;
-  background: #323b34;
-  border-color: #333530;
+  color: var(--palette-hex-d6ede3);
+  background: var(--palette-hex-323b34);
+  border-color: var(--palette-hex-333530);
 }
 
 :global(html.dark .user-page .trust-chip.trust-elite) {
-  color: #d6f0e6;
-  background: #313833;
-  border-color: #333631;
+  color: var(--palette-hex-d6f0e6);
+  background: var(--palette-hex-313833);
+  border-color: var(--palette-hex-333631);
 }
 
 .badges {
@@ -909,7 +909,7 @@ async function handleLogout() {
 }
 
 .switch-btn.active {
-  color: #fff;
+  color: var(--palette-hex-ffffff);
   background: var(--user-accent-income);
   box-shadow: none;
 }

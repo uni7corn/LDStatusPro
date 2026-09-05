@@ -6,6 +6,8 @@ const DEFAULT_TITLE = 'LD士多 - Linux DO 社区积分兑换中心'
 const DEFAULT_DESCRIPTION = '在 LD士多 使用 Linux.do 社区积分兑换精选虚拟物品与服务。'
 const HTML_CACHE_CONTROL = 'no-store, no-cache, must-revalidate'
 const OEMBED_CACHE_CONTROL = 'public, max-age=300, stale-while-revalidate=3600'
+export const NOINDEX_POLICY = 'noindex, nofollow, noarchive'
+export const STOREFRONT_CSP = "default-src 'self'; script-src 'self' https://mxana.tacool.com https://static.cloudflareinsights.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' https: data: blob:; font-src 'self' https: data:; connect-src 'self' https://api2.ldspro.qzz.io https://api1.ldspro.qzz.io https://api.ldspro.qzz.io https://credit.linux.do https://linux.do https://*.linux.do https://*.workers.dev; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 
 const DYNAMIC_ROUTES = [
   { pattern: /^\/product\/\d+\/?$/, label: '商品', fallbackTitle: '商品详情 - LD士多', fallbackDescription: '在 LD士多 查看商品详情、价格与兑换方式。' },
@@ -17,6 +19,7 @@ const DYNAMIC_ROUTES = [
 ]
 
 const STATIC_ROUTES = [
+  { pattern: /^\/announcements(?:\/[1-9]\d*)?\/?$/, title: '公告中心 - LD士多', description: '查看 LD士多 平台动态、公告与规则。' },
   { pattern: /^\/$/, title: DEFAULT_TITLE, description: DEFAULT_DESCRIPTION },
   { pattern: /^\/search\/?$/, title: '搜索 - LD士多', description: '搜索 LD士多 中的公开商品与服务。' },
   { pattern: /^\/docs(?:\/[^/]+)?\/?$/, title: '使用文档 - LD士多', description: '查看 LD士多 的购买、发布、交付与售后使用指南。' },
@@ -306,7 +309,7 @@ export function injectMetadataIntoHtml(html, metadata, env = {}) {
   let output = html
   output = upsertTitle(output, metadata.title)
   output = upsertMetaByName(output, 'description', metadata.description)
-  output = upsertMetaByName(output, 'robots', 'noindex, nofollow, noarchive')
+  output = upsertMetaByName(output, 'robots', NOINDEX_POLICY)
   output = upsertCanonical(output, metadata.url)
 
   output = upsertMetaByProperty(output, 'og:title', metadata.title)
@@ -394,7 +397,8 @@ function imageResponse(buffer, { cacheControl, isHead = false } = {}) {
       'cache-control': cacheControl || 'public, max-age=300',
       'access-control-allow-origin': '*',
       'cross-origin-resource-policy': 'cross-origin',
-      'x-content-type-options': 'nosniff'
+      'x-content-type-options': 'nosniff',
+      'x-robots-tag': NOINDEX_POLICY
     }
   })
 }
@@ -433,7 +437,11 @@ export async function handleOgImage(request, env, context = {}) {
   if (!parsed) {
     return new Response(request.method === 'HEAD' ? null : 'Not Found', {
       status: 404,
-      headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' }
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+        'cache-control': 'no-store',
+        'x-robots-tag': NOINDEX_POLICY
+      }
     })
   }
 
@@ -475,7 +483,11 @@ export async function handleOgImage(request, env, context = {}) {
   if (fallback) return imageResponse(fallback, { cacheControl: 'public, max-age=300, s-maxage=300', isHead: request.method === 'HEAD' })
   return new Response(request.method === 'HEAD' ? null : 'Open Graph image unavailable', {
     status: 502,
-    headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' }
+    headers: {
+      'content-type': 'text/plain; charset=utf-8',
+      'cache-control': 'no-store',
+      'x-robots-tag': NOINDEX_POLICY
+    }
   })
 }
 
@@ -520,7 +532,7 @@ function jsonResponse(body, status = 200, cacheControl = OEMBED_CACHE_CONTROL, i
       'content-type': 'application/json; charset=utf-8',
       'cache-control': cacheControl,
       'x-content-type-options': 'nosniff',
-      'x-robots-tag': 'noindex, nofollow, noarchive'
+      'x-robots-tag': NOINDEX_POLICY
     }
   })
 }
@@ -572,7 +584,8 @@ async function handleHtmlRequest(request, env) {
   const headers = new Headers(assetResponse.headers)
   headers.set('content-type', 'text/html; charset=utf-8')
   headers.set('cache-control', HTML_CACHE_CONTROL)
-  headers.set('x-robots-tag', 'noindex, nofollow, noarchive')
+  headers.set('content-security-policy', STOREFRONT_CSP)
+  headers.set('x-robots-tag', NOINDEX_POLICY)
   headers.delete('content-length')
   const status = metadata.notFound ? 404 : 200
   return new Response(request.method === 'HEAD' ? null : rewritten, { status, headers })
@@ -595,7 +608,11 @@ export default {
         if (contentType.includes('text/html') && /\.[a-zA-Z0-9]+$/.test(url.pathname)) {
           return new Response(request.method === 'HEAD' ? null : 'Not Found', {
             status: 404,
-            headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' }
+            headers: {
+              'content-type': 'text/plain; charset=utf-8',
+              'cache-control': 'no-store',
+              'x-robots-tag': NOINDEX_POLICY
+            }
           })
         }
       }

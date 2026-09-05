@@ -12,6 +12,9 @@
     <h2 id="normal-product">普通物品</h2>
     <HelpPath :items="[{ label: '卖家后台', to: '/seller' }, { label: '发布物品', to: '/seller/products/new' }, { label: '普通物品' }]" />
     <p>适合代办服务、人工交付的数字内容或其他需要卖家确认的物品。买家支付后，订单通常进入待发货，卖家在订单页填写交付说明并完成履约。</p>
+    <HelpCallout title="选择普通物品即接受 72 小时履约规则" tone="warning">
+      支付 48 小时后仍未发货，物品会被下架；72 小时后系统自动发起实付全额退款。积压订单解决前不能重新上架。<router-link to="/docs/shipping-deadline">查看发货时限与处罚规则</router-link>
+    </HelpCallout>
 
     <h2 id="independent-cdk">独立卡密：逐条消耗库存</h2>
     <ul>

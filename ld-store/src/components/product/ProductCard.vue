@@ -40,21 +40,22 @@
     <!-- 商品图片 -->
     <div class="product-cover" :style="coverStyle">
       <!-- 骨架屏占位 -->
-      <div v-if="product.image_url && !imageLoaded" class="cover-skeleton">
+      <div v-if="product.imageUrl && !imageLoaded" class="cover-skeleton">
         <div class="skeleton-shimmer"></div>
       </div>
       <img
-        v-if="product.image_url"
-        :src="product.image_url"
+        v-if="product.imageUrl"
+        :src="product.imageUrl"
         :alt="product.name"
         :class="['cover-image', { loaded: imageLoaded }]"
-        loading="lazy"
+        :loading="imageLoading"
+        :fetchpriority="fetchPriority"
         @load="handleImageLoad"
         @error="handleImageError"
       />
       <component
         :is="categoryIconComponent"
-        v-if="!product.image_url"
+        v-if="!product.imageUrl"
         :size="52"
         :stroke-width="1.6"
         aria-hidden="true"
@@ -81,7 +82,7 @@
       <div class="product-seller">
         <template v-if="isStore">
           <span class="store-owner-label">店主：</span>
-          <span class="seller-name">{{ product.seller_username || '匿名' }}</span>
+          <span class="seller-name">{{ product.sellerUsername || '匿名' }}</span>
         </template>
         <template v-else>
           <AvatarImage
@@ -91,7 +92,7 @@
             alt=""
             class="seller-avatar"
           />
-          <span class="seller-name">{{ product.seller_username || '匿名' }}</span>
+          <span class="seller-name">{{ product.sellerUsername || '匿名' }}</span>
           <span v-if="isPlatformOrder && soldCount > 0" class="sold-count">已售{{ soldCount }}</span>
         </template>
       </div>
@@ -128,7 +129,7 @@ import {
   TestTube2,
   Wrench
 } from '@lucide/vue'
-import { useShopStore } from '@/stores/shop'
+import { useProductStore } from '@/stores/product'
 import AvatarImage from '@/components/common/AvatarImage.vue'
 import { formatCompactCount, formatNumber, formatRelativeTime, formatPrice } from '@/utils/format'
 import { buildAvatarCandidates } from '@/utils/avatar'
@@ -153,11 +154,21 @@ const props = defineProps({
   categories: {
     type: Array,
     default: () => []
+  },
+  imageLoading: {
+    type: String,
+    default: 'lazy',
+    validator: (value) => ['eager', 'lazy'].includes(value)
+  },
+  fetchPriority: {
+    type: String,
+    default: 'auto',
+    validator: (value) => ['high', 'auto', 'low'].includes(value)
   }
 })
 
-const shopStore = useShopStore()
-const isBlocked = computed(() => shopStore.isProductBlocked(props.product.id))
+const productStore = useProductStore()
+const isBlocked = computed(() => productStore.isProductBlocked(props.product.id))
 
 
 // 图片加载状态
@@ -180,7 +191,7 @@ let currentY = 0
 let targetX = 0
 let targetY = 0
 let currentScale = 1
-let currentShadow = 0 // 阴影强度 0-1
+let currentGlareOpacity = 0
 let animationFrame = null
 let resetTimer = null
 let impressionTimer = null
@@ -201,7 +212,7 @@ function setupImpressionObserver() {
   impressionTimer = null
   impressionRecorded = false
   const element = cardElement()
-  const token = props.product?.discovery_token || props.product?.discoveryToken
+  const token = props.product?.discoveryToken
   if (!element || !token || typeof IntersectionObserver === 'undefined') return
   impressionObserver = new IntersectionObserver((entries) => {
     const visible = entries.some((entry) => entry.isIntersecting && entry.intersectionRatio >= 0.5)
@@ -222,7 +233,7 @@ function setupImpressionObserver() {
   impressionObserver.observe(element)
 }
 onMounted(setupImpressionObserver)
-watch(() => props.product?.discovery_token || props.product?.discoveryToken, setupImpressionObserver, { flush: 'post' })
+watch(() => props.product?.discoveryToken, setupImpressionObserver, { flush: 'post' })
 
 function lerp(start, end, factor) {
   return start + (end - start) * factor
@@ -234,25 +245,13 @@ function updateTilt() {
   currentX = lerp(currentX, targetX, 0.08)
   currentY = lerp(currentY, targetY, 0.08)
   currentScale = lerp(currentScale, scale, 0.06)
-  currentShadow = lerp(currentShadow, 1, 0.05) // 阴影缓慢增强
+  currentGlareOpacity = lerp(currentGlareOpacity, 1, 0.05)
   
   const rotateX = currentY * maxTilt
   const rotateY = -currentX * maxTilt
   
-  // 计算阴影偏移（基于倾斜方向）
-  const shadowX = -currentX * 8
-  const shadowY = currentY * 8 + 15
-  const shadowBlur = 20 + currentShadow * 25
-  const shadowConfig = getCardShadowConfig()
-  const shadowAlpha = shadowConfig.primaryBase + currentShadow * shadowConfig.primaryBoost
-  const liftY = shadowConfig.secondaryBaseY + currentShadow * shadowConfig.secondaryBoostY
-  const liftBlur = shadowConfig.secondaryBaseBlur + currentShadow * shadowConfig.secondaryBoostBlur
-  const liftAlpha = shadowConfig.secondaryBaseAlpha + currentShadow * shadowConfig.secondaryBoostAlpha
-  const accentShadow = shadowConfig.accentShadow ? `, ${shadowConfig.accentShadow}` : ''
-  
   tiltStyle.value = {
     transform: `perspective(${perspective}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(${currentScale}, ${currentScale}, ${currentScale})`,
-    boxShadow: `${shadowX}px ${shadowY}px ${shadowBlur}px rgba(${shadowConfig.primaryRgb}, ${shadowAlpha.toFixed(3)}), 0 ${liftY}px ${liftBlur}px rgba(${shadowConfig.secondaryRgb}, ${liftAlpha.toFixed(3)})${accentShadow}`,
     willChange: 'transform'
   }
   
@@ -260,8 +259,8 @@ function updateTilt() {
   const glareX = (currentX + 1) * 50
   const glareY = (currentY + 1) * 50
   glareStyle.value = {
-    background: `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255,255,255,0.25) 0%, transparent 60%)`,
-    opacity: currentShadow
+    background: `radial-gradient(circle at ${glareX}% ${glareY}%, var(--palette-rgba-255-255-255-0p25) 0%, transparent 60%)`,
+    opacity: currentGlareOpacity
   }
   
   animationFrame = requestAnimationFrame(updateTilt)
@@ -295,12 +294,11 @@ function handleMouseLeave() {
   targetX = 0
   targetY = 0
   currentScale = 1
-  currentShadow = 0
+  currentGlareOpacity = 0
   
   tiltStyle.value = {
     transform: `perspective(${perspective}px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`,
-    boxShadow: getCardShadowConfig().restingShadow,
-    transition: `transform ${speed}ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow ${speed}ms cubic-bezier(0.23, 1, 0.32, 1)`
+    transition: `transform ${speed}ms cubic-bezier(0.23, 1, 0.32, 1)`
   }
   glareStyle.value = { opacity: 0 }
 
@@ -323,10 +321,10 @@ const isNormal = computed(() => isNormalProduct(props.product))
 const isStore = computed(() => isStoreProduct(props.product))
 const isLegacyLink = computed(() => isLegacyLinkProduct(props.product))
 const isPlatformOrder = computed(() => isPlatformOrderProduct(props.product))
-const isTestMode = computed(() => !!props.product.is_test_mode || !!props.product.isTestMode)
-const showFeaturedBadge = computed(() => !!props.product.is_pinned && !!props.product.pin_is_paid)
+const isTestMode = computed(() => !!props.product.isTestMode)
+const showFeaturedBadge = computed(() => !!props.product.isPinned && !!props.product.pinIsPaid)
 const featuredPinType = computed(() => {
-  const rawPinType = String(props.product.pin_type || props.product.pinType || '').trim().toLowerCase()
+  const rawPinType = String(props.product.pinType || '').trim().toLowerCase()
 
   if (rawPinType === 'category' || rawPinType === 'global') {
     return rawPinType
@@ -371,80 +369,6 @@ function getAnimationSeed(value) {
   return Math.abs(hash >>> 0) || 1
 }
 
-function isDarkThemeActive() {
-  return typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
-}
-
-function getCardShadowConfig() {
-  const isDark = isDarkThemeActive()
-
-  if (showFeaturedBadge.value) {
-    if (isDark) {
-      return {
-        primaryRgb: '216, 163, 60',
-        secondaryRgb: '67, 49, 18',
-        primaryBase: 0.18,
-        primaryBoost: 0.14,
-        secondaryBaseY: 8,
-        secondaryBoostY: 8,
-        secondaryBaseBlur: 14,
-        secondaryBoostBlur: 18,
-        secondaryBaseAlpha: 0.14,
-        secondaryBoostAlpha: 0.1,
-        accentShadow: '0 0 0 1px rgba(244, 201, 109, 0.18) inset',
-        restingShadow: 'var(--product-featured-shadow)'
-      }
-    }
-
-    return {
-      primaryRgb: '168, 126, 35',
-      secondaryRgb: '107, 77, 20',
-      primaryBase: 0.14,
-      primaryBoost: 0.12,
-      secondaryBaseY: 6,
-      secondaryBoostY: 8,
-      secondaryBaseBlur: 12,
-      secondaryBoostBlur: 16,
-      secondaryBaseAlpha: 0.08,
-      secondaryBoostAlpha: 0.08,
-      accentShadow: '0 0 0 1px rgba(255, 241, 205, 0.52) inset',
-      restingShadow: 'var(--product-featured-shadow)'
-    }
-  }
-
-  if (isDark) {
-    return {
-      primaryRgb: '0, 0, 0',
-      secondaryRgb: '255, 255, 255',
-      primaryBase: 0.24,
-      primaryBoost: 0.12,
-      secondaryBaseY: 4,
-      secondaryBoostY: 5,
-      secondaryBaseBlur: 10,
-      secondaryBoostBlur: 10,
-      secondaryBaseAlpha: 0.04,
-      secondaryBoostAlpha: 0.02,
-      accentShadow: '',
-      restingShadow: 'var(--product-card-shadow, var(--shadow-sm))'
-    }
-  }
-
-  return {
-    primaryRgb: '0, 0, 0',
-    secondaryRgb: '0, 0, 0',
-    primaryBase: 0.06,
-    primaryBoost: 0.1,
-    secondaryBaseY: 4,
-    secondaryBoostY: 6,
-    secondaryBaseBlur: 8,
-    secondaryBoostBlur: 12,
-    secondaryBaseAlpha: 0.05,
-    secondaryBoostAlpha: 0.05,
-    accentShadow: '',
-    restingShadow: 'var(--product-card-shadow, var(--shadow-sm))'
-  }
-}
-
 // 库存
 const availableStock = computed(() => getAvailableStock(props.product))
 const hasUnlimitedStock = computed(() => isUnlimitedStock(props.product))
@@ -462,11 +386,11 @@ const stockClass = computed(() => {
 const stockDisplay = computed(() => getStockDisplay(props.product))
 
 // 销量
-const soldCount = computed(() => parseInt(props.product.sold_count) || 0)
+const soldCount = computed(() => parseInt(props.product.soldCount) || 0)
 
 // 浏览量：视觉上使用紧凑 k 单位，辅助技术与悬浮提示保留完整数字
 const viewCount = computed(() => {
-  const parsed = Number(props.product.view_count)
+  const parsed = Number(props.product.viewCount)
   return Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : 0
 })
 const compactViewCount = computed(() => formatCompactCount(viewCount.value))
@@ -474,10 +398,10 @@ const viewCountLabel = computed(() => `${formatNumber(viewCount.value)} 次浏�
 
 // 分类
 const category = computed(() => 
-  props.categories.find(c => c.id === props.product.category_id)
+  props.categories.find(c => String(c.id) === String(props.product.categoryId))
 )
 const categoryName = computed(() => 
-  props.product.category_name || category.value?.name || '其他'
+  props.product.categoryName || category.value?.name || '其他'
 )
 const categoryIcons = {
   '公益站': Server,
@@ -490,31 +414,31 @@ const categoryIconComponent = computed(() => categoryIcons[categoryName.value] |
 
 // 卖家头像
 const sellerAvatarSeed = computed(() =>
-  props.product.seller_username || props.product.seller_user_id || 'seller'
+  props.product.sellerUsername || props.product.sellerUserId || 'seller'
 )
 
 const sellerAvatarCandidates = computed(() =>
-  buildAvatarCandidates(props.product.seller_avatar, 128)
+  buildAvatarCandidates(props.product.sellerAvatar, 128)
 )
 
 // 更新时间
 const updateTime = computed(() => 
-  formatRelativeTime(props.product.updated_at || props.product.created_at)
+  formatRelativeTime(props.product.updatedAt || props.product.createdAt)
 )
 
 // 封面样式
 const colors = [
-  'linear-gradient(135deg, #e0f2fe, #bae6fd)',
-  'linear-gradient(135deg, #fce7f3, #fbcfe8)',
-  'linear-gradient(135deg, #d1fae5, #a7f3d0)',
-  'linear-gradient(135deg, #fef3c7, #fde68a)',
-  'linear-gradient(135deg, #ede9fe, #ddd6fe)',
-  'linear-gradient(135deg, #ffedd5, #fed7aa)',
-  'linear-gradient(135deg, #e0e7ff, #c7d2fe)',
-  'linear-gradient(135deg, #f5f5f4, #e7e5e4)'
+  'linear-gradient(135deg, var(--palette-hex-e0f2fe), var(--palette-hex-bae6fd))',
+  'linear-gradient(135deg, var(--palette-hex-fce7f3), var(--palette-hex-fbcfe8))',
+  'linear-gradient(135deg, var(--palette-hex-d1fae5), var(--palette-hex-a7f3d0))',
+  'linear-gradient(135deg, var(--palette-hex-fef3c7), var(--palette-hex-fde68a))',
+  'linear-gradient(135deg, var(--palette-hex-ede9fe), var(--palette-hex-ddd6fe))',
+  'linear-gradient(135deg, var(--palette-hex-ffedd5), var(--palette-hex-fed7aa))',
+  'linear-gradient(135deg, var(--palette-hex-e0e7ff), var(--palette-hex-c7d2fe))',
+  'linear-gradient(135deg, var(--palette-hex-f5f5f4), var(--palette-hex-e7e5e4))'
 ]
 const coverStyle = computed(() => {
-  if (props.product.image_url) return {}
+  if (props.product.imageUrl) return {}
   const index = props.product.id ? Math.abs(props.product.id) % colors.length : 0
   return { background: colors[index] }
 })
@@ -533,30 +457,30 @@ function handleImageError(e) {
 
 <style scoped>
 .product-card {
-  --product-featured-border: rgba(197, 151, 49, 0.24);
+  --product-featured-border: var(--palette-rgba-197-151-49-0p24);
   --product-featured-shadow:
-    0 10px 24px rgba(156, 117, 31, 0.14),
-    0 1px 0 rgba(255, 255, 255, 0.68) inset,
-    0 0 0 1px rgba(255, 241, 205, 0.52) inset;
-  --product-featured-cover-shadow: inset 0 -1px 0 rgba(190, 149, 55, 0.18);
-  --product-featured-title: #b88622;
-  --product-featured-meta: #8a6b37;
-  --product-featured-category-bg: #f3efe2;
-  --product-featured-category-text: #8b6520;
-  --product-featured-category-ring: #eae3d3;
-  --product-featured-avatar-ring: #c9b87a;
-  --product-selection-text: #fff9ef;
+    0 10px 24px var(--palette-rgba-156-117-31-0p14),
+    0 1px 0 var(--palette-rgba-255-255-255-0p68) inset,
+    0 0 0 1px var(--palette-rgba-255-241-205-0p52) inset;
+  --product-featured-cover-shadow: inset 0 -1px 0 var(--palette-rgba-190-149-55-0p18);
+  --product-featured-title: var(--palette-hex-b88622);
+  --product-featured-meta: var(--palette-hex-8a6b37);
+  --product-featured-category-bg: var(--palette-hex-f3efe2);
+  --product-featured-category-text: var(--palette-hex-8b6520);
+  --product-featured-category-ring: var(--palette-hex-eae3d3);
+  --product-featured-avatar-ring: var(--palette-hex-c9b87a);
+  --product-selection-text: var(--palette-hex-fff9ef);
   --product-selection-bg:
-    linear-gradient(135deg, #ffe49a 0%, #d69727 28%, #8f5d12 100%);
+    linear-gradient(135deg, var(--palette-hex-ffe49a) 0%, var(--palette-hex-d69727) 28%, var(--palette-hex-8f5d12) 100%);
   --product-selection-shadow:
-    0 0 0 1px rgba(255, 240, 199, 0.3),
-    0 0 14px rgba(255, 199, 73, 0.35),
-    0 6px 18px rgba(179, 119, 16, 0.28);
+    0 0 0 1px var(--palette-rgba-255-240-199-0p3),
+    0 0 14px var(--palette-rgba-255-199-73-0p35),
+    0 6px 18px var(--palette-rgba-179-119-16-0p28);
   display: flex;
   flex-direction: column;
   height: 100%;
   container-type: inline-size;
-  background: var(--product-card-bg, var(--bg-card));
+  background-color: var(--product-card-bg, var(--bg-card));
   border-radius: 16px;
   overflow: hidden;
   text-decoration: none;
@@ -564,36 +488,36 @@ function handleImageError(e) {
   border: 1px solid var(--product-card-border, var(--border-light));
   position: relative;
   isolation: isolate;
-  transition: background 0.28s ease, border-color 0.28s ease;
+  transition: background-color 0.28s ease, border-color 0.28s ease;
 }
 
 :global(html.dark .product-card) {
-  --product-card-discount-bg: #3a2225;
-  --product-card-discount-text: #fecaca;
-  --product-card-discount-ring: #3f282c;
-  --product-card-price-discounted: #f87171;
-  --product-featured-border: #3d3526;
+  --product-card-discount-bg: var(--palette-hex-3a2225);
+  --product-card-discount-text: var(--palette-hex-fecaca);
+  --product-card-discount-ring: var(--palette-hex-3f282c);
+  --product-card-price-discounted: var(--palette-hex-f87171);
+  --product-featured-border: var(--palette-hex-3d3526);
   --product-featured-shadow:
-    0 12px 28px rgba(0, 0, 0, 0.24),
-    0 0 0 1px #3d3526 inset;
-  --product-featured-cover-shadow: inset 0 -1px 0 #3d3526;
-  --product-featured-title: #efc775;
-  --product-featured-meta: #d9c29a;
-  --product-featured-category-bg: #363024;
-  --product-featured-category-text: #f4d490;
-  --product-featured-category-ring: #3d3526;
-  --product-featured-avatar-ring: #4a3d28;
-  --product-selection-text: #fff6df;
+    0 12px 28px var(--palette-rgba-0-0-0-0p24),
+    0 0 0 1px var(--palette-hex-3d3526) inset;
+  --product-featured-cover-shadow: inset 0 -1px 0 var(--palette-hex-3d3526);
+  --product-featured-title: var(--palette-hex-efc775);
+  --product-featured-meta: var(--palette-hex-d9c29a);
+  --product-featured-category-bg: var(--palette-hex-363024);
+  --product-featured-category-text: var(--palette-hex-f4d490);
+  --product-featured-category-ring: var(--palette-hex-3d3526);
+  --product-featured-avatar-ring: var(--palette-hex-4a3d28);
+  --product-selection-text: var(--palette-hex-fff6df);
   --product-selection-bg:
-    linear-gradient(135deg, #c79224 0%, #8f661a 40%, #5b3d11 100%);
+    linear-gradient(135deg, var(--palette-hex-c79224) 0%, var(--palette-hex-8f661a) 40%, var(--palette-hex-5b3d11) 100%);
   --product-selection-shadow:
-    0 0 0 1px rgba(244, 201, 109, 0.18),
-    0 0 14px rgba(199, 146, 36, 0.24),
-    0 6px 18px rgba(0, 0, 0, 0.24);
+    0 0 0 1px var(--palette-rgba-244-201-109-0p18),
+    0 0 14px var(--palette-rgba-199-146-36-0p24),
+    0 6px 18px var(--palette-rgba-0-0-0-0p24);
 }
 
 .product-card--featured {
-  background: var(--product-card-bg, var(--bg-card));
+  background-color: var(--product-card-bg, var(--bg-card));
   border-color: var(--product-featured-border);
   box-shadow: var(--product-featured-shadow);
 }
@@ -627,7 +551,7 @@ function handleImageError(e) {
   left: 50%;
   transform: translate(-50%, -50%) rotate(-15deg);
   background: var(--product-card-overlay, var(--overlay-bg));
-  color: white;
+  color: var(--palette-hex-ffffff);
   padding: 8px 16px;
   border-radius: 4px;
   font-size: 14px;
@@ -672,31 +596,31 @@ function handleImageError(e) {
 }
 
 .type-tag.cdk {
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-  color: white;
-  box-shadow: 0 2px 6px rgba(139, 92, 246, 0.35);
+  background: linear-gradient(135deg, var(--palette-hex-8b5cf6) 0%, var(--palette-hex-7c3aed) 100%);
+  color: var(--palette-hex-ffffff);
+  box-shadow: 0 2px 6px var(--palette-rgba-139-92-246-0p35);
 }
 
 .type-tag.normal {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  color: white;
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.28);
+  background: linear-gradient(135deg, var(--palette-hex-2563eb) 0%, var(--palette-hex-1d4ed8) 100%);
+  color: var(--palette-hex-ffffff);
+  box-shadow: 0 2px 6px var(--palette-rgba-37-99-235-0p28);
 }
 
 .type-tag.test {
-  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-  color: white;
-  box-shadow: 0 2px 6px rgba(6, 182, 212, 0.35);
+  background: linear-gradient(135deg, var(--palette-hex-06b6d4) 0%, var(--palette-hex-0891b2) 100%);
+  color: var(--palette-hex-ffffff);
+  box-shadow: 0 2px 6px var(--palette-rgba-6-182-212-0p35);
 }
 
 .type-tag.store {
-  background: linear-gradient(135deg, #7d8d69 0%, #627151 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--palette-hex-7d8d69) 0%, var(--palette-hex-627151) 100%);
+  color: var(--palette-hex-ffffff);
 }
 
 .type-tag.link {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--palette-hex-f59e0b) 0%, var(--palette-hex-d97706) 100%);
+  color: var(--palette-hex-ffffff);
 }
 
 .selection-badge {
@@ -731,9 +655,9 @@ function handleImageError(e) {
   background: linear-gradient(
     112deg,
     transparent 18%,
-    rgba(255, 251, 236, 0.05) 32%,
-    rgba(255, 255, 255, 0.82) 50%,
-    rgba(255, 247, 204, 0.16) 68%,
+    var(--palette-rgba-255-251-236-0p05) 32%,
+    var(--palette-rgba-255-255-255-0p82) 50%,
+    var(--palette-rgba-255-247-204-0p16) 68%,
     transparent 82%
   );
   transform: translate3d(-118%, 0, 0) skewX(-16deg) scaleX(0.94);
@@ -745,9 +669,9 @@ function handleImageError(e) {
   inset: -46% -20%;
   background: radial-gradient(
     circle at calc(30% + var(--featured-wave-drift, 0%)) 50%,
-    rgba(255, 255, 255, 0.46) 0%,
-    rgba(255, 247, 212, 0.22) 18%,
-    rgba(255, 221, 128, 0.12) 36%,
+    var(--palette-rgba-255-255-255-0p46) 0%,
+    var(--palette-rgba-255-247-212-0p22) 18%,
+    var(--palette-rgba-255-221-128-0p12) 36%,
     transparent 72%
   );
   transform: translate3d(-10%, 0, 0) scale(0.96);
@@ -959,9 +883,9 @@ function handleImageError(e) {
 }
 
 .product-discount {
-  background: var(--product-card-discount-bg, #fce8ec);
-  color: var(--product-card-discount-text, #e11d48);
-  box-shadow: inset 0 0 0 1px var(--product-card-discount-ring, #f5c6d0);
+  background: var(--product-card-discount-bg, var(--palette-hex-fce8ec));
+  color: var(--product-card-discount-text, var(--palette-hex-e11d48));
+  box-shadow: inset 0 0 0 1px var(--product-card-discount-ring, var(--palette-hex-f5c6d0));
 }
 
 .product-time {
@@ -1056,7 +980,7 @@ function handleImageError(e) {
 }
 
 .product-price.discounted {
-  color: var(--product-card-price-discounted, #ef4444);
+  color: var(--product-card-price-discounted, var(--palette-hex-ef4444));
 }
 
 .original-price {
@@ -1117,7 +1041,8 @@ function handleImageError(e) {
   }
 
   .tilt-glare,
-  .cover-image {
+  .cover-image,
+  .product-card {
     transition: none;
   }
 }

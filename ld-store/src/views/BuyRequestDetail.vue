@@ -234,7 +234,19 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useNotificationSummaryStore } from '@/stores/notificationSummary'
-import { api } from '@/utils/api'
+import {
+  closeBuySessionRequest,
+  createBuySessionPaymentRequest,
+  createBuySessionRequest,
+  fetchBuyRequestDetailRequest,
+  fetchBuySessionDetailRequest,
+  fetchBuySessionMessagesRequest,
+  markBuySessionReadRequest,
+  sendBuySessionMessageRequest,
+  updateBuyRequestPriceRequest,
+  updateBuyRequestStatusRequest
+} from '@/services/shop/buyRequestService'
+import { refreshBuyOrderStatusRequest } from '@/services/shop/orderService'
 import { useToast } from '@/composables/useToast'
 import { useDialog } from '@/composables/useDialog'
 import { formatMessageTime, formatPrice, formatRelativeTime } from '@/utils/format'
@@ -438,7 +450,7 @@ async function loadDetailBySessionFallback() {
   if (!isLoggedIn.value || sessionId <= 0) return { ok: false, error: '' }
 
   try {
-    const result = await api.get(`/api/shop/buy-sessions/${sessionId}`)
+    const result = await fetchBuySessionDetailRequest(sessionId)
     if (!result.success) return { ok: false, error: result.error || '' }
 
     const payload = result.data || {}
@@ -473,7 +485,7 @@ async function loadDetail(showLoading = true) {
 
   if (showLoading) loading.value = true
   try {
-    const result = await api.get(`/api/shop/buy-requests/${requestId.value}`)
+    const result = await fetchBuyRequestDetailRequest(requestId.value)
     if (!result.success) {
       const fallback = await loadDetailBySessionFallback()
       if (fallback.ok) return
@@ -524,12 +536,11 @@ async function loadMessages(options = {}) {
     loadingMessages.value = true
   }
   try {
-    const params = new URLSearchParams({
-      limit: String(MESSAGE_FETCH_LIMIT)
+    const result = await fetchBuySessionMessagesRequest(targetSessionId, {
+      limit: MESSAGE_FETCH_LIMIT,
+      sinceId,
+      beforeId
     })
-    if (sinceId > 0) params.set('sinceId', String(sinceId))
-    if (beforeId > 0) params.set('beforeId', String(beforeId))
-    const result = await api.get(`/api/shop/buy-sessions/${targetSessionId}/messages?${params.toString()}`)
     if (!result.success) {
       notifyMessageSyncError(
         result.error || '加载会话消息失败，请稍后重试',
@@ -560,7 +571,7 @@ async function loadMessages(options = {}) {
 
     const latestMessageId = Number(pagination.latestMessageId || messages.value[messages.value.length - 1]?.id || 0)
     if (!loadBefore && latestMessageId > 0 && document.visibilityState === 'visible') {
-      void api.post(`/api/shop/buy-sessions/${targetSessionId}/read`, { lastReadMessageId: latestMessageId })
+      void markBuySessionReadRequest(targetSessionId, latestMessageId)
     }
 
     const sessionState = result.data?.session || null
@@ -649,7 +660,7 @@ async function startSession() {
   if (!requestId.value) return
   startingSession.value = true
   try {
-    const result = await api.post(`/api/shop/buy-requests/${requestId.value}/sessions`, {})
+    const result = await createBuySessionRequest(requestId.value)
     if (!result.success) {
       toast.error(result.error || '发起洽谈失败')
       return
@@ -675,7 +686,7 @@ async function sendMessage() {
   const targetSessionId = activeSessionId.value
   sendingMessage.value = true
   try {
-    const result = await api.post(`/api/shop/buy-sessions/${targetSessionId}/messages`, { content })
+    const result = await sendBuySessionMessageRequest(targetSessionId, content)
     if (!result.success) {
       toast.error(result.error || '发送失败')
       return
@@ -702,7 +713,7 @@ async function submitPriceUpdate() {
 
   updatingPrice.value = true
   try {
-    const result = await api.post(`/api/shop/buy-requests/${requestId.value}/price`, { price: nextPrice })
+    const result = await updateBuyRequestPriceRequest(requestId.value, nextPrice)
     if (!result.success) {
       toast.error(result.error || '调价失败')
       return
@@ -725,7 +736,7 @@ async function updateRequestStatus(status) {
 
   updatingRequestStatus.value = true
   try {
-    const result = await api.post(`/api/shop/buy-requests/${requestId.value}/status`, { status })
+    const result = await updateBuyRequestStatusRequest(requestId.value, status)
     if (!result.success) {
       toast.error(result.error || '更新状态失败')
       return
@@ -746,7 +757,7 @@ async function createPaymentOrder() {
   actionLoading.value = true
   const preparedWindow = preparePaymentPopup()
   try {
-    const result = await api.post(`/api/shop/buy-sessions/${activeSessionId.value}/payment`, {})
+    const result = await createBuySessionPaymentRequest(activeSessionId.value)
     if (!result.success) {
       cleanupPreparedTab(preparedWindow)
       toast.error(result.error || '创建支付订单失败')
@@ -799,7 +810,7 @@ async function refreshPaymentStatus() {
 
   actionLoading.value = true
   try {
-    const result = await api.post(`/api/shop/buy-orders/${encodeURIComponent(orderNo)}/refresh`, {})
+    const result = await refreshBuyOrderStatusRequest(orderNo)
     if (!result.success) {
       toast.error(result.error || '刷新失败')
       return
@@ -831,7 +842,7 @@ async function closeSession() {
 
   actionLoading.value = true
   try {
-    const result = await api.post(`/api/shop/buy-sessions/${activeSessionId.value}/close`, {})
+    const result = await closeBuySessionRequest(activeSessionId.value)
     if (!result.success) {
       toast.error(result.error || '关闭失败')
       return
@@ -913,7 +924,7 @@ watch(
   font-weight: 500;
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .back-btn:hover {
@@ -1028,13 +1039,13 @@ watch(
 .small-btn.primary {
   background: var(--color-success);
   border-color: var(--color-success);
-  color: #fff;
+  color: var(--palette-hex-ffffff);
 }
 
 .small-btn.danger {
-  background: #fee2e2;
-  border-color: #f5c6d0;
-  color: #dc2626;
+  background: var(--palette-hex-fee2e2);
+  border-color: var(--palette-hex-f5c6d0);
+  color: var(--palette-hex-dc2626);
 }
 
 .section-title {
@@ -1068,8 +1079,8 @@ watch(
 }
 
 .session-item.has-unread {
-  border-color: #f5c6d0;
-  background: #fef2f2;
+  border-color: var(--palette-hex-f5c6d0);
+  background: var(--palette-hex-fef2f2);
 }
 
 .session-main {
@@ -1101,8 +1112,8 @@ watch(
   align-items: center;
   border-radius: 999px;
   padding: 2px 8px;
-  background: #fee2e2;
-  color: #dc2626;
+  background: var(--palette-hex-fee2e2);
+  color: var(--palette-hex-dc2626);
   font-size: 11px;
   font-weight: 700;
 }
@@ -1180,7 +1191,7 @@ watch(
 .chat-message.self {
   margin-left: auto;
   background: var(--color-success-bg);
-  border-color: #bde8cc;
+  border-color: var(--palette-hex-bde8cc);
 }
 
 .chat-message.other {
@@ -1250,7 +1261,7 @@ watch(
   border: none;
   border-radius: 10px;
   background: var(--color-success);
-  color: #fff;
+  color: var(--palette-hex-ffffff);
   font-size: 13px;
   padding: 8px 14px;
 }
@@ -1273,20 +1284,20 @@ watch(
 
 /* Dark mode overrides */
 :global(html.dark) .small-btn.danger {
-  background: #3a2225;
-  border-color: #4a2c30;
+  background: var(--palette-hex-3a2225);
+  border-color: var(--palette-hex-4a2c30);
 }
 
 :global(html.dark) .session-item.has-unread {
-  border-color: #4a2c30;
-  background: #2c1f20;
+  border-color: var(--palette-hex-4a2c30);
+  background: var(--palette-hex-2c1f20);
 }
 
 :global(html.dark) .session-unread {
-  background: #3a2225;
+  background: var(--palette-hex-3a2225);
 }
 
 :global(html.dark) .chat-message.self {
-  border-color: #2a3f2e;
+  border-color: var(--palette-hex-2a3f2e);
 }
 </style>

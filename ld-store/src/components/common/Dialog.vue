@@ -11,7 +11,7 @@
             <h3 id="app-dialog-title" class="dialog-title">{{ dialog.title }}</h3>
           </div>
           
-          <div id="app-dialog-content" class="dialog-body" v-html="dialog.content"></div>
+          <div id="app-dialog-content" class="dialog-body">{{ dialog.content }}</div>
           
           <div class="dialog-footer">
             <button
@@ -161,10 +161,8 @@ function handleSecondary() {
   color: var(--text-secondary);
   text-align: center;
   line-height: 1.6;
-}
-
-.dialog-body :deep(strong) {
-  color: var(--text-primary);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 .dialog-footer {

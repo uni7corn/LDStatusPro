@@ -32,3 +32,18 @@ it('names the dialog, focuses the safe action, traps Tab, and restores focus on 
   expect(await result).toBe(false); await flushPromises()
   expect(document.activeElement).toBe(trigger)
 })
+
+it('renders dynamic dialog content as plain text and preserves line breaks', async () => {
+  const hostileName = '<img src=x onerror="window.__dialogXss = true"><script>window.__dialogXss = true</script>'
+  const result = store.confirm(`确定取消「${hostileName}」吗？\n取消后无法恢复。`, { title: '取消订单' })
+  await flushPromises()
+
+  const body = document.querySelector('.dialog-body')
+  expect(body.textContent).toBe(`确定取消「${hostileName}」吗？\n取消后无法恢复。`)
+  expect(body.querySelector('img')).toBeNull()
+  expect(body.querySelector('script')).toBeNull()
+  expect(body.getAttribute('onerror')).toBeNull()
+
+  document.querySelector('.dialog-btn-cancel').click()
+  expect(await result).toBe(false)
+})

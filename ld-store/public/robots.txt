@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 
-# Allow previews by social/IM link unfurlers and search engines.
-# Block nothing else; add specific Disallow rules here if needed later.
+# noindex is enforced by HTML metadata and X-Robots-Tag response headers.
+# Crawlers must be allowed to fetch pages so they can observe that policy and
+# so social/IM link unfurlers can continue to generate share previews.

@@ -45,13 +45,13 @@ strong small { font-size:12px; font-weight:500; }
 .payment-rules { margin:20px 0; padding:16px 16px 16px 30px; background:var(--seller-surface-muted); border-radius:9px; color:var(--seller-muted); font-size:12px; line-height:1.8; }
 .payment-rules li+li { margin-top:6px; }
 .payment-rules strong { color:var(--seller-ink); font-weight:600; }
-button { display:flex; align-items:center; justify-content:center; gap:6px; width:100%; min-height:48px; padding:12px; border:0; border-radius:9px; background:var(--seller-navy); color:#fff; font-size:13px; font-weight:600; }
+button { display:flex; align-items:center; justify-content:center; gap:6px; width:100%; min-height:48px; padding:12px; border:0; border-radius:9px; background:var(--seller-navy); color:var(--palette-hex-ffffff); font-size:13px; font-weight:600; }
 button:disabled { background:var(--seller-surface-soft); color:var(--seller-muted); cursor:not-allowed; }
 .purchase-action-bar p { margin:10px 0 0; color:var(--seller-muted); text-align:center; font-size:12px; line-height:1.6; }
 .mobile-price { display:none; }
 @media(max-width:767px) {
   .purchase-summary { padding:20px; }
-  .purchase-action-bar { position:fixed; bottom:0; left:0; right:0; z-index:50; display:grid; grid-template-columns:1fr; gap:8px; padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--seller-border); background:var(--seller-surface-strong); box-shadow:0 -4px 18px rgba(0,0,0,.06); }
+  .purchase-action-bar { position:fixed; bottom:0; left:0; right:0; z-index:50; display:grid; grid-template-columns:1fr; gap:8px; padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--seller-border); background:var(--seller-surface-strong); box-shadow:0 -4px 18px var(--palette-rgba-0-0-0-p06); }
   .mobile-price { display:flex; justify-content:space-between; align-items:baseline; color:var(--seller-muted); font-size:12px; }
   .mobile-price strong { font-size:20px; color:var(--seller-ink); font-variant-numeric:tabular-nums; }
   .purchase-action-bar button { font-size:14px; }

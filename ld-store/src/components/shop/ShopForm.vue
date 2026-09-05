@@ -379,7 +379,7 @@ async function handleSubmit() {
   border-radius: 12px;
   background: var(--bg-secondary);
   color: var(--text-primary);
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
   box-sizing: border-box;
 }
 
@@ -469,7 +469,7 @@ async function handleSubmit() {
   background: var(--bg-secondary);
   color: var(--text-secondary);
   border: 2px solid transparent;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .tag-option.selected .tag-label {
@@ -480,9 +480,9 @@ async function handleSubmit() {
 .tag-label.tag-subscription { background: var(--color-success-light); color: var(--color-success); }
 .tag-label.tag-service { background: var(--color-info-light); color: var(--color-info); }
 .tag-label.tag-vps { background: var(--color-warning-light); color: var(--color-warning); }
-.tag-label.tag-ai { background: #f3e8ff; color: #7c3aed; }
-.tag-label.tag-entertainment { background: #ffe4e6; color: #be123c; }
-.tag-label.tag-charity { background: #fce7f3; color: #be185d; }
+.tag-label.tag-ai { background: var(--palette-hex-f3e8ff); color: var(--palette-hex-7c3aed); }
+.tag-label.tag-entertainment { background: var(--palette-hex-ffe4e6); color: var(--palette-hex-be123c); }
+.tag-label.tag-charity { background: var(--palette-hex-fce7f3); color: var(--palette-hex-be185d); }
 
 /* 操作按钮 */
 .form-actions {
@@ -504,7 +504,7 @@ async function handleSubmit() {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
   border: none;
 }
 
@@ -515,7 +515,7 @@ async function handleSubmit() {
 
 .btn-primary {
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
-  color: white;
+  color: var(--palette-hex-ffffff);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -536,8 +536,8 @@ async function handleSubmit() {
 .spinner-small {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
+  border: 2px solid var(--palette-rgba-255-255-255-0p3);
+  border-top-color: var(--palette-hex-ffffff);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }

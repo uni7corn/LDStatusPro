@@ -3,7 +3,7 @@
     ref="cardRef"
     :to="`/shop/${shop.id}`" 
     class="shop-card"
-    :class="{ pinned: shop.is_pinned }"
+    :class="{ pinned: shop.isPinned }"
     :style="tiltStyle"
     @mouseenter="handleMouseEnter"
     @mousemove="handleMouseMove"
@@ -15,8 +15,8 @@
     <!-- 小店图片 -->
     <div class="shop-image">
       <img 
-        v-if="shop.image_url" 
-        :src="shop.image_url" 
+        v-if="shop.imageUrl"
+        :src="shop.imageUrl"
         :alt="shop.name"
         @error="handleImageError"
       />
@@ -25,7 +25,7 @@
       </div>
       
       <!-- 置顶标记 -->
-      <div v-if="shop.is_pinned" class="pinned-badge">
+      <div v-if="shop.isPinned" class="pinned-badge">
         <span>📌</span>
       </div>
     </div>
@@ -41,10 +41,10 @@
           :candidates="ownerAvatarCandidates"
           :seed="ownerAvatarSeed"
           :size="48"
-          :alt="shop.owner_username"
+          :alt="shop.ownerUsername"
           class="owner-avatar"
         />
-        <span class="owner-name">{{ shop.owner_username }}</span>
+        <span class="owner-name">{{ shop.ownerUsername }}</span>
       </div>
       
       <!-- 标签 -->
@@ -117,7 +117,7 @@ function updateTilt() {
   
   tiltStyle.value = {
     transform: `perspective(${perspective}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(${currentScale}, ${currentScale}, ${currentScale})`,
-    boxShadow: `${shadowX}px ${shadowY}px ${shadowBlur}px rgba(0, 0, 0, ${shadowAlpha}), 0 ${5 + currentShadow * 7}px ${10 + currentShadow * 14}px rgba(0, 0, 0, ${0.05 + currentShadow * 0.05})`,
+    boxShadow: `${shadowX}px ${shadowY}px ${shadowBlur}px rgb(var(--shadow-rgb) / ${shadowAlpha}), 0 ${5 + currentShadow * 7}px ${10 + currentShadow * 14}px rgb(var(--shadow-rgb) / ${0.05 + currentShadow * 0.05})`,
     willChange: 'transform'
   }
   
@@ -125,7 +125,7 @@ function updateTilt() {
   const glareX = (currentX + 1) * 50
   const glareY = (currentY + 1) * 50
   glareStyle.value = {
-    background: `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255,255,255,0.3) 0%, transparent 60%)`,
+    background: `radial-gradient(circle at ${glareX}% ${glareY}%, var(--palette-rgba-255-255-255-0p3) 0%, transparent 60%)`,
     opacity: currentShadow
   }
   
@@ -163,7 +163,7 @@ function handleMouseLeave() {
   
   tiltStyle.value = {
     transform: `perspective(${perspective}px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`,
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+    boxShadow: '0 1px 3px var(--palette-rgba-0-0-0-0p08)',
     transition: `transform ${speed}ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow ${speed}ms cubic-bezier(0.23, 1, 0.32, 1)`
   }
   glareStyle.value = { opacity: 0 }
@@ -191,11 +191,11 @@ const parsedTags = computed(() => {
 
 // 店主头像 URL
 const ownerAvatarSeed = computed(() =>
-  props.shop.owner_username || props.shop.owner_user_id || props.shop.name || 'shop'
+  props.shop.ownerUsername || props.shop.ownerUserId || props.shop.name || 'shop'
 )
 
 const ownerAvatarCandidates = computed(() =>
-  buildAvatarCandidates(props.shop.owner_avatar_template, 48)
+  buildAvatarCandidates(props.shop.ownerAvatarTemplate, 48)
 )
 
 // 处理图片加载错误
@@ -373,18 +373,18 @@ const getTagClass = (tag) => {
 }
 
 .shop-tag.tag-ai {
-  background: rgba(124, 58, 237, 0.12);
-  color: #a78bfa;
+  background: var(--palette-rgba-124-58-237-0p12);
+  color: var(--palette-hex-a78bfa);
 }
 
 .shop-tag.tag-entertainment {
-  background: rgba(190, 18, 60, 0.12);
-  color: #fb7185;
+  background: var(--palette-rgba-190-18-60-0p12);
+  color: var(--palette-hex-fb7185);
 }
 
 .shop-tag.tag-charity {
-  background: rgba(190, 24, 93, 0.12);
-  color: #f472b6;
+  background: var(--palette-rgba-190-24-93-0p12);
+  color: var(--palette-hex-f472b6);
 }
 
 /* 移动端适配 */

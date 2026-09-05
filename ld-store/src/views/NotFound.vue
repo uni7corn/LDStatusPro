@@ -91,13 +91,13 @@ function goBack() {
 
 .home-btn {
   padding: 14px 28px;
-  background: linear-gradient(135deg, #a5b4a3 0%, #95a493 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--palette-hex-a5b4a3) 0%, var(--palette-hex-95a493) 100%);
+  color: var(--palette-hex-ffffff);
   border-radius: 12px;
   text-decoration: none;
   font-size: 15px;
   font-weight: 500;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .home-btn:hover {
@@ -114,7 +114,7 @@ function goBack() {
   font-weight: 500;
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard), opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .back-btn:hover {
